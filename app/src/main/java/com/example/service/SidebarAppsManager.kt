@@ -74,25 +74,24 @@ sealed class SidebarItem {
         val name: String,
         val colorHex: String,
         val items: List<String>,
-        val folderStyle: Int = 0
+        val folderStyle: Int = 0,
+        override var id: String = "folder:$uuid"
     ) : SidebarItem() {
-        override var id = "folder:$uuid"
         override val label = name
     }
 
     data class Link(
         val uuid: String,
         val url: String,
-        override val label: String
-    ) : SidebarItem() {
-        override var id = "link:$uuid"
-    }
+        override val label: String,
+        override var id: String = "link:$uuid"
+    ) : SidebarItem()
 
     data class Spacer(
         val uuid: String,
-        val heightDp: Int
+        val heightDp: Int,
+        override var id: String = "spacer:$uuid"
     ) : SidebarItem() {
-        override var id = "spacer:$uuid"
         override val label = "Spacer"
     }
 
@@ -347,7 +346,7 @@ class SidebarAppsManager(
                     }
                 }
                 val folderStyle = obj.optInt("folderStyle", 0)
-                return SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle).apply { this.id = id }
+                return SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, id)
             } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 
@@ -358,7 +357,7 @@ class SidebarAppsManager(
                 val uuid = parts[1]
                 val linkDataStr = parts[2]
                 val obj = org.json.JSONObject(linkDataStr)
-                return SidebarItem.Link(uuid, obj.getString("url"), obj.getString("label")).apply { this.id = id }
+                return SidebarItem.Link(uuid, obj.getString("url"), obj.getString("label"), id)
             } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 
@@ -368,7 +367,7 @@ class SidebarAppsManager(
                 val parts = id.split(":", limit = 3)
                 val uuid = parts[1]
                 val height = if (parts.size > 2) parts[2].toIntOrNull() ?: 50 else 50
-                return SidebarItem.Spacer(uuid, height).apply { this.id = id }
+                return SidebarItem.Spacer(uuid, height, id)
             } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 
@@ -461,7 +460,7 @@ class SidebarAppsManager(
                         }
                     }
                     val folderStyle = obj.optInt("folderStyle", 0)
-                    result.add(SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle).apply { this.id = id })
+                    result.add(SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, id))
                 } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 
@@ -472,7 +471,7 @@ class SidebarAppsManager(
                     val uuid = parts[1]
                     val linkDataStr = parts[2]
                     val obj = org.json.JSONObject(linkDataStr)
-                    result.add(SidebarItem.Link(uuid, obj.getString("url"), obj.getString("label")).apply { this.id = id })
+                    result.add(SidebarItem.Link(uuid, obj.getString("url"), obj.getString("label"), id))
                 } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 
@@ -483,7 +482,7 @@ class SidebarAppsManager(
                     val uuid = parts[1]
                     val spacerDataStr = parts[2]
                     val obj = org.json.JSONObject(spacerDataStr)
-                    result.add(SidebarItem.Spacer(uuid, obj.getInt("heightDp")).apply { this.id = id })
+                    result.add(SidebarItem.Spacer(uuid, obj.getInt("heightDp"), id))
                 } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 
@@ -617,6 +616,7 @@ class SidebarAppsManager(
     }
 
     fun addItemToFolder(folderUuid: String, itemId: String) {
+        (context as? com.example.service.FloatingReaderService)?.onFolderItemAdded(folderUuid, itemId)
         coroutineScope.launch(Dispatchers.IO) {
             val currentStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: return@launch
             val current = JSONArray(currentStr)

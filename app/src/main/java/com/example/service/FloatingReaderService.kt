@@ -31,6 +31,28 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 class FloatingReaderService : Service() {
+
+    fun onFolderItemAdded(folderUuid: String, itemId: String) {
+        val editView = sidebarEditOverlayView ?: return
+        val localIds = editView.localIds
+        for (i in 0 until localIds.size) {
+            var item = localIds[i]
+            if (item.startsWith("folder:$folderUuid:")) {
+                try {
+                    val parts = item.split(":", limit = 3)
+                    val folderDataStr = parts[2]
+                    val obj = org.json.JSONObject(folderDataStr)
+                    val itemsArr = obj.optJSONArray("items") ?: org.json.JSONArray()
+                    itemsArr.put(itemId)
+                    obj.put("items", itemsArr)
+                    localIds[i] = "folder:$folderUuid:${obj.toString()}"
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+        editView.refresh()
+    }
     private var serviceLifecycleOwner: ServiceLifecycleOwner? = null
     private lateinit var windowManager: WindowManager
     private lateinit var floatingView: View

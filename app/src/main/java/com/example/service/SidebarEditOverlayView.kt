@@ -41,6 +41,11 @@ class SidebarEditOverlayView(
 
     // Local mutable list of IDs representing the current edit state
     val localIds = mutableListOf<String>()
+    val rootLocalIds = mutableListOf<String>()
+    var currentFolderId: String? = null
+    var titleView: TextView? = null
+    var btnBack: Button? = null
+    var btnReset: Button? = null
 
     init {
         com.example.LogKeeper.writeLog("SidebarEdit", "Opened sidebar edit overlay")
@@ -80,16 +85,30 @@ class SidebarEditOverlayView(
             }
         }
 
+        titleView = TextView(context).apply {
+            text = "Edit Sidebar"
+            setTextColor(Color.WHITE)
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 16)
+        }
+        rootLayout.addView(titleView)
+
         val btnAdd = Button(context).apply {
             text = "Add"
             setOnClickListener { onAddClicked() }
         }
-        val btnReset = Button(context).apply {
+        btnReset = Button(context).apply {
             text = "Empty"
             setOnClickListener {
                 localIds.clear()
                 refresh()
             }
+        }
+        btnBack = Button(context).apply {
+            text = "Back"
+            visibility = View.GONE
+            setOnClickListener { exitFolder() }
         }
         val btnSave = Button(context).apply {
             text = "Save"
@@ -101,7 +120,8 @@ class SidebarEditOverlayView(
         }
 
         buttonsLayout.addView(btnAdd)
-        buttonsLayout.addView(btnReset)
+        buttonsLayout.addView(btnReset!!)
+        buttonsLayout.addView(btnBack!!)
         buttonsLayout.addView(btnSave)
         buttonsLayout.addView(btnCancel)
 
@@ -174,10 +194,13 @@ class SidebarEditOverlayView(
 
     fun attach() {
         if (windowToken == null) {
+            rootLocalIds.clear()
+            rootLocalIds.addAll(manager.activeItems.map { it.id })
+            currentFolderId = null
             localIds.clear()
-            localIds.addAll(manager.activeItems.map { it.id })
+            localIds.addAll(rootLocalIds)
             com.example.LogKeeper.writeLog("SidebarEdit", "localIds on attach: $localIds")
-            refresh()
+            updateUIState()
             windowManager.addView(this, layoutParams)
         }
     }
@@ -192,11 +215,68 @@ class SidebarEditOverlayView(
         onClose()
     }
 
-    private fun saveAndClose() {
+    private fun commitCurrentFolder() {
+        val folderId = currentFolderId ?: return
+        val uuid = folderId.split(":")[1]
+        val index = rootLocalIds.indexOfFirst { it.startsWith("folder:$uuid:") }
+        if (index != -1) {
+            val oldStr = rootLocalIds[index]
+            val parts = oldStr.split(":", limit = 3)
+            val folderDataStr = parts[2]
+            val obj = org.json.JSONObject(folderDataStr)
+            val itemsArr = JSONArray()
+            localIds.forEach { itemsArr.put(it) }
+            obj.put("items", itemsArr)
+            rootLocalIds[index] = "folder:${parts[1]}:${obj.toString()}"
+        }
+    }
+
+    fun saveCurrentState() {
+        if (currentFolderId != null) {
+            commitCurrentFolder()
+        } else {
+            rootLocalIds.clear()
+            rootLocalIds.addAll(localIds)
+        }
         val jArr = JSONArray()
-        localIds.forEach { jArr.put(it) }
+        rootLocalIds.forEach { jArr.put(it) }
         prefs.edit().putString("sidebar_apps", jArr.toString()).apply()
         manager.reloadActiveApps()
+    }
+
+    private fun enterFolder(folder: SidebarItem.Folder) {
+        rootLocalIds.clear()
+        rootLocalIds.addAll(localIds) // Save current root state
+        currentFolderId = folder.id
+        localIds.clear()
+        localIds.addAll(folder.items)
+        updateUIState()
+    }
+
+    private fun exitFolder() {
+        commitCurrentFolder()
+        currentFolderId = null
+        localIds.clear()
+        localIds.addAll(rootLocalIds)
+        updateUIState()
+    }
+
+    private fun updateUIState() {
+        if (currentFolderId != null) {
+            val f = manager.parseId(currentFolderId!!) as? SidebarItem.Folder
+            titleView?.text = "Editing Folder: ${f?.name ?: ""}"
+            btnBack?.visibility = View.VISIBLE
+            btnReset?.visibility = View.GONE
+        } else {
+            titleView?.text = "Edit Sidebar"
+            btnBack?.visibility = View.GONE
+            btnReset?.visibility = View.VISIBLE
+        }
+        refresh()
+    }
+
+    private fun saveAndClose() {
+        saveCurrentState()
         close()
     }
 
@@ -299,6 +379,9 @@ class SidebarEditOverlayView(
             
             holder.view.setOnClickListener {
                 val actionList = mutableListOf("Change Icon", "Remove")
+                if (item is SidebarItem.Folder) {
+                    actionList.add(0, "Edit Contents")
+                }
                 var popupWindow: android.widget.PopupWindow? = null
                 val popupLayout = LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
@@ -325,6 +408,11 @@ class SidebarEditOverlayView(
                         setOnClickListener {
                             popupWindow?.dismiss()
                             when (action) {
+                                "Edit Contents" -> {
+                                    if (item is SidebarItem.Folder) {
+                                        enterFolder(item)
+                                    }
+                                }
                                 "Remove" -> {
                                     localIds.removeAt(holder.adapterPosition)
                                     refresh()
