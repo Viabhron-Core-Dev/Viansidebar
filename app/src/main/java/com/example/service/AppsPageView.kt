@@ -91,7 +91,7 @@ class AppsPageView(
             }
         }
         displayedItems = flatList
-        adapter.notifyDataSetChanged()
+        adapter.updateItems(flatList)
         
         calculateAndDispatchHeight()
     }
