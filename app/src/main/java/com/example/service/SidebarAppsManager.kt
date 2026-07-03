@@ -18,14 +18,14 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
 sealed class SidebarItem {
-    abstract val id: String
+    abstract var id: String
     abstract val label: String
 
     data class App(
         val packageName: String,
         override val label: String
     ) : SidebarItem() {
-        override val id = "app:$packageName"
+        override var id = "app:$packageName"
     }
 
     data class SystemAction(
@@ -33,7 +33,7 @@ sealed class SidebarItem {
         override val label: String,
         val iconResId: Int
     ) : SidebarItem() {
-        override val id = "system:$action"
+        override var id = "system:$action"
     }
 
     data class VolumeAction(
@@ -42,7 +42,7 @@ sealed class SidebarItem {
         override val label: String,
         val iconResId: Int
     ) : SidebarItem() {
-        override val id = "volume:${stream}_$action"
+        override var id = "volume:${stream}_$action"
     }
 
     data class MediaAction(
@@ -50,7 +50,7 @@ sealed class SidebarItem {
         override val label: String,
         val iconResId: Int
     ) : SidebarItem() {
-        override val id = "media:$action"
+        override var id = "media:$action"
     }
 
     data class DisplayAction(
@@ -58,7 +58,7 @@ sealed class SidebarItem {
         override val label: String,
         val iconResId: Int
     ) : SidebarItem() {
-        override val id = "display:$action"
+        override var id = "display:$action"
     }
 
     data class SettingsShortcut(
@@ -66,7 +66,7 @@ sealed class SidebarItem {
         override val label: String,
         val iconResId: Int
     ) : SidebarItem() {
-        override val id = "settings_shortcut:$action"
+        override var id = "settings_shortcut:$action"
     }
 
     data class Folder(
@@ -76,7 +76,7 @@ sealed class SidebarItem {
         val items: List<String>,
         val folderStyle: Int = 0
     ) : SidebarItem() {
-        override val id = "folder:$uuid"
+        override var id = "folder:$uuid"
         override val label = name
     }
 
@@ -85,14 +85,14 @@ sealed class SidebarItem {
         val url: String,
         override val label: String
     ) : SidebarItem() {
-        override val id = "link:$uuid"
+        override var id = "link:$uuid"
     }
 
     data class Spacer(
         val uuid: String,
         val heightDp: Int
     ) : SidebarItem() {
-        override val id = "spacer:$uuid"
+        override var id = "spacer:$uuid"
         override val label = "Spacer"
     }
 
@@ -100,7 +100,7 @@ sealed class SidebarItem {
         val componentStr: String,
         override val label: String
     ) : SidebarItem() {
-        override val id = "intent:$componentStr"
+        override var id = "intent:$componentStr"
     }
 }
 
@@ -257,6 +257,32 @@ class SidebarAppsManager(
         allInstalledApps = distinctResult
     }
 
+    
+    fun getIconBitmap(id: String): Bitmap? {
+        val parsed = parseId(id) ?: return null
+        if (parsed is SidebarItem.App) {
+            return iconCache.get(parsed.packageName)
+        }
+        val resId = when (parsed) {
+            is SidebarItem.SystemAction -> parsed.iconResId
+            is SidebarItem.VolumeAction -> parsed.iconResId
+            is SidebarItem.MediaAction -> parsed.iconResId
+            is SidebarItem.DisplayAction -> parsed.iconResId
+            is SidebarItem.SettingsShortcut -> parsed.iconResId
+            is SidebarItem.Link -> android.R.drawable.ic_menu_set_as
+            else -> 0
+        }
+        if (resId != 0) {
+            val drawable = androidx.core.content.ContextCompat.getDrawable(context, resId)
+            if (drawable != null) {
+                // Check if we need to tint it white for the folder preview
+                drawable.mutate().setColorFilter(android.graphics.Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN)
+                return getBitmapFromDrawable(drawable)
+            }
+        }
+        return null
+    }
+
     fun parseId(id: String): SidebarItem? {
         if (id.startsWith("app:")) {
             val pkg = id.substringAfter("app:")
@@ -321,23 +347,32 @@ class SidebarAppsManager(
                     }
                 }
                 val folderStyle = obj.optInt("folderStyle", 0)
-                return SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle)
-            } catch (e: Exception) { e.printStackTrace() }
+                return SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle).apply { this.id = id }
+            } catch (e: Exception) { 
+                    com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
+                    e.printStackTrace() 
+                }
         } else if (id.startsWith("link:")) {
             try {
                 val parts = id.split(":", limit = 3)
                 val uuid = parts[1]
                 val linkDataStr = parts[2]
                 val obj = org.json.JSONObject(linkDataStr)
-                return SidebarItem.Link(uuid, obj.getString("url"), obj.getString("label"))
-            } catch (e: Exception) { e.printStackTrace() }
+                return SidebarItem.Link(uuid, obj.getString("url"), obj.getString("label")).apply { this.id = id }
+            } catch (e: Exception) { 
+                    com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
+                    e.printStackTrace() 
+                }
         } else if (id.startsWith("spacer:")) {
             try {
                 val parts = id.split(":", limit = 3)
                 val uuid = parts[1]
                 val height = if (parts.size > 2) parts[2].toIntOrNull() ?: 50 else 50
-                return SidebarItem.Spacer(uuid, height)
-            } catch (e: Exception) { e.printStackTrace() }
+                return SidebarItem.Spacer(uuid, height).apply { this.id = id }
+            } catch (e: Exception) { 
+                    com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
+                    e.printStackTrace() 
+                }
         }
         return null
     }
@@ -426,24 +461,33 @@ class SidebarAppsManager(
                         }
                     }
                     val folderStyle = obj.optInt("folderStyle", 0)
-                    result.add(SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle))
-                } catch (e: Exception) { e.printStackTrace() }
+                    result.add(SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle).apply { this.id = id })
+                } catch (e: Exception) { 
+                    com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
+                    e.printStackTrace() 
+                }
             } else if (id.startsWith("link:")) {
                 try {
                     val parts = id.split(":", limit = 3)
                     val uuid = parts[1]
                     val linkDataStr = parts[2]
                     val obj = org.json.JSONObject(linkDataStr)
-                    result.add(SidebarItem.Link(uuid, obj.getString("url"), obj.getString("label")))
-                } catch (e: Exception) { e.printStackTrace() }
+                    result.add(SidebarItem.Link(uuid, obj.getString("url"), obj.getString("label")).apply { this.id = id })
+                } catch (e: Exception) { 
+                    com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
+                    e.printStackTrace() 
+                }
             } else if (id.startsWith("spacer:")) {
                 try {
                     val parts = id.split(":", limit = 3)
                     val uuid = parts[1]
                     val spacerDataStr = parts[2]
                     val obj = org.json.JSONObject(spacerDataStr)
-                    result.add(SidebarItem.Spacer(uuid, obj.getInt("heightDp")))
-                } catch (e: Exception) { e.printStackTrace() }
+                    result.add(SidebarItem.Spacer(uuid, obj.getInt("heightDp")).apply { this.id = id })
+                } catch (e: Exception) { 
+                    com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
+                    e.printStackTrace() 
+                }
             }
         }
         activeItems = result
@@ -465,7 +509,7 @@ class SidebarAppsManager(
         }
     }
 
-    private fun getBitmapFromDrawable(drawable: Drawable): Bitmap? {
+    fun getBitmapFromDrawable(drawable: Drawable): Bitmap? {
         if (drawable is BitmapDrawable) {
             return drawable.bitmap
         }

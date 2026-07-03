@@ -1,6 +1,8 @@
 package com.example
 
 import android.content.Context
+import android.content.ComponentName
+import android.text.TextUtils
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -37,6 +39,7 @@ fun WelcomeScreen(onContinue: () -> Unit) {
     var hasOverlay by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var hasNotificationAccess by remember { mutableStateOf(NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)) }
     var hasUsageAccess by remember { mutableStateOf(checkUsageAccess(context)) }
+    var hasAccessibility by remember { mutableStateOf(isAccessibilityServiceEnabled(context)) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -45,6 +48,7 @@ fun WelcomeScreen(onContinue: () -> Unit) {
                 hasOverlay = Settings.canDrawOverlays(context)
                 hasNotificationAccess = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
                 hasUsageAccess = checkUsageAccess(context)
+                hasAccessibility = isAccessibilityServiceEnabled(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -128,8 +132,19 @@ fun WelcomeScreen(onContinue: () -> Unit) {
                 context.startActivity(intent)
             }
         )
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
+        PermissionItem(
+            title = "Accessibility Access",
+            description = "Required to perform global actions like Back, Home, and Recents.",
+            isGranted = hasAccessibility,
+            onClick = {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                context.startActivity(intent)
+            }
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        
         Button(
             onClick = {
                 val readerPrefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
@@ -191,4 +206,21 @@ private fun checkUsageAccess(context: Context): Boolean {
         appOpsManager.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
     }
     return mode == AppOpsManager.MODE_ALLOWED
+}
+
+
+private fun isAccessibilityServiceEnabled(context: Context): Boolean {
+    val expectedComponentName = ComponentName(context, com.example.service.VianSideAccessibilityService::class.java)
+    val enabledServicesSetting = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+    if (enabledServicesSetting == null) return false
+    val colonSplitter = TextUtils.SimpleStringSplitter(':')
+    colonSplitter.setString(enabledServicesSetting)
+    while (colonSplitter.hasNext()) {
+        val componentNameString = colonSplitter.next()
+        val enabledService = ComponentName.unflattenFromString(componentNameString)
+        if (enabledService != null && enabledService == expectedComponentName) {
+            return true
+        }
+    }
+    return false
 }

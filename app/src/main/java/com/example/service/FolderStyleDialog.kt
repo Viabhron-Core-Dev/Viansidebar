@@ -145,7 +145,13 @@ class FolderStyleDrawable(
     }
     
     private fun drawGrid(canvas: Canvas, x: Float, y: Float, size: Float) {
-        if (miniIcons.isEmpty()) return
+        if (miniIcons.isEmpty()) {
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 4f
+            canvas.drawRect(x + size*0.1f, y + size*0.2f, x + size*0.9f, y + size*0.8f, paint)
+            canvas.drawLine(x + size*0.1f, y + size*0.4f, x + size*0.9f, y + size*0.4f, paint)
+            return
+        }
         val count = miniIcons.size
         
         if (count == 1) {
@@ -188,7 +194,13 @@ class FolderStyleDrawable(
     }
     
     private fun drawStack(canvas: Canvas, x: Float, y: Float, size: Float) {
-        if (miniIcons.isEmpty()) return
+        if (miniIcons.isEmpty()) {
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 4f
+            canvas.drawRect(x + size*0.1f, y + size*0.2f, x + size*0.9f, y + size*0.8f, paint)
+            canvas.drawLine(x + size*0.1f, y + size*0.4f, x + size*0.9f, y + size*0.4f, paint)
+            return
+        }
         val count = minOf(3, miniIcons.size)
         val gap = size * 0.15f
         val cardSize = size - gap * (count - 1)

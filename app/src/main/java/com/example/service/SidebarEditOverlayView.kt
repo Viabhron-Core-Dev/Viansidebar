@@ -63,6 +63,7 @@ class SidebarEditOverlayView(
 
         // Initialize local list with current items
         localIds.addAll(manager.activeItems.map { it.id })
+            com.example.LogKeeper.writeLog("SidebarEdit", "localIds on attach: $localIds")
 
         val rootLayout = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -175,6 +176,7 @@ class SidebarEditOverlayView(
         if (windowToken == null) {
             localIds.clear()
             localIds.addAll(manager.activeItems.map { it.id })
+            com.example.LogKeeper.writeLog("SidebarEdit", "localIds on attach: $localIds")
             refresh()
             windowManager.addView(this, layoutParams)
         }
@@ -285,9 +287,7 @@ class SidebarEditOverlayView(
             } else if (item is SidebarItem.Folder) {
                 val cHex = try { Color.parseColor(item.colorHex) } catch(e:Exception){ Color.parseColor("#00BFA5") }
                 val iconC = Color.WHITE
-                val miniIcons = item.items.mapNotNull { 
-                    if (it.startsWith("app:")) manager.iconCache.get(it.substringAfter("app:")) else null 
-                }
+                val miniIcons = item.items.take(9).mapNotNull { manager.getIconBitmap(it) }
                 holder.icon.setImageDrawable(FolderStyleDrawable(item.folderStyle, cHex, iconC, miniIcons))
             } else if (item is SidebarItem.Link) {
                 holder.icon.setImageResource(android.R.drawable.ic_menu_set_as)
