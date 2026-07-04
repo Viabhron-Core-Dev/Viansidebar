@@ -128,7 +128,7 @@ class AppsPageView(
         }
     }
 
-    private var currentFolderPopup: android.app.Dialog? = null
+    private var currentFolderPopup: android.widget.PopupWindow? = null
 
     private fun showFolderPopup(anchor: View, folder: SidebarItem.Folder) {
         currentFolderPopup?.dismiss()
@@ -165,23 +165,51 @@ class AppsPageView(
         popupBg.cornerRadius = 16 * density
         popupView.background = popupBg
         
-        val dialog = android.app.AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Light_Dialog_Alert)
-            .setView(popupView)
-            .create()
-            
-        dialog.window?.let { window ->
-            val layoutType = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            } else {
-                android.view.WindowManager.LayoutParams.TYPE_PHONE
-            }
-            window.setType(layoutType)
-            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
-            window.setDimAmount(0.3f)
-        }
+        // Calculate exact size for compact wrap_content appearance
+        val itemWidthDp = 56 // 44dp icon + 6dp padding on each side
+        val itemHeightDp = 56
+        val rows = Math.ceil(folderItems.size.toDouble() / validCols).toInt()
+        val totalWidth = (validCols * itemWidthDp * density + padding * 2).toInt()
+        val totalHeight = (rows * itemHeightDp * density + padding * 2).toInt()
         
-        currentFolderPopup = dialog
-        dialog.show()
+        popupView.layoutParams = ViewGroup.LayoutParams(totalWidth, totalHeight)
+        
+        val popupWindow = android.widget.PopupWindow(
+            popupView,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true
+        ).apply {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                windowLayoutType = android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION")
+                windowLayoutType = android.view.WindowManager.LayoutParams.TYPE_PHONE
+            }
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            isOutsideTouchable = true
+        }
+
+        val location = IntArray(2)
+        anchor.getLocationOnScreen(location)
+        val anchorX = location[0]
+        val anchorY = location[1]
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val screenHeight = context.resources.displayMetrics.heightPixels
+
+        var x = anchorX
+        if (anchorX > screenWidth / 2) {
+            x = anchorX - totalWidth
+        } else {
+            x = anchorX + anchor.width
+        }
+
+        var y = anchorY - (totalHeight / 2) + (anchor.height / 2)
+        if (y < 0) y = 0
+        if (y + totalHeight > screenHeight) y = screenHeight - totalHeight
+
+        popupWindow.showAtLocation(anchor, Gravity.NO_GRAVITY, x, y)
+        currentFolderPopup = popupWindow
     }
 
     private inner class AppsAdapter(var items: List<SidebarItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -451,11 +479,16 @@ class AppsPageView(
                     canvas.drawText(customIconStr, 0f, baseline, paint)
                     icon.setImageBitmap(bitmap)
                 } else {
-                    serviceScope.launch {
-                        val bitmap = manager.loadIcon(customIconStr)
-                        if (bitmap != null) {
-                            withContext(Dispatchers.Main) {
-                                icon.setImageBitmap(bitmap)
+                    val cached = manager.iconCache.get(customIconStr)
+                    if (cached != null) {
+                        icon.setImageBitmap(cached)
+                    } else {
+                        serviceScope.launch {
+                            val bitmap = manager.loadIcon(customIconStr)
+                            if (bitmap != null) {
+                                withContext(Dispatchers.Main) {
+                                    icon.setImageBitmap(bitmap)
+                                }
                             }
                         }
                     }
@@ -464,23 +497,35 @@ class AppsPageView(
             }
 
             if (item is SidebarItem.App) {
-                serviceScope.launch {
-                    val bitmap = manager.loadIcon(item.packageName)
-                    if (bitmap != null) {
-                        withContext(Dispatchers.Main) {
-                            icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                            icon.setImageBitmap(bitmap)
+                val cached = manager.getIconBitmap(item.id)
+                if (cached != null) {
+                    icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    icon.setImageBitmap(cached)
+                } else {
+                    serviceScope.launch {
+                        val bitmap = manager.loadIcon(item.packageName)
+                        if (bitmap != null) {
+                            withContext(Dispatchers.Main) {
+                                icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                                icon.setImageBitmap(bitmap)
+                            }
                         }
                     }
                 }
             } else if (item is SidebarItem.IntentAction) {
                 val pkg = item.componentStr.split("/").getOrNull(0) ?: ""
-                serviceScope.launch {
-                    val bitmap = manager.loadIcon(pkg)
-                    if (bitmap != null) {
-                        withContext(Dispatchers.Main) {
-                            icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                            icon.setImageBitmap(bitmap)
+                val cached = manager.getIconBitmap(item.id)
+                if (cached != null) {
+                    icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    icon.setImageBitmap(cached)
+                } else {
+                    serviceScope.launch {
+                        val bitmap = manager.loadIcon(pkg)
+                        if (bitmap != null) {
+                            withContext(Dispatchers.Main) {
+                                icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                                icon.setImageBitmap(bitmap)
+                            }
                         }
                     }
                 }
@@ -517,16 +562,18 @@ class AppsPageView(
                 
                 if (miniIcons.size < minOf(item.items.size, 9) && item.items.any { it.startsWith("app:") }) {
                     serviceScope.launch {
-                        var loadedAny = false
+                        var newlyLoaded = false
                         for (it in item.items.take(9)) {
                             if (it.startsWith("app:")) {
-                                val bitmap = manager.loadIcon(it.substringAfter("app:"))
-                                if (bitmap != null) {
-                                    loadedAny = true
+                                if (manager.getIconBitmap(it) == null) {
+                                    val bitmap = manager.loadIcon(it.substringAfter("app:"))
+                                    if (bitmap != null) {
+                                        newlyLoaded = true
+                                    }
                                 }
                             }
                         }
-                        if (loadedAny) {
+                        if (newlyLoaded) {
                             withContext(Dispatchers.Main) {
                                 adapter.notifyItemChanged(position)
                             }

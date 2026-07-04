@@ -325,31 +325,43 @@ class SidebarEditOverlayView(
             holder.label.text = item.label
 
             if (item is SidebarItem.App) {
-                serviceScope.launch {
-                    val bitmap = manager.loadIcon(item.packageName)
-                    if (bitmap != null) {
-                        withContext(Dispatchers.Main) {
-                            holder.icon.setBackgroundColor(Color.TRANSPARENT)
-                            holder.icon.setImageBitmap(bitmap)
-                        }
-                    } else {
-                        withContext(Dispatchers.Main) {
-                            holder.icon.setImageResource(android.R.mipmap.sym_def_app_icon)
+                val cached = manager.getIconBitmap(item.id)
+                if (cached != null) {
+                    holder.icon.setBackgroundColor(Color.TRANSPARENT)
+                    holder.icon.setImageBitmap(cached)
+                } else {
+                    serviceScope.launch {
+                        val bitmap = manager.loadIcon(item.packageName)
+                        if (bitmap != null) {
+                            withContext(Dispatchers.Main) {
+                                holder.icon.setBackgroundColor(Color.TRANSPARENT)
+                                holder.icon.setImageBitmap(bitmap)
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                holder.icon.setImageResource(android.R.mipmap.sym_def_app_icon)
+                            }
                         }
                     }
                 }
             } else if (item is SidebarItem.IntentAction) {
                 val pkg = item.componentStr.split("/").getOrNull(0) ?: ""
-                serviceScope.launch {
-                    val bitmap = manager.loadIcon(pkg)
-                    if (bitmap != null) {
-                        withContext(Dispatchers.Main) {
-                            holder.icon.setBackgroundColor(Color.TRANSPARENT)
-                            holder.icon.setImageBitmap(bitmap)
-                        }
-                    } else {
-                        withContext(Dispatchers.Main) {
-                            holder.icon.setImageResource(android.R.mipmap.sym_def_app_icon)
+                val cached = manager.getIconBitmap(item.id)
+                if (cached != null) {
+                    holder.icon.setBackgroundColor(Color.TRANSPARENT)
+                    holder.icon.setImageBitmap(cached)
+                } else {
+                    serviceScope.launch {
+                        val bitmap = manager.loadIcon(pkg)
+                        if (bitmap != null) {
+                            withContext(Dispatchers.Main) {
+                                holder.icon.setBackgroundColor(Color.TRANSPARENT)
+                                holder.icon.setImageBitmap(bitmap)
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                holder.icon.setImageResource(android.R.mipmap.sym_def_app_icon)
+                            }
                         }
                     }
                 }

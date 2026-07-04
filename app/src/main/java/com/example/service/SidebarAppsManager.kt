@@ -258,6 +258,13 @@ class SidebarAppsManager(
 
     
     fun getIconBitmap(id: String): Bitmap? {
+        if (id.startsWith("app:")) {
+            val pkg = id.substringAfter("app:")
+            iconCache.get(pkg)?.let { return it }
+        } else if (id.startsWith("intent:")) {
+            val pkg = id.substringAfter("intent:").split("/").getOrNull(0) ?: ""
+            iconCache.get(pkg)?.let { return it }
+        }
         val parsed = parseId(id) ?: return null
         if (parsed is SidebarItem.App) {
             return iconCache.get(parsed.packageName)

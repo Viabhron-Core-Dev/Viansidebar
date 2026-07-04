@@ -126,10 +126,7 @@ class FolderStyleDrawable(
         val cx = bounds.centerX().toFloat()
         val cy = bounds.centerY().toFloat()
         
-        paint.style = Paint.Style.FILL
-        paint.color = themeColor
-        paint.alpha = 100
-        canvas.drawCircle(cx, cy, w / 2f, paint)
+        // No background circle as per user request
 
         val symbolSize = w * 0.6f
         val sx = cx - symbolSize / 2f
