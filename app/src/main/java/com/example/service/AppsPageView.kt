@@ -150,7 +150,7 @@ class AppsPageView(
             }
         }
         
-        val maxCols = prefs.getInt("sidebar_columns", 4)
+        val maxCols = if (folder.popupColumns > 0) folder.popupColumns else prefs.getInt("sidebar_columns", 4)
         val columns = if (folderItems.size <= maxCols && folderItems.isNotEmpty()) folderItems.size else maxCols
         val validCols = if (columns > 0) columns else 1
         
@@ -560,13 +560,18 @@ class AppsPageView(
                 val miniIcons = item.items.take(9).mapNotNull { manager.getIconBitmap(it) }
                 icon.setImageDrawable(FolderStyleDrawable(item.folderStyle, cHex, iconC, miniIcons))
                 
-                if (miniIcons.size < minOf(item.items.size, 9) && item.items.any { it.startsWith("app:") }) {
+                if (miniIcons.size < minOf(item.items.size, 9)) {
                     serviceScope.launch {
                         var newlyLoaded = false
-                        for (it in item.items.take(9)) {
-                            if (it.startsWith("app:")) {
-                                if (manager.getIconBitmap(it) == null) {
-                                    val bitmap = manager.loadIcon(it.substringAfter("app:"))
+                        for (subItem in item.items.take(9)) {
+                            if (manager.getIconBitmap(subItem) == null) {
+                                val pkg = when {
+                                    subItem.startsWith("app:") -> subItem.substringAfter("app:")
+                                    subItem.startsWith("intent:") -> subItem.substringAfter("intent:").split("/").getOrNull(0) ?: ""
+                                    else -> ""
+                                }
+                                if (pkg.isNotEmpty()) {
+                                    val bitmap = manager.loadIcon(pkg)
                                     if (bitmap != null) {
                                         newlyLoaded = true
                                     }

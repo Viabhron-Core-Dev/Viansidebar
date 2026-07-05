@@ -15,7 +15,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-fun showFolderStyleDialog(context: Context, item: SidebarItem.Folder, manager: SidebarAppsManager, onStyleSelected: ((Int) -> Unit)? = null) {
+fun showFolderStyleDialog(context: Context, item: SidebarItem.Folder, manager: SidebarAppsManager, onStyleSelected: ((Int, Int) -> Unit)? = null) {
     val layout = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(40, 40, 40, 40)
@@ -40,6 +40,8 @@ fun showFolderStyleDialog(context: Context, item: SidebarItem.Folder, manager: S
     val styles = listOf(
         "Grid", "Stack"
     )
+
+    var selectedStyle = item.folderStyle
 
     val adapter = object : BaseAdapter() {
         override fun getCount(): Int = styles.size
@@ -70,7 +72,7 @@ fun showFolderStyleDialog(context: Context, item: SidebarItem.Folder, manager: S
                 gravity = Gravity.CENTER
                 setTextColor(Color.BLACK)
                 setPadding(0, 10, 0, 0)
-                if (position == item.folderStyle) {
+                if (position == selectedStyle) {
                     setTypeface(null, Typeface.BOLD)
                 }
             }
@@ -83,28 +85,33 @@ fun showFolderStyleDialog(context: Context, item: SidebarItem.Folder, manager: S
     gridView.adapter = adapter
     layout.addView(gridView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
 
+    gridView.setOnItemClickListener { _, _, position, _ ->
+        selectedStyle = position
+        adapter.notifyDataSetChanged()
+    }
+    
+
     val dialog = AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Light_Dialog_Alert)
         .setView(layout)
-        .setPositiveButton("OK", null)
-        .create()
-
-    gridView.setOnItemClickListener { _, _, position, _ ->
-        if (onStyleSelected != null) {
-            onStyleSelected(position)
-        } else {
-            val json = org.json.JSONObject().apply {
-                put("name", item.name)
-                put("colorHex", item.colorHex)
-                val jArr = org.json.JSONArray()
-                item.items.forEach { jArr.put(it) }
-                put("items", jArr)
-                put("folderStyle", position)
+        .setPositiveButton("Save") { _, _ ->
+            if (onStyleSelected != null) {
+                onStyleSelected(selectedStyle, item.popupColumns)
+            } else {
+                val json = org.json.JSONObject().apply {
+                    put("name", item.name)
+                    put("colorHex", item.colorHex)
+                    val jArr = org.json.JSONArray()
+                    item.items.forEach { jArr.put(it) }
+                    put("items", jArr)
+                    put("folderStyle", selectedStyle)
+                    put("popupColumns", item.popupColumns)
+                }
+                manager.removeItem(item.id)
+                manager.addItem("folder:${item.uuid}:$json")
             }
-            manager.removeItem(item.id)
-            manager.addItem("folder:${item.uuid}:$json")
         }
-        dialog.dismiss()
-    }
+        .setNegativeButton("Cancel", null)
+        .create()
 
     dialog.window?.setType(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE)
     dialog.show()
@@ -143,10 +150,7 @@ class FolderStyleDrawable(
     
     private fun drawGrid(canvas: Canvas, x: Float, y: Float, size: Float) {
         if (miniIcons.isEmpty()) {
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 4f
-            canvas.drawRect(x + size*0.1f, y + size*0.2f, x + size*0.9f, y + size*0.8f, paint)
-            canvas.drawLine(x + size*0.1f, y + size*0.4f, x + size*0.9f, y + size*0.4f, paint)
+            // User requested no default box, so draw nothing or leave it empty
             return
         }
         val count = miniIcons.size
@@ -192,10 +196,7 @@ class FolderStyleDrawable(
     
     private fun drawStack(canvas: Canvas, x: Float, y: Float, size: Float) {
         if (miniIcons.isEmpty()) {
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 4f
-            canvas.drawRect(x + size*0.1f, y + size*0.2f, x + size*0.9f, y + size*0.8f, paint)
-            canvas.drawLine(x + size*0.1f, y + size*0.4f, x + size*0.9f, y + size*0.4f, paint)
+            // User requested no default box, so draw nothing or leave it empty
             return
         }
         val count = minOf(3, miniIcons.size)

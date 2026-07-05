@@ -1,205 +1,14 @@
-package com.example.service
+import re
 
-import android.content.Context
-import android.service.notification.StatusBarNotification
-import android.widget.FrameLayout
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.collectLatest
-import android.app.PendingIntent
-import android.graphics.drawable.Icon
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.foundation.Image
-import androidx.core.graphics.drawable.toBitmap
-import android.graphics.drawable.BitmapDrawable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.FilterList
-import com.example.NotificationHistoryActivity
-import android.content.Intent
+with open('app/src/main/java/com/example/service/NotificationPageView.kt', 'r') as f:
+    content = f.read()
 
-class NotificationPageView(
-    context: Context,
-    private val onHeightChanged: (Int) -> Unit
-) : FrameLayout(context) {
+start_idx = content.find("@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)")
+if start_idx == -1:
+    start_idx = content.find("@OptIn(ExperimentalFoundationApi::class)")
+end_idx = content.rfind("}")
 
-    private var currentHeightPx: Int = 0
-
-    init {
-        addView(ComposeView(context).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-            setContent {
-                MaterialTheme(colorScheme = darkColorScheme()) {
-                    Box(modifier = Modifier.onSizeChanged { size ->
-                        if (currentHeightPx != size.height) {
-                            currentHeightPx = size.height
-                            onHeightChanged(size.height)
-                        }
-                    }) {
-                        NotificationScreen(context)
-                    }
-                }
-            }
-        })
-    }
-
-    fun getCurrentHeightPx(): Int {
-        val density = context.resources.displayMetrics.density
-        return if (currentHeightPx > 0) currentHeightPx else (450 * density).toInt()
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun NotificationScreen(context: Context) {
-    LaunchedEffect(Unit) {
-        com.example.LogKeeper.writeLog("Sidebar", "Notification page viewed")
-    }
-    
-    val notifications by AppNotificationListener.notifications.collectAsState()
-    val prefs = remember { context.getSharedPreferences("NotificationPrefs", Context.MODE_PRIVATE) }
-    
-    // We store hidden packages in a Set string in SharedPreferences
-    var hiddenPackages by remember { 
-        mutableStateOf(prefs.getStringSet("hidden_packages", emptySet()) ?: emptySet())
-    }
-    
-    // Filter dialog
-    var showFilterDialog by remember { mutableStateOf(false) }
-    
-    // Check if permission is granted
-    val hasPermission = remember { 
-        android.provider.Settings.Secure.getString(
-            context.contentResolver,
-            "enabled_notification_listeners"
-        )?.contains(context.packageName) == true
-    }
-
-    if (!hasPermission) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                Text("Notification Access Required", color = Color.White)
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = {
-                    val intent = android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
-                    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                    context.startActivity(intent)
-                }) {
-                    Text("Grant Permission")
-                }
-            }
-        }
-        return
-    }
-
-    val visibleNotifications = notifications.filter { !hiddenPackages.contains(it.packageName) }
-
-    Column(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Notifications", style = MaterialTheme.typography.titleMedium, color = Color.White)
-            Row {
-                IconButton(onClick = { showFilterDialog = true }) {
-                    Icon(Icons.Default.FilterList, "Filter Apps", tint = Color.White)
-                }
-                IconButton(onClick = { 
-                    val intent = Intent(context, NotificationHistoryActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(intent)
-                }) {
-                    Icon(Icons.Default.History, "History", tint = Color.White)
-                }
-            }
-        }
-        
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(visibleNotifications, key = { it.key }) { sbn ->
-                NotificationItem(context, sbn, onHideApp = { pkg ->
-                    val updated = hiddenPackages.toMutableSet().apply { add(pkg) }
-                    prefs.edit().putStringSet("hidden_packages", updated).apply()
-                    hiddenPackages = updated
-                })
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-    }
-    
-    if (showFilterDialog) {
-        AlertDialog(
-            onDismissRequest = { showFilterDialog = false },
-            title = { Text("Filter Apps in Sidebar") },
-            text = {
-                val pm = context.packageManager
-                // Get all apps that ever posted a notification in our current active list
-                val appsInList = notifications.map { it.packageName to 
-                    try { pm.getApplicationLabel(pm.getApplicationInfo(it.packageName, 0)).toString() } 
-                    catch(e: Exception) { it.packageName }
-                }.distinctBy { it.first }
-                
-                LazyColumn {
-                    items(appsInList) { (pkg, name) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = !hiddenPackages.contains(pkg),
-                                onCheckedChange = { checked ->
-                                    val newHidden = hiddenPackages.toMutableSet()
-                                    if (checked) {
-                                        newHidden.remove(pkg)
-                                    } else {
-                                        newHidden.add(pkg)
-                                    }
-                                    hiddenPackages = newHidden
-                                    prefs.edit().putStringSet("hidden_packages", newHidden).apply()
-                                }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(name)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showFilterDialog = false }) {
-                    Text("Done")
-                }
-            }
-        )
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+new_code = """@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
@@ -410,3 +219,7 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
         }
     )
 }
+"""
+
+with open('app/src/main/java/com/example/service/NotificationPageView.kt', 'w') as f:
+    f.write(content[:start_idx] + new_code)

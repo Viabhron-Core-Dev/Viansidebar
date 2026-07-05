@@ -75,6 +75,7 @@ sealed class SidebarItem {
         val colorHex: String,
         val items: List<String>,
         val folderStyle: Int = 0,
+        val popupColumns: Int = 0,
         override var id: String = "folder:$uuid"
     ) : SidebarItem() {
         override val label = name
@@ -353,7 +354,8 @@ class SidebarAppsManager(
                     }
                 }
                 val folderStyle = obj.optInt("folderStyle", 0)
-                return SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, id)
+                val popupColumns = obj.optInt("popupColumns", 0)
+                return SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, popupColumns, id)
             } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 
@@ -467,7 +469,8 @@ class SidebarAppsManager(
                         }
                     }
                     val folderStyle = obj.optInt("folderStyle", 0)
-                    result.add(SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, id))
+                    val popupColumns = obj.optInt("popupColumns", 0)
+                    result.add(SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, popupColumns, id))
                 } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 

@@ -228,12 +228,13 @@ class AddElementOverlayView(
                         
                         // Show style dialog immediately!
                         val dummyFolder = SidebarItem.Folder(uuid, name, color, emptyList(), 0)
-                        showFolderStyleDialog(context, dummyFolder, manager) { styleIndex ->
+                        showFolderStyleDialog(context, dummyFolder, manager) { styleIndex, popupCols ->
                             val json = org.json.JSONObject().apply {
                                 put("name", name)
                                 put("colorHex", color)
                                 put("items", org.json.JSONArray())
                                 put("folderStyle", styleIndex)
+                                put("popupColumns", popupCols)
                             }
                             addSidebarItem("folder:$uuid:$json")
                             close()

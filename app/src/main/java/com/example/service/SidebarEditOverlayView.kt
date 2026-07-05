@@ -381,6 +381,32 @@ class SidebarEditOverlayView(
                 val iconC = Color.WHITE
                 val miniIcons = item.items.take(9).mapNotNull { manager.getIconBitmap(it) }
                 holder.icon.setImageDrawable(FolderStyleDrawable(item.folderStyle, cHex, iconC, miniIcons))
+                
+                if (miniIcons.size < minOf(item.items.size, 9)) {
+                    serviceScope.launch {
+                        var newlyLoaded = false
+                        for (subItem in item.items.take(9)) {
+                            if (manager.getIconBitmap(subItem) == null) {
+                                val pkg = when {
+                                    subItem.startsWith("app:") -> subItem.substringAfter("app:")
+                                    subItem.startsWith("intent:") -> subItem.substringAfter("intent:").split("/").getOrNull(0) ?: ""
+                                    else -> ""
+                                }
+                                if (pkg.isNotEmpty()) {
+                                    val bitmap = manager.loadIcon(pkg)
+                                    if (bitmap != null) {
+                                        newlyLoaded = true
+                                    }
+                                }
+                            }
+                        }
+                        if (newlyLoaded) {
+                            withContext(Dispatchers.Main) {
+                                adapter.notifyItemChanged(position)
+                            }
+                        }
+                    }
+                }
             } else if (item is SidebarItem.Link) {
                 holder.icon.setImageResource(android.R.drawable.ic_menu_set_as)
                 holder.icon.setColorFilter(Color.WHITE)
@@ -392,6 +418,8 @@ class SidebarEditOverlayView(
             holder.view.setOnClickListener {
                 val actionList = mutableListOf("Change Icon", "Remove")
                 if (item is SidebarItem.Folder) {
+                    actionList.add(0, "Grid Size")
+                    actionList.add(0, "Folder Style")
                     actionList.add(0, "Edit Contents")
                 }
                 var popupWindow: android.widget.PopupWindow? = null
@@ -411,7 +439,7 @@ class SidebarEditOverlayView(
                         val pad = (12 * context.resources.displayMetrics.density).toInt()
                         val padH = (16 * context.resources.displayMetrics.density).toInt()
                         setPadding(padH, pad, padH, pad)
-                        setTextColor(Color.BLACK)
+                        setTextColor(android.graphics.Color.BLACK)
                         textSize = 14f
                         val outValue = android.util.TypedValue()
                         context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
@@ -428,6 +456,29 @@ class SidebarEditOverlayView(
                                 "Remove" -> {
                                     localIds.removeAt(holder.adapterPosition)
                                     refresh()
+                                }
+                                "Folder Style" -> {
+                                    if (item is SidebarItem.Folder) {
+                                        showFolderStyleDialog(context, item, manager) { styleIndex, popupCols ->
+                                            val json = org.json.JSONObject().apply {
+                                                put("name", item.name)
+                                                put("colorHex", item.colorHex)
+                                                val jArr = org.json.JSONArray()
+                                                item.items.forEach { jArr.put(it) }
+                                                put("items", jArr)
+                                                put("folderStyle", styleIndex)
+                                                put("popupColumns", popupCols)
+                                            }
+                                            val newId = "folder:${item.uuid}:$json"
+                                            
+                                            // Update localIds with the new ID
+                                            val pos = localIds.indexOf(item.id)
+                                            if (pos != -1) {
+                                                localIds[pos] = newId
+                                                refresh()
+                                            }
+                                        }
+                                    }
                                 }
                                 "Change Icon" -> {
                                     val et = android.widget.EditText(context).apply {
@@ -470,4 +521,67 @@ class SidebarEditOverlayView(
         }
         override fun getItemCount(): Int = localIds.size
     }
+}
+
+private fun showGridSizeDialog(
+    context: Context,
+    item: SidebarItem.Folder,
+    manager: SidebarAppsManager,
+    onGridSizeSelected: (Int) -> Unit
+) {
+    val layout = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(50, 40, 50, 40)
+        setBackgroundColor(android.graphics.Color.WHITE)
+    }
+
+    val title = TextView(context).apply {
+        text = "Popup Grid Size"
+        textSize = 18f
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        setTextColor(android.graphics.Color.BLACK)
+        setPadding(0, 0, 0, 20)
+    }
+    layout.addView(title)
+    
+    val desc = TextView(context).apply {
+        text = "Enter number of columns for this folder's popup (0 = default/auto)"
+        textSize = 14f
+        setTextColor(android.graphics.Color.DKGRAY)
+        setPadding(0, 0, 0, 20)
+    }
+    layout.addView(desc)
+
+    val colsInput = android.widget.EditText(context).apply {
+        inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        setText(item.popupColumns.toString())
+        setTextColor(android.graphics.Color.BLACK)
+    }
+    layout.addView(colsInput)
+
+    val dialog = android.app.AlertDialog.Builder(context)
+        .setView(layout)
+        .setPositiveButton("Save") { _, _ ->
+            val colsStr = colsInput.text.toString()
+            val cols = if (colsStr.isNotEmpty()) colsStr.toInt() else 0
+            
+            val json = org.json.JSONObject().apply {
+                put("name", item.name)
+                put("colorHex", item.colorHex)
+                val jArr = org.json.JSONArray()
+                item.items.forEach { jArr.put(it) }
+                put("items", jArr)
+                put("folderStyle", item.folderStyle)
+                put("popupColumns", cols)
+            }
+            manager.removeItem(item.id)
+            manager.addItem("folder:${item.uuid}:$json")
+            
+            onGridSizeSelected(cols)
+        }
+        .setNegativeButton("Cancel", null)
+        .create()
+
+    dialog.window?.setType(if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else android.view.WindowManager.LayoutParams.TYPE_PHONE)
+    dialog.show()
 }
