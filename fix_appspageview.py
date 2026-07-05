@@ -3,47 +3,32 @@ import re
 with open('app/src/main/java/com/example/service/AppsPageView.kt', 'r') as f:
     content = f.read()
 
-old_code = """                if (miniIcons.size < minOf(item.items.size, 9) && item.items.any { it.startsWith("app:") }) {
-                    serviceScope.launch {
-                        var loadedAny = false
-                        for (it in item.items.take(9)) {
-                            if (it.startsWith("app:")) {
-                                val bitmap = manager.loadIcon(it.substringAfter("app:"))
-                                if (bitmap != null) {
-                                    loadedAny = true
-                                }
-                            }
-                        }
-                        if (loadedAny) {
-                            withContext(Dispatchers.Main) {
-                                adapter.notifyItemChanged(position)
-                            }
-                        }
-                    }
-                }"""
+# Fix constructor
+old_constructor = """class AppsPageView(
+    context: Context,
+    private val manager: SidebarAppsManager,
+    private val serviceScope: CoroutineScope,"""
+new_constructor = """class AppsPageView(
+    context: Context,
+    private val pageConfig: com.example.utils.SidebarPage?,
+    private val manager: SidebarAppsManager,
+    private val serviceScope: CoroutineScope,"""
+content = content.replace(old_constructor, new_constructor)
 
-new_code = """                if (miniIcons.size < minOf(item.items.size, 9) && item.items.any { it.startsWith("app:") }) {
-                    serviceScope.launch {
-                        var newlyLoaded = false
-                        for (it in item.items.take(9)) {
-                            if (it.startsWith("app:")) {
-                                if (manager.getIconBitmap(it) == null) {
-                                    val bitmap = manager.loadIcon(it.substringAfter("app:"))
-                                    if (bitmap != null) {
-                                        newlyLoaded = true
-                                    }
-                                }
-                            }
-                        }
-                        if (newlyLoaded) {
-                            withContext(Dispatchers.Main) {
-                                adapter.notifyItemChanged(position)
-                            }
-                        }
-                    }
-                }"""
+# Fix columns
+old_columns = """val columns = prefs.getInt("sidebar_columns", 4)"""
+new_columns = """val columns = if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else prefs.getInt("sidebar_columns", 4)"""
+content = content.replace(old_columns, new_columns)
 
-content = content.replace(old_code, new_code)
+# Fix maxCols
+old_maxcols = """val maxCols = if (folder.popupColumns > 0) folder.popupColumns else prefs.getInt("sidebar_columns", 4)"""
+new_maxcols = """val maxCols = if (folder.popupColumns > 0) folder.popupColumns else (if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else prefs.getInt("sidebar_columns", 4))"""
+content = content.replace(old_maxcols, new_maxcols)
+
+# Fix popupOpacity
+old_popupopacity = """val popupOpacity = prefs.getFloat("sidebar_transparency", 0.9f)"""
+new_popupopacity = """val popupOpacity = if (pageConfig?.useCustomSettings == true) pageConfig.transparency else prefs.getFloat("sidebar_transparency", 0.9f)"""
+content = content.replace(old_popupopacity, new_popupopacity)
 
 with open('app/src/main/java/com/example/service/AppsPageView.kt', 'w') as f:
     f.write(content)

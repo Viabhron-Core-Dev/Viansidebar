@@ -30,8 +30,8 @@ sealed class AddElementItem {
 
 enum class ActionType {
     APP, SHORTCUT, FOLDER, LINK, EMPTY_ITEM, INTENT,
-    SYSTEM, VOLUME, MEDIA, BRIGHTNESS, SCREEN_TIMEOUT, SCREEN_ORIENTATION, WIDGET, SETTINGS_SHORTCUT_HEADER,
-    SPECIFIC_SYSTEM_ACTION, SPECIFIC_SETTINGS_SHORTCUT
+    SYSTEM, VOLUME, MEDIA, BRIGHTNESS, SCREEN_TIMEOUT, SCREEN_ORIENTATION, WIDGET, SETTINGS_SHORTCUT_HEADER, QUICK_TILES_HEADER,
+    SPECIFIC_SYSTEM_ACTION, SPECIFIC_SETTINGS_SHORTCUT, SPECIFIC_QUICK_TILE
 }
 
 @SuppressLint("ViewConstructor")
@@ -108,7 +108,7 @@ class AddElementOverlayView(
     private var currentMode = Mode.MAIN
 
     enum class Mode {
-        MAIN, SYSTEM_ACTIONS, VOLUME_ACTIONS, MEDIA_ACTIONS, DISPLAY_ACTIONS, SETTINGS_SHORTCUTS
+        MAIN, SYSTEM_ACTIONS, VOLUME_ACTIONS, MEDIA_ACTIONS, DISPLAY_ACTIONS, SETTINGS_SHORTCUTS, QUICK_TILES
     }
 
     private fun loadData() {
@@ -130,11 +130,17 @@ class AddElementOverlayView(
             
             // Android actions
             items.add(AddElementItem.Header("Android actions"))
+            items.add(AddElementItem.Action(android.R.drawable.ic_menu_preferences, "System Quick Tiles", "(${ALL_QUICK_TILES.size})", ActionType.QUICK_TILES_HEADER))
             items.add(AddElementItem.Action(android.R.drawable.ic_menu_preferences, "Android Settings Shortcut", "(${ALL_SETTINGS_SHORTCUTS.size})", ActionType.SETTINGS_SHORTCUT_HEADER))
             items.add(AddElementItem.Action(android.R.drawable.ic_menu_info_details, "System", "(${ALL_SYSTEM_ACTIONS.size})", ActionType.SYSTEM))
             items.add(AddElementItem.Action(android.R.drawable.ic_lock_silent_mode_off, "Volume", "(${ALL_VOLUME_ACTIONS.size})", ActionType.VOLUME))
             items.add(AddElementItem.Action(android.R.drawable.ic_media_play, "Media", "(${ALL_MEDIA_ACTIONS.size})", ActionType.MEDIA))
             items.add(AddElementItem.Action(android.R.drawable.ic_menu_day, "Display Controls", "(${ALL_DISPLAY_ACTIONS.size})", ActionType.BRIGHTNESS))
+        } else if (currentMode == Mode.QUICK_TILES) {
+            items.add(AddElementItem.Header("Quick Tiles"))
+            for (action in ALL_QUICK_TILES) {
+                items.add(AddElementItem.Action(action.iconResId, action.label, "", ActionType.SPECIFIC_QUICK_TILE, action.id))
+            }
         } else if (currentMode == Mode.SETTINGS_SHORTCUTS) {
             items.add(AddElementItem.Header("Settings Shortcuts"))
             for (action in ALL_SETTINGS_SHORTCUTS) {
@@ -189,6 +195,15 @@ class AddElementOverlayView(
                 updateHeaderTitle("Settings")
             }
             ActionType.SPECIFIC_SETTINGS_SHORTCUT -> {
+                addSidebarItem(item.id)
+                close()
+            }
+            ActionType.QUICK_TILES_HEADER -> {
+                currentMode = Mode.QUICK_TILES
+                loadData()
+                updateHeaderTitle("Quick Tiles")
+            }
+            ActionType.SPECIFIC_QUICK_TILE -> {
                 addSidebarItem(item.id)
                 close()
             }

@@ -512,7 +512,7 @@ class FloatingReaderService : Service() {
             val pageView = when (config.type) {
                 "apps" -> {
                     var p: AppsPageView? = null
-                    p = AppsPageView(this, appsManager, serviceScope,
+                    p = AppsPageView(this, config, appsManager, serviceScope,
                         onCloseSidebar = { sidebarView?.detach() },
                         onHeightChanged = { newHeight ->
                             // Only update height if this is the currently selected page
@@ -598,6 +598,7 @@ class FloatingReaderService : Service() {
             this, appsManager, windowManager, serviceScope,
             onAddClicked = { 
                 showAddElementOverlayForSelection { id ->
+                    com.example.LogKeeper.writeLog("SidebarEdit", "Added new element: $id")
                     sidebarEditOverlayView?.localIds?.add(id)
                     sidebarEditOverlayView?.refresh()
                 }
@@ -672,6 +673,9 @@ class FloatingReaderService : Service() {
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 try { startActivity(launchIntent) } catch (e: Exception) {}
             }
+        } else if (id.startsWith("quicktile:")) {
+            val action = id.removePrefix("quicktile:")
+            QuickTileHandler.handleQuickTileAction(this, action)
         } else if (id.startsWith("system:")) {
             val action = id.removePrefix("system:")
             if (action == "log_keeper") {

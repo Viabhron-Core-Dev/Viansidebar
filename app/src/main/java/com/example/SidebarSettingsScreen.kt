@@ -38,6 +38,10 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
     var selectedActionPage by remember { mutableStateOf<SidebarPage?>(null) }
     var pageActionIndex by remember { mutableStateOf(-1) }
 
+    // Pages
+    var pages by remember { mutableStateOf(PageManager.getPages(prefs)) }
+    var defaultIndex by remember { mutableStateOf(PageManager.getDefaultPageIndex(prefs)) }
+    
     if (customisingPage != null) {
         PageCustomizeScreen(
             page = customisingPage!!,
@@ -47,6 +51,7 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                 if (idx != -1) {
                     newPages[idx] = updated
                     PageManager.savePages(prefs, newPages)
+                    pages = newPages
                 }
             },
             onBack = {
@@ -65,9 +70,6 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
     var sidebarTransparency by remember { mutableStateOf(prefs.getFloat("sidebar_transparency", 0.9f)) }
     var sidebarPositionLeft by remember { mutableStateOf(prefs.getBoolean("sidebar_position_left", false)) }
 
-    // Pages
-    var pages by remember { mutableStateOf(PageManager.getPages(prefs)) }
-    var defaultIndex by remember { mutableStateOf(PageManager.getDefaultPageIndex(prefs)) }
     
     var showAddDialog by remember { mutableStateOf(false) }
     

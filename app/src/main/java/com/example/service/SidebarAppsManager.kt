@@ -61,6 +61,14 @@ sealed class SidebarItem {
         override var id = "display:$action"
     }
 
+    data class QuickTile(
+        val action: String,
+        override val label: String,
+        val iconResId: Int
+    ) : SidebarItem() {
+        override var id = "quicktile:$action"
+    }
+    
     data class SettingsShortcut(
         val action: String,
         override val label: String,
@@ -103,6 +111,17 @@ sealed class SidebarItem {
         override var id = "intent:$componentStr"
     }
 }
+
+val ALL_QUICK_TILES = listOf(
+    SidebarItem.QuickTile("torch", "Torch", android.R.drawable.ic_menu_camera),
+    SidebarItem.QuickTile("wifi", "Wi-Fi", android.R.drawable.ic_menu_search),
+    SidebarItem.QuickTile("bluetooth", "Bluetooth", android.R.drawable.ic_menu_share),
+    SidebarItem.QuickTile("airplane", "Airplane Mode", android.R.drawable.ic_dialog_alert),
+    SidebarItem.QuickTile("dnd", "Do Not Disturb", android.R.drawable.ic_lock_silent_mode_off),
+    SidebarItem.QuickTile("location", "Location", android.R.drawable.ic_menu_mylocation),
+    SidebarItem.QuickTile("nfc", "NFC", android.R.drawable.ic_menu_sort_by_size),
+    SidebarItem.QuickTile("data", "Mobile Data", android.R.drawable.ic_menu_sort_alphabetically)
+)
 
 val ALL_SYSTEM_ACTIONS = listOf(
     SidebarItem.SystemAction("back", "Back", android.R.drawable.ic_menu_revert),
@@ -192,11 +211,7 @@ class SidebarAppsManager(
 
     private var hasLoadedOnce = false
 
-    val iconCache = object : LruCache<String, Bitmap>(80) {
-        override fun sizeOf(key: String, value: Bitmap): Int {
-            return value.byteCount / 1024
-        }
-    }
+    val iconCache = LruCache<String, Bitmap>(100) // 100 items
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -272,6 +287,7 @@ class SidebarAppsManager(
         }
         val resId = when (parsed) {
             is SidebarItem.SystemAction -> parsed.iconResId
+            is SidebarItem.QuickTile -> parsed.iconResId
             is SidebarItem.VolumeAction -> parsed.iconResId
             is SidebarItem.MediaAction -> parsed.iconResId
             is SidebarItem.DisplayAction -> parsed.iconResId
@@ -304,6 +320,12 @@ class SidebarAppsManager(
             val appInfo = allInstalledApps.find { it.packageName == pkg }
             val label = if (appInfo != null) "${appInfo.label} - ${cls.substringAfterLast(".")}" else cls
             return SidebarItem.IntentAction(componentStr, label)
+        } else if (id.startsWith("quicktile:")) {
+            val action = id.substringAfter("quicktile:")
+            val qTile = ALL_QUICK_TILES.find { it.action == action }
+            if (qTile != null) {
+                return SidebarItem.QuickTile(action, qTile.label, qTile.iconResId)
+            }
         } else if (id.startsWith("system:")) {
             val action = id.substringAfter("system:")
             val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action }
@@ -425,6 +447,12 @@ class SidebarAppsManager(
                 val appInfo = allInstalledApps.find { it.packageName == pkg }
                 val label = if (appInfo != null) "${appInfo.label} - ${cls.substringAfterLast(".")}" else cls
                 result.add(SidebarItem.IntentAction(componentStr, label))
+            } else if (id.startsWith("quicktile:")) {
+                val action = id.substringAfter("quicktile:")
+                val qTile = ALL_QUICK_TILES.find { it.action == action }
+                if (qTile != null) {
+                    result.add(SidebarItem.QuickTile(action, qTile.label, qTile.iconResId))
+                }
             } else if (id.startsWith("system:")) {
                 val action = id.substringAfter("system:")
                 val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action }

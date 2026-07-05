@@ -27,6 +27,7 @@ fun PageCustomizeScreen(
     var wrapContentHeight by remember { mutableStateOf(page.wrapContentHeight) }
     var transparency by remember { mutableStateOf(page.transparency) }
     var title by remember { mutableStateOf(page.title) }
+    var gridColumns by remember { mutableStateOf(page.gridColumns) }
 
     Scaffold(
         topBar = {
@@ -47,7 +48,8 @@ fun PageCustomizeScreen(
                     width = width,
                     height = height,
                     wrapContentHeight = wrapContentHeight,
-                    transparency = transparency
+                    transparency = transparency,
+                    gridColumns = gridColumns
                 )
                 onSave(updatedPage)
                 onBack()
@@ -83,6 +85,21 @@ fun PageCustomizeScreen(
                 Divider()
 
                 if (useCustomSettings) {
+                    if (page.type == "apps") {
+                        ListItem(
+                            headlineContent = { Text("App Grid Columns") },
+                            supportingContent = {
+                                Slider(
+                                    value = gridColumns.toFloat(),
+                                    onValueChange = { gridColumns = it.toInt() },
+                                    valueRange = 2f..6f,
+                                    steps = 3
+                                )
+                            },
+                            trailingContent = { Text(gridColumns.toString()) }
+                        )
+                        Divider()
+                    }
                     ListItem(
                         headlineContent = { Text("Width") },
                         supportingContent = {

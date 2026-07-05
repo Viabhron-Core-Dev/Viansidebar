@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 @SuppressLint("ViewConstructor")
 class AppsPageView(
     context: Context,
+    private val pageConfig: com.example.utils.SidebarPage?,
     private val manager: SidebarAppsManager,
     private val serviceScope: CoroutineScope,
     private val onCloseSidebar: () -> Unit,
@@ -46,7 +47,7 @@ class AppsPageView(
 
     init {
         val density = context.resources.displayMetrics.density
-        val columns = prefs.getInt("sidebar_columns", 4)
+        val columns = if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else prefs.getInt("sidebar_columns", 4)
 
         adapter = AppsAdapter(displayedItems)
 
@@ -150,7 +151,7 @@ class AppsPageView(
             }
         }
         
-        val maxCols = if (folder.popupColumns > 0) folder.popupColumns else prefs.getInt("sidebar_columns", 4)
+        val maxCols = if (folder.popupColumns > 0) folder.popupColumns else (if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else prefs.getInt("sidebar_columns", 4))
         val columns = if (folderItems.size <= maxCols && folderItems.isNotEmpty()) folderItems.size else maxCols
         val validCols = if (columns > 0) columns else 1
         
@@ -158,7 +159,7 @@ class AppsPageView(
         val popupAdapter = AppsAdapter(folderItems)
         recyclerView.adapter = popupAdapter
         
-        val popupOpacity = prefs.getFloat("sidebar_transparency", 0.9f)
+        val popupOpacity = if (pageConfig?.useCustomSettings == true) pageConfig.transparency else prefs.getFloat("sidebar_transparency", 0.9f)
         val popupBg = android.graphics.drawable.GradientDrawable()
         popupBg.setColor(android.graphics.Color.parseColor("#1A1A1A"))
         popupBg.alpha = (popupOpacity * 255).toInt()

@@ -96,7 +96,10 @@ class SidebarEditOverlayView(
 
         val btnAdd = Button(context).apply {
             text = "Add"
-            setOnClickListener { onAddClicked() }
+            setOnClickListener { 
+                com.example.LogKeeper.writeLog("SidebarEdit", "Add button clicked")
+                onAddClicked() 
+            }
         }
         btnReset = Button(context).apply {
             text = "Empty"
@@ -180,6 +183,11 @@ class SidebarEditOverlayView(
             }
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+            
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                com.example.LogKeeper.writeLog("SidebarEdit", "Item moved to position: ${viewHolder.adapterPosition}")
+            }
         }
         val itemTouchHelper = ItemTouchHelper(touchHelperCallback)
         itemTouchHelper.attachToRecyclerView(recyclerView)
@@ -232,6 +240,7 @@ class SidebarEditOverlayView(
     }
 
     fun saveCurrentState() {
+        com.example.LogKeeper.writeLog("SidebarEdit", "Saving current state. isFolder=${currentFolderId != null}")
         if (currentFolderId != null) {
             commitCurrentFolder()
         } else {
@@ -245,6 +254,7 @@ class SidebarEditOverlayView(
     }
 
     private fun enterFolder(folder: SidebarItem.Folder) {
+        com.example.LogKeeper.writeLog("SidebarEdit", "Entering folder: ${folder.name}")
         rootLocalIds.clear()
         rootLocalIds.addAll(localIds) // Save current root state
         currentFolderId = folder.id
@@ -254,6 +264,7 @@ class SidebarEditOverlayView(
     }
 
     private fun exitFolder() {
+        com.example.LogKeeper.writeLog("SidebarEdit", "Exiting folder")
         commitCurrentFolder()
         currentFolderId = null
         localIds.clear()
@@ -454,10 +465,12 @@ class SidebarEditOverlayView(
                                     }
                                 }
                                 "Remove" -> {
+                                    com.example.LogKeeper.writeLog("SidebarEdit", "Removed item: ${item.label}")
                                     localIds.removeAt(holder.adapterPosition)
                                     refresh()
                                 }
                                 "Folder Style" -> {
+                                    com.example.LogKeeper.writeLog("SidebarEdit", "Editing folder style for ${item.label}")
                                     if (item is SidebarItem.Folder) {
                                         showFolderStyleDialog(context, item, manager) { styleIndex, popupCols ->
                                             val json = org.json.JSONObject().apply {
