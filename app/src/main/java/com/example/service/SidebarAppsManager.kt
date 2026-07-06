@@ -84,6 +84,7 @@ sealed class SidebarItem {
         val items: List<String>,
         val folderStyle: Int = 0,
         val popupColumns: Int = 0,
+        val popupRows: Int = 0,
         override var id: String = "folder:$uuid"
     ) : SidebarItem() {
         override val label = name
@@ -130,11 +131,16 @@ val ALL_SYSTEM_ACTIONS = listOf(
     SidebarItem.SystemAction("notifications", "Notifications", android.R.drawable.ic_menu_info_details),
     SidebarItem.SystemAction("quick_settings", "Quick settings", android.R.drawable.ic_menu_manage),
     SidebarItem.SystemAction("recents", "Recents", android.R.drawable.ic_menu_recent_history),
-    SidebarItem.SystemAction("screenshot", "Screenshot", android.R.drawable.ic_menu_camera),
     SidebarItem.SystemAction("splitscreen", "Splitscreen", android.R.drawable.ic_menu_gallery),
     SidebarItem.SystemAction("log_keeper", "Log Keeper", android.R.drawable.ic_menu_agenda),
     SidebarItem.SystemAction("ebook_reader", "eBook Reader", com.example.R.drawable.ic_library_books),
     SidebarItem.SystemAction("settings", "Settings", android.R.drawable.ic_menu_preferences)
+)
+
+val ALL_SCREEN_CAPTURE_ACTIONS = listOf(
+    SidebarItem.SystemAction("screenshot", "Screenshot", android.R.drawable.ic_menu_camera),
+    SidebarItem.SystemAction("screen_record", "Screen Record", android.R.drawable.ic_media_play),
+    SidebarItem.SystemAction("qr_scan", "Screen QR Scanner", android.R.drawable.ic_menu_search)
 )
 
 val ALL_VOLUME_ACTIONS = listOf(
@@ -328,7 +334,7 @@ class SidebarAppsManager(
             }
         } else if (id.startsWith("system:")) {
             val action = id.substringAfter("system:")
-            val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action }
+            val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action }
             if (sysAction != null) {
                 return SidebarItem.SystemAction(action, sysAction.label, sysAction.iconResId)
             }
@@ -377,7 +383,8 @@ class SidebarAppsManager(
                 }
                 val folderStyle = obj.optInt("folderStyle", 0)
                 val popupColumns = obj.optInt("popupColumns", 0)
-                return SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, popupColumns, id)
+                val popupRows = obj.optInt("popupRows", 0)
+                return SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, popupColumns, popupRows, id)
             } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 
@@ -455,7 +462,7 @@ class SidebarAppsManager(
                 }
             } else if (id.startsWith("system:")) {
                 val action = id.substringAfter("system:")
-                val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action }
+                val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action }
                 if (sysAction != null) {
                     result.add(SidebarItem.SystemAction(action, sysAction.label, sysAction.iconResId))
                 }
@@ -498,7 +505,8 @@ class SidebarAppsManager(
                     }
                     val folderStyle = obj.optInt("folderStyle", 0)
                     val popupColumns = obj.optInt("popupColumns", 0)
-                    result.add(SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, popupColumns, id))
+                    val popupRows = obj.optInt("popupRows", 0)
+                    result.add(SidebarItem.Folder(uuid, obj.getString("name"), obj.getString("colorHex"), itemsList, folderStyle, popupColumns, popupRows, id))
                 } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
                     e.printStackTrace() 

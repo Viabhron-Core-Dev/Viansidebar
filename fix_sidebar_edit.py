@@ -1,17 +1,29 @@
 import re
+
 with open('app/src/main/java/com/example/service/SidebarEditOverlayView.kt', 'r') as f:
     content = f.read()
 
-new_save = """    fun saveCurrentState() {
-        val jArr = JSONArray()
-        localIds.forEach { jArr.put(it) }
-        prefs.edit().putString("sidebar_apps", jArr.toString()).apply()
-        manager.reloadActiveApps()
-    }
+old_if = """            } else if (item is SidebarItem.SystemAction || item is SidebarItem.VolumeAction || item is SidebarItem.MediaAction || item is SidebarItem.DisplayAction || item is SidebarItem.SettingsShortcut) {
+                val resId = when (item) {
+                    is SidebarItem.SystemAction -> item.iconResId
+                    is SidebarItem.VolumeAction -> item.iconResId
+                    is SidebarItem.MediaAction -> item.iconResId
+                    is SidebarItem.SettingsShortcut -> item.iconResId
+                    is SidebarItem.DisplayAction -> item.iconResId
+                    else -> 0
+                }"""
 
-    private fun saveAndClose() {"""
-
-content = content.replace("    private fun saveAndClose() {", new_save)
+new_if = """            } else if (item is SidebarItem.SystemAction || item is SidebarItem.VolumeAction || item is SidebarItem.MediaAction || item is SidebarItem.DisplayAction || item is SidebarItem.SettingsShortcut || item is SidebarItem.QuickTile) {
+                val resId = when (item) {
+                    is SidebarItem.SystemAction -> item.iconResId
+                    is SidebarItem.VolumeAction -> item.iconResId
+                    is SidebarItem.MediaAction -> item.iconResId
+                    is SidebarItem.SettingsShortcut -> item.iconResId
+                    is SidebarItem.DisplayAction -> item.iconResId
+                    is SidebarItem.QuickTile -> item.iconResId
+                    else -> 0
+                }"""
+content = content.replace(old_if, new_if)
 
 with open('app/src/main/java/com/example/service/SidebarEditOverlayView.kt', 'w') as f:
     f.write(content)

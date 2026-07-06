@@ -169,9 +169,12 @@ class AppsPageView(
         // Calculate exact size for compact wrap_content appearance
         val itemWidthDp = 56 // 44dp icon + 6dp padding on each side
         val itemHeightDp = 56
-        val rows = Math.ceil(folderItems.size.toDouble() / validCols).toInt()
+        val autoRows = Math.ceil(folderItems.size.toDouble() / validCols).toInt()
+        val rows = if (folder.popupRows > 0) minOf(folder.popupRows, autoRows) else autoRows
+        val displayRows = if (folder.popupRows > 0) folder.popupRows else rows
+        
         val totalWidth = (validCols * itemWidthDp * density + padding * 2).toInt()
-        val totalHeight = (rows * itemHeightDp * density + padding * 2).toInt()
+        val totalHeight = (displayRows * itemHeightDp * density + padding * 2).toInt()
         
         popupView.layoutParams = ViewGroup.LayoutParams(totalWidth, totalHeight)
         
@@ -297,6 +300,10 @@ class AppsPageView(
                     }
                     currentFolderPopup?.dismiss()
                         onCloseSidebar()
+                } else if (item is SidebarItem.QuickTile) {
+                    QuickTileHandler.handleQuickTileAction(context, item.action)
+                    currentFolderPopup?.dismiss()
+                    onCloseSidebar()
                 } else if (item is SidebarItem.SystemAction) {
                     if (item.action == "log_keeper") {
                         val intent = android.content.Intent(context, com.example.LogKeeperActivity::class.java)
@@ -306,6 +313,10 @@ class AppsPageView(
                         val intent = android.content.Intent(context, FloatingReaderService::class.java)
                         intent.putExtra("UNFOLD", true)
                         context.startService(intent)
+                    } else if (item.action == "screen_record") {
+                        val intent = android.content.Intent(context, ScreenRecordActivity::class.java)
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
                     } else if (item.action == "settings") {
                         val intent = android.content.Intent(context, com.example.SettingsActivity::class.java)
                         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -530,10 +541,19 @@ class AppsPageView(
                         }
                     }
                 }
-            } else if (item is SidebarItem.SystemAction) {
+            } else if (item is SidebarItem.QuickTile) {
                 icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 icon.setImageResource(item.iconResId)
                 icon.setColorFilter(android.graphics.Color.WHITE)
+            } else if (item is SidebarItem.SystemAction) {
+                icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                if (item.action == "screen_record" && com.example.service.ScreenRecordService.isRecording) {
+                    icon.setImageResource(android.R.drawable.ic_media_pause)
+                    icon.setColorFilter(android.graphics.Color.RED)
+                } else {
+                    icon.setImageResource(item.iconResId)
+                    icon.setColorFilter(android.graphics.Color.WHITE)
+                }
             } else if (item is SidebarItem.VolumeAction) {
                 icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 icon.setImageResource(item.iconResId)

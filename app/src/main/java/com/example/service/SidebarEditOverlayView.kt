@@ -376,13 +376,14 @@ class SidebarEditOverlayView(
                         }
                     }
                 }
-            } else if (item is SidebarItem.SystemAction || item is SidebarItem.VolumeAction || item is SidebarItem.MediaAction || item is SidebarItem.DisplayAction || item is SidebarItem.SettingsShortcut) {
+            } else if (item is SidebarItem.SystemAction || item is SidebarItem.VolumeAction || item is SidebarItem.MediaAction || item is SidebarItem.DisplayAction || item is SidebarItem.SettingsShortcut || item is SidebarItem.QuickTile) {
                 val resId = when (item) {
                     is SidebarItem.SystemAction -> item.iconResId
                     is SidebarItem.VolumeAction -> item.iconResId
                     is SidebarItem.MediaAction -> item.iconResId
                     is SidebarItem.SettingsShortcut -> item.iconResId
                     is SidebarItem.DisplayAction -> item.iconResId
+                    is SidebarItem.QuickTile -> item.iconResId
                     else -> 0
                 }
                 holder.icon.setImageResource(resId)
@@ -481,10 +482,32 @@ class SidebarEditOverlayView(
                                                 put("items", jArr)
                                                 put("folderStyle", styleIndex)
                                                 put("popupColumns", popupCols)
+                                                put("popupRows", item.popupRows)
                                             }
                                             val newId = "folder:${item.uuid}:$json"
-                                            
-                                            // Update localIds with the new ID
+                                            val pos = localIds.indexOf(item.id)
+                                            if (pos != -1) {
+                                                localIds[pos] = newId
+                                                refresh()
+                                            }
+                                        }
+                                    }
+                                }
+                                "Grid Size" -> {
+                                    com.example.LogKeeper.writeLog("SidebarEdit", "Editing grid size for ${item.label}")
+                                    if (item is SidebarItem.Folder) {
+                                        showGridSizeDialog(context, item, manager) { cols, rows ->
+                                            val json = org.json.JSONObject().apply {
+                                                put("name", item.name)
+                                                put("colorHex", item.colorHex)
+                                                val jArr = org.json.JSONArray()
+                                                item.items.forEach { jArr.put(it) }
+                                                put("items", jArr)
+                                                put("folderStyle", item.folderStyle)
+                                                put("popupColumns", cols)
+                                                put("popupRows", rows)
+                                            }
+                                            val newId = "folder:${item.uuid}:$json"
                                             val pos = localIds.indexOf(item.id)
                                             if (pos != -1) {
                                                 localIds[pos] = newId
@@ -540,11 +563,11 @@ private fun showGridSizeDialog(
     context: Context,
     item: SidebarItem.Folder,
     manager: SidebarAppsManager,
-    onGridSizeSelected: (Int) -> Unit
+    onGridSizeSelected: (Int, Int) -> Unit
 ) {
     val layout = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
-        setPadding(50, 40, 50, 40)
+        setPadding(40, 40, 40, 40)
         setBackgroundColor(android.graphics.Color.WHITE)
     }
 
@@ -558,43 +581,87 @@ private fun showGridSizeDialog(
     layout.addView(title)
     
     val desc = TextView(context).apply {
-        text = "Enter number of columns for this folder's popup (0 = default/auto)"
-        textSize = 14f
+        text = "0 = auto calculate based on items"
+        textSize = 12f
         setTextColor(android.graphics.Color.DKGRAY)
         setPadding(0, 0, 0, 20)
     }
     layout.addView(desc)
 
-    val colsInput = android.widget.EditText(context).apply {
-        inputType = android.text.InputType.TYPE_CLASS_NUMBER
-        setText(item.popupColumns.toString())
-        setTextColor(android.graphics.Color.BLACK)
+    val rowColContainer = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER
     }
-    layout.addView(colsInput)
+    layout.addView(rowColContainer)
+
+    var currentCols = item.popupColumns
+    var currentRows = item.popupRows
+
+    // Function to create a spinner-like column/row picker
+    fun createPicker(label: String, initialValue: Int, onValueChanged: (Int) -> Unit): LinearLayout {
+        val picker = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(20, 0, 20, 0)
+        }
+        val labelView = TextView(context).apply {
+            text = label
+            textSize = 14f
+            setTextColor(android.graphics.Color.BLACK)
+            gravity = Gravity.CENTER
+        }
+        picker.addView(labelView)
+
+        val btnUp = android.widget.ImageButton(context).apply {
+            setImageResource(android.R.drawable.arrow_up_float)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            setColorFilter(android.graphics.Color.DKGRAY)
+        }
+        picker.addView(btnUp)
+
+        val valueView = TextView(context).apply {
+            text = initialValue.toString()
+            textSize = 24f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(android.graphics.Color.BLACK)
+            gravity = Gravity.CENTER
+        }
+        picker.addView(valueView)
+
+        val btnDown = android.widget.ImageButton(context).apply {
+            setImageResource(android.R.drawable.arrow_down_float)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            setColorFilter(android.graphics.Color.DKGRAY)
+        }
+        picker.addView(btnDown)
+
+        var v = initialValue
+        btnUp.setOnClickListener {
+            v++
+            valueView.text = v.toString()
+            onValueChanged(v)
+        }
+        btnDown.setOnClickListener {
+            if (v > 0) {
+                v--
+                valueView.text = v.toString()
+                onValueChanged(v)
+            }
+        }
+        return picker
+    }
+
+    rowColContainer.addView(createPicker("Columns", currentCols) { currentCols = it })
+    rowColContainer.addView(createPicker("Rows", currentRows) { currentRows = it })
 
     val dialog = android.app.AlertDialog.Builder(context)
         .setView(layout)
         .setPositiveButton("Save") { _, _ ->
-            val colsStr = colsInput.text.toString()
-            val cols = if (colsStr.isNotEmpty()) colsStr.toInt() else 0
-            
-            val json = org.json.JSONObject().apply {
-                put("name", item.name)
-                put("colorHex", item.colorHex)
-                val jArr = org.json.JSONArray()
-                item.items.forEach { jArr.put(it) }
-                put("items", jArr)
-                put("folderStyle", item.folderStyle)
-                put("popupColumns", cols)
-            }
-            manager.removeItem(item.id)
-            manager.addItem("folder:${item.uuid}:$json")
-            
-            onGridSizeSelected(cols)
+            onGridSizeSelected(currentCols, currentRows)
         }
         .setNegativeButton("Cancel", null)
         .create()
 
-    dialog.window?.setType(if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else android.view.WindowManager.LayoutParams.TYPE_PHONE)
+    dialog.window?.setType(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE)
     dialog.show()
 }
