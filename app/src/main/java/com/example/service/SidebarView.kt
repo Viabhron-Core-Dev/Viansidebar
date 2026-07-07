@@ -49,11 +49,11 @@ class SidebarView(
         }
 
         val density = context.resources.displayMetrics.density
-        val widthDp = prefs.getInt("sidebar_width", 180)
+        val widthDp = prefs.getInt("sidebar_width", 216)
         val widthPx = (widthDp * density).toInt()
         
         val wrapContent = prefs.getBoolean("sidebar_wrap_content", true)
-        val heightPx = if (wrapContent) WindowManager.LayoutParams.WRAP_CONTENT else (prefs.getInt("sidebar_height", 450) * density).toInt()
+        val heightPx = if (wrapContent) WindowManager.LayoutParams.WRAP_CONTENT else (prefs.getInt("sidebar_height", 360) * density).toInt()
 
         val isRight = !prefs.getBoolean("sidebar_position_left", false)
         val gravityEdge = if (isRight) Gravity.END else Gravity.START
@@ -287,8 +287,8 @@ class SidebarView(
         val density = context.resources.displayMetrics.density
         
         val globalWrap = prefs.getBoolean("sidebar_wrap_content", true)
-        val globalHeight = prefs.getInt("sidebar_height", 450)
-        val globalWidth = prefs.getInt("sidebar_width", 180)
+        val globalHeight = prefs.getInt("sidebar_height", 360)
+        val globalWidth = prefs.getInt("sidebar_width", 216)
         
         val wrapContent = if (pageConfig?.useCustomSettings == true) pageConfig.wrapContentHeight else {
             when (pageConfig?.type) {

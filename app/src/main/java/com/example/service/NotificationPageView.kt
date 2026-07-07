@@ -259,7 +259,7 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
                                 notification.contentIntent?.send()
                                 AppNotificationListener.instance?.cancelNotification(sbn.key)
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                com.example.LogKeeper.writeLog("Notification", "Failed to open notification content for ${sbn.packageName}: ${e.message}")
                             }
                         },
                         onLongClick = {
@@ -357,7 +357,7 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
                                                 replyAction.actionIntent.send(context, 0, intent)
                                                 replyText = ""
                                             } catch (e: Exception) {
-                                                e.printStackTrace()
+                                                com.example.LogKeeper.writeLog("Notification", "Failed to send reply to ${sbn.packageName}: ${e.message}")
                                             }
                                         }
                                     },
@@ -382,7 +382,7 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
                                                 try {
                                                     action.actionIntent.send()
                                                 } catch (e: Exception) {
-                                                    e.printStackTrace()
+                                                    com.example.LogKeeper.writeLog("Notification", "Failed to execute action ${actionTitle} for ${sbn.packageName}: ${e.message}")
                                                 }
                                             },
                                             modifier = Modifier.weight(1f),

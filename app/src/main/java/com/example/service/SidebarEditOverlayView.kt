@@ -132,8 +132,8 @@ class SidebarEditOverlayView(
 
         // Sidebar-like window in the middle
         val density = context.resources.displayMetrics.density
-        val sidebarWidth = (prefs.getInt("sidebar_width", 180) * density).toInt()
-        val sidebarHeight = (prefs.getInt("sidebar_height", 450) * density).toInt()
+        val sidebarWidth = (prefs.getInt("sidebar_width", 216) * density).toInt()
+        val sidebarHeight = (prefs.getInt("sidebar_height", 360) * density).toInt()
         
         val sidebarContainer = FrameLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(sidebarWidth, sidebarHeight)

@@ -104,20 +104,20 @@ class AppsPageView(
         for (item in displayedItems) {
             if (item is SidebarItem.Spacer) {
                 if (currentSpan > 0) {
-                    gridHeightDp += 56 // end current row
+                    gridHeightDp += 72 // end current row
                     currentSpan = 0
                 }
                 gridHeightDp += item.heightDp
             } else {
                 currentSpan += 1
                 if (currentSpan == (if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else prefs.getInt("sidebar_columns", 3))) {
-                    gridHeightDp += 56 // 56dp per normal row
+                    gridHeightDp += 72 // 56dp per normal row
                     currentSpan = 0
                 }
             }
         }
         if (currentSpan > 0) {
-            gridHeightDp += 56 // partial row
+            gridHeightDp += 72 // partial row
         }
         
         val density = context.resources.displayMetrics.density
@@ -167,8 +167,8 @@ class AppsPageView(
         popupView.background = popupBg
         
         // Calculate exact size for compact wrap_content appearance
-        val itemWidthDp = 56 // 44dp icon + 6dp padding on each side
-        val itemHeightDp = 56
+        val itemWidthDp = 72 // 44dp icon + 6dp padding on each side
+        val itemHeightDp = 72
         val autoRows = Math.ceil(folderItems.size.toDouble() / validCols).toInt()
         val rows = if (folder.popupRows > 0) minOf(folder.popupRows, autoRows) else autoRows
         val displayRows = if (folder.popupRows > 0) folder.popupRows else rows

@@ -63,8 +63,8 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
 
     // Sidebar options
     var sidebarColumns by remember { mutableStateOf(prefs.getInt("sidebar_columns", 3)) }
-    var sidebarWidth by remember { mutableStateOf(prefs.getInt("sidebar_width", 180)) }
-    var sidebarHeight by remember { mutableStateOf(prefs.getInt("sidebar_height", 450)) }
+    var sidebarWidth by remember { mutableStateOf(prefs.getInt("sidebar_width", 216)) }
+    var sidebarHeight by remember { mutableStateOf(prefs.getInt("sidebar_height", 360)) }
     var sidebarWrapContent by remember { mutableStateOf(prefs.getBoolean("sidebar_wrap_content", true)) }
     var sidebarColorHex by remember { mutableStateOf(prefs.getString("sidebar_color", "#000000") ?: "#000000") }
     var sidebarTransparency by remember { mutableStateOf(prefs.getFloat("sidebar_transparency", 0.9f)) }
