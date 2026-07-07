@@ -17,8 +17,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun HandlesListSettingsScreen(onNavigateToHandle: (String) -> Unit, onBack: () -> Unit) {
     val handles = listOf(
-        "sidebar" to "Sidebar Handle",
-        "reader" to "Reader Handle"
+        "sidebar" to "Sidebar Handle"
     )
 
     Scaffold(

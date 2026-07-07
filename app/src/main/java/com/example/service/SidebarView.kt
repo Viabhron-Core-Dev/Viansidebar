@@ -288,9 +288,30 @@ class SidebarView(
     fun updatePageStyles(pageConfig: com.example.utils.SidebarPage?, pageHeightPx: Int) {
         val density = context.resources.displayMetrics.density
         
-        val wrapContent = if (pageConfig?.useCustomSettings == true) pageConfig.wrapContentHeight else prefs.getBoolean("sidebar_wrap_content", true)
-        val prefHeight = if (pageConfig?.useCustomSettings == true) pageConfig.height else prefs.getInt("sidebar_height", 450)
-        val prefWidth = if (pageConfig?.useCustomSettings == true) pageConfig.width else prefs.getInt("sidebar_width", 320)
+        val globalWrap = prefs.getBoolean("sidebar_wrap_content", true)
+        val globalHeight = prefs.getInt("sidebar_height", 450)
+        val globalWidth = prefs.getInt("sidebar_width", 320)
+        
+        val wrapContent = if (pageConfig?.useCustomSettings == true) pageConfig.wrapContentHeight else {
+            when (pageConfig?.type) {
+                "calculator", "compass", "notification", "scheduler", "reader" -> false
+                else -> globalWrap
+            }
+        }
+        val prefHeight = if (pageConfig?.useCustomSettings == true) pageConfig.height else {
+            when (pageConfig?.type) {
+                "calculator" -> 450
+                "compass" -> 400
+                "notification", "scheduler", "reader" -> 500
+                else -> globalHeight
+            }
+        }
+        val prefWidth = if (pageConfig?.useCustomSettings == true) pageConfig.width else {
+            when (pageConfig?.type) {
+                "calculator", "compass", "notification", "scheduler", "reader" -> 320
+                else -> globalWidth
+            }
+        }
         val opacity = if (pageConfig?.useCustomSettings == true) pageConfig.transparency else prefs.getFloat("sidebar_transparency", 0.9f)
         
         val widthPx = (prefWidth * density).toInt()

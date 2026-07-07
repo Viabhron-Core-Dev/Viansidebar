@@ -304,11 +304,11 @@ class FloatingReaderService : Service() {
         }
         triggerHandleView?.attach()
 
-        readerHandleView = ReaderHandleView(this, prefs, windowManager) {
-            android.util.Log.d("VianSide", "reader trigger tapped")
-            toggleReader()
-        }
-        readerHandleView?.attach()
+        // readerHandleView = ReaderHandleView(this, prefs, windowManager) {
+        //     android.util.Log.d("VianSide", "reader trigger tapped")
+        //     toggleReader()
+        // }
+        // readerHandleView?.attach()
         
         setupNetSpeed()
         updatePersistentNotification()

@@ -36,6 +36,15 @@ data class SidebarPage(
     }
 
     companion object {
+        fun createDefault(id: String, type: String, title: String): SidebarPage {
+            val wrap = when(type) { "calculator", "compass", "notification", "scheduler", "reader" -> false else -> true }
+            val h = when(type) { "calculator" -> 450; "compass" -> 400; "notification", "scheduler", "reader" -> 500; else -> 450 }
+            return SidebarPage(
+                id = id, type = type, title = title,
+                wrapContentHeight = wrap, height = h, width = 320
+            )
+        }
+        
         fun fromJson(obj: JSONObject): SidebarPage {
             return SidebarPage(
                 id = obj.getString("id"),

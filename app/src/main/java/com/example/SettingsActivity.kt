@@ -192,7 +192,7 @@ fun ReaderSettingsScreen(onBack: () -> Unit) {
     var useScopedDir by remember { mutableStateOf(prefs.getBoolean("use_scoped_dir", false)) }
     var fontScale by remember { mutableStateOf(prefs.getFloat("font_size_scale", 1.0f)) }
     var useDarkTheme by remember { mutableStateOf(prefs.getBoolean("use_dark_theme", true)) }
-    var readerHandleEnabled by remember { mutableStateOf(prefs.getBoolean("reader_handle_enabled", false)) }
+
 
     val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
@@ -241,20 +241,7 @@ fun ReaderSettingsScreen(onBack: () -> Unit) {
                         )
                     }
                 )
-                Divider()
-                ListItem(
-                    headlineContent = { Text("Reader Floating Handle") },
-                    supportingContent = { Text("Show a dedicated handle to quickly open the reader") },
-                    trailingContent = {
-                        Switch(
-                            checked = readerHandleEnabled,
-                            onCheckedChange = { 
-                                readerHandleEnabled = it
-                                prefs.edit().putBoolean("reader_handle_enabled", it).apply()
-                            }
-                        )
-                    }
-                )
+
                 Divider()
                 ListItem(
                     headlineContent = { Text("Font Size Scale") },

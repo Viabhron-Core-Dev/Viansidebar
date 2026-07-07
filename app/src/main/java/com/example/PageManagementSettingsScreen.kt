@@ -136,7 +136,7 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                         types.forEach { (type, title) ->
                             TextButton(onClick = {
                                 val newPages = pages.toMutableList()
-                                newPages.add(SidebarPage(id = UUID.randomUUID().toString(), type = type, title = title))
+                                newPages.add(SidebarPage.createDefault(id = UUID.randomUUID().toString(), type = type, title = title))
                                 pages = newPages
                                 savePages()
                                 showAddDialog = false

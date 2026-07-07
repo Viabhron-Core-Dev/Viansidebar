@@ -51,12 +51,16 @@ class ScreenRecordService : Service() {
             val resultCode = intent.getIntExtra("resultCode", -1)
             val data: Intent? = intent.getParcelableExtra("data")
 
-            if (resultCode == -1 || data == null) {
+            if (resultCode != android.app.Activity.RESULT_OK || data == null) {
                 stopSelf()
                 return START_NOT_STICKY
             }
 
-            startForeground(NOTIFICATION_ID, createNotification())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, createNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+            } else {
+                startForeground(NOTIFICATION_ID, createNotification())
+            }
 
             val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             mediaProjection = projectionManager.getMediaProjection(resultCode, data)

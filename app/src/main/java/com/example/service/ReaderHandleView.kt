@@ -236,7 +236,7 @@ class ReaderHandleView(
 
     fun attach() {
         try {
-            if (prefs.getBoolean("reader_handle_enabled", false)) {
+            if (false) {
                 if (!isAddedToWindow) {
                     val isRight = prefs.getString("sidebar_position", "right") == "right"
                     layoutParams.gravity = (if (isRight) Gravity.END else Gravity.START) or Gravity.TOP
