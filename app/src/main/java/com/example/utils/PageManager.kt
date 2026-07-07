@@ -14,7 +14,7 @@ data class SidebarPage(
     var gridWrapContent: Boolean = true,
     var stickAlignment: String = "bottom",
     var useCustomSettings: Boolean = false,
-    var width: Int = 320,
+    var width: Int = 180,
     var height: Int = 450,
     var wrapContentHeight: Boolean = true,
     var transparency: Float = 0.9f
@@ -38,7 +38,7 @@ data class SidebarPage(
     companion object {
         fun createDefault(id: String, type: String, title: String): SidebarPage {
             val wrap = when(type) { "calculator", "compass", "notification", "scheduler", "reader" -> false else -> true }
-            val h = when(type) { "calculator" -> 450; "compass" -> 400; "notification", "scheduler", "reader" -> 500; else -> 450 }
+            val h = when(type) { "calculator" -> 450; "compass" -> 500; "notification", "scheduler", "reader" -> 500; else -> 450 }
             return SidebarPage(
                 id = id, type = type, title = title,
                 wrapContentHeight = wrap, height = h, width = 320
@@ -54,7 +54,7 @@ data class SidebarPage(
                 gridWrapContent = obj.optBoolean("gridWrapContent", true),
                 stickAlignment = obj.optString("stickAlignment", "bottom"),
                 useCustomSettings = obj.optBoolean("useCustomSettings", false),
-                width = obj.optInt("width", 320),
+                width = obj.optInt("width", 180),
                 height = obj.optInt("height", 450),
                 wrapContentHeight = obj.optBoolean("wrapContentHeight", true),
                 transparency = obj.optDouble("transparency", 0.9).toFloat()

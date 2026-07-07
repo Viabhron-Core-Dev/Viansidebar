@@ -62,8 +62,8 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
     }
 
     // Sidebar options
-    var sidebarColumns by remember { mutableStateOf(prefs.getInt("sidebar_columns", 4)) }
-    var sidebarWidth by remember { mutableStateOf(prefs.getInt("sidebar_width", 320)) }
+    var sidebarColumns by remember { mutableStateOf(prefs.getInt("sidebar_columns", 3)) }
+    var sidebarWidth by remember { mutableStateOf(prefs.getInt("sidebar_width", 180)) }
     var sidebarHeight by remember { mutableStateOf(prefs.getInt("sidebar_height", 450)) }
     var sidebarWrapContent by remember { mutableStateOf(prefs.getBoolean("sidebar_wrap_content", true)) }
     var sidebarColorHex by remember { mutableStateOf(prefs.getString("sidebar_color", "#000000") ?: "#000000") }
@@ -115,8 +115,8 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                                 sidebarWidth = it.toInt()
                                 prefs.edit().putInt("sidebar_width", it.toInt()).apply()
                             },
-                            valueRange = 200f..maxScreenWidth,
-                                steps = ((maxScreenWidth - 200f) / 10f).toInt()
+                            valueRange = 100f..maxScreenWidth,
+                                steps = ((maxScreenWidth - 100f) / 10f).toInt()
                         )
                     },
                     trailingContent = { Text("${sidebarWidth}dp") }

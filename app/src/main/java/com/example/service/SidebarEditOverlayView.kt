@@ -132,7 +132,7 @@ class SidebarEditOverlayView(
 
         // Sidebar-like window in the middle
         val density = context.resources.displayMetrics.density
-        val sidebarWidth = (prefs.getInt("sidebar_width", 320) * density).toInt()
+        val sidebarWidth = (prefs.getInt("sidebar_width", 180) * density).toInt()
         val sidebarHeight = (prefs.getInt("sidebar_height", 450) * density).toInt()
         
         val sidebarContainer = FrameLayout(context).apply {
@@ -147,7 +147,7 @@ class SidebarEditOverlayView(
             setPadding(10, 10, 10, 10)
         }
 
-        val columns = prefs.getInt("sidebar_columns", 4)
+        val columns = prefs.getInt("sidebar_columns", 3)
         recyclerView = RecyclerView(context).apply {
             layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
             layoutManager = GridLayoutManager(context, columns).apply {

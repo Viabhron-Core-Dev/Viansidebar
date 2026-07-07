@@ -10,6 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -68,7 +71,7 @@ fun CalculatorScreen() {
         } else {
             expression += char
             val res = evaluateExpression(expression)
-            if (res != "Error" && res.isNotEmpty() && expression.any { it in listOf('+', '-', 'x', '÷') }) {
+            if (res != "Error" && res.isNotEmpty() && expression.any { it in listOf('+', '-', 'x', '÷', '%') }) {
                 resultText = "=$res"
             } else {
                 resultText = ""
@@ -90,7 +93,7 @@ fun CalculatorScreen() {
         } else if (expression.isNotEmpty()) {
             expression = expression.dropLast(1)
             val res = evaluateExpression(expression)
-            if (res != "Error" && res.isNotEmpty() && expression.any { it in listOf('+', '-', 'x', '÷') }) {
+            if (res != "Error" && res.isNotEmpty() && expression.any { it in listOf('+', '-', 'x', '÷', '%') }) {
                 resultText = "=$res"
             } else {
                 resultText = ""
@@ -124,19 +127,50 @@ fun CalculatorScreen() {
             verticalArrangement = Arrangement.Bottom,
             horizontalAlignment = Alignment.End
         ) {
-            Text(
-                text = formatExpression(expression),
-                fontSize = if (expressionCompleted) 32.sp else 48.sp,
-                color = if (expressionCompleted) Color.Gray else Color.White,
-                textAlign = TextAlign.End,
-                lineHeight = 40.sp,
-                maxLines = 3
-            )
-            if (resultText.isNotEmpty()) {
+            val scrollStateTop = rememberScrollState()
+            val scrollStateBottom = rememberScrollState()
+            
+            LaunchedEffect(expression) {
+                scrollStateTop.scrollTo(scrollStateTop.maxValue)
+            }
+            LaunchedEffect(resultText, expression) {
+                scrollStateBottom.scrollTo(scrollStateBottom.maxValue)
+            }
+
+            val displayTextTop = if (resultText.isNotEmpty() || expressionCompleted) formatExpression(expression) else ""
+            val displayTextBottom = when {
+                expression.isEmpty() -> "0"
+                resultText.isNotEmpty() -> resultText
+                else -> formatExpression(expression)
+            }
+
+            if (displayTextTop.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(scrollStateTop),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = displayTextTop,
+                        fontSize = 28.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.End,
+                        maxLines = 1
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(scrollStateBottom),
+                horizontalArrangement = Arrangement.End
+            ) {
                 Text(
-                    text = resultText,
-                    fontSize = if (expressionCompleted) 48.sp else 32.sp,
-                    color = if (expressionCompleted) Color.White else Color.Gray,
+                    text = displayTextBottom,
+                    fontSize = 48.sp,
+                    color = Color.White,
                     textAlign = TextAlign.End,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
@@ -268,7 +302,6 @@ fun evalBasic(str: String): Double {
             while (true) {
                 if (eat('*'.toInt())) x *= parseFactor() // multiplication
                 else if (eat('/'.toInt())) x /= parseFactor() // division
-                else if (eat('%'.toInt())) x %= parseFactor() // modulo
                 else return x
             }
         }
@@ -286,6 +319,9 @@ fun evalBasic(str: String): Double {
                 x = str.substring(startPos, pos).toDouble()
             } else {
                 throw RuntimeException("Unexpected: " + ch.toChar())
+            }
+            while (eat('%'.toInt())) {
+                x /= 100.0
             }
             return x
         }

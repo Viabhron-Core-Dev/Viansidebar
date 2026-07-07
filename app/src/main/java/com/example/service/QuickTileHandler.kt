@@ -14,7 +14,8 @@ object QuickTileHandler {
         when (action) {
             "torch" -> toggleTorch(context)
             "wifi" -> openPanelOrSettings(context, if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) "android.settings.panel.action.WIFI" else Settings.ACTION_WIFI_SETTINGS, Settings.ACTION_WIFI_SETTINGS)
-            "bluetooth" -> openSettings(context, Settings.ACTION_BLUETOOTH_SETTINGS)
+            "bluetooth" -> openPanelOrSettings(context, "android.settings.panel.action.BLUETOOTH", Settings.ACTION_BLUETOOTH_SETTINGS)
+            "pair" -> openSettings(context, Settings.ACTION_BLUETOOTH_SETTINGS)
             "airplane" -> openSettings(context, Settings.ACTION_AIRPLANE_MODE_SETTINGS)
             "dnd" -> {
                 try {

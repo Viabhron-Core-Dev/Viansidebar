@@ -49,7 +49,7 @@ class SidebarView(
         }
 
         val density = context.resources.displayMetrics.density
-        val widthDp = prefs.getInt("sidebar_width", 320)
+        val widthDp = prefs.getInt("sidebar_width", 180)
         val widthPx = (widthDp * density).toInt()
         
         val wrapContent = prefs.getBoolean("sidebar_wrap_content", true)
@@ -111,13 +111,13 @@ class SidebarView(
         }
         background = drawable
 
-        val headerHeight = (28 * density).toInt()
+        val headerHeight = (24 * density).toInt()
         val header = FrameLayout(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, headerHeight)
             
             val closeText = TextView(context).apply {
                 text = "✕"
-                textSize = 20f
+                textSize = 16f
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
                 layoutParams = LayoutParams(headerHeight, headerHeight).apply {
@@ -130,7 +130,7 @@ class SidebarView(
             val settingsIcon = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_preferences)
                 setColorFilter(Color.WHITE)
-                setPadding(8, 8, 8, 8)
+                setPadding((4*density).toInt(), (4*density).toInt(), (4*density).toInt(), (4*density).toInt())
                 layoutParams = LayoutParams(headerHeight, headerHeight).apply {
                     gravity = Gravity.END or Gravity.CENTER_VERTICAL
                     marginEnd = headerHeight // Position it before the close button
@@ -148,7 +148,7 @@ class SidebarView(
             val addIcon = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_edit)
                 setColorFilter(Color.WHITE)
-                val pad = (12 * resources.displayMetrics.density).toInt()
+                val pad = (6 * resources.displayMetrics.density).toInt()
                 setPadding(pad, pad, pad, pad)
                 layoutParams = LayoutParams(headerHeight, headerHeight).apply {
                     gravity = Gravity.START or Gravity.CENTER_VERTICAL
@@ -167,9 +167,7 @@ class SidebarView(
         pages.addAll(pagesList)
         
         viewPager = ViewPager2(context).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = (30 * density).toInt()
-            }
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         }
         
         val isLooping = pages.size > 2
@@ -204,8 +202,8 @@ class SidebarView(
         dotsLayout = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            layoutParams = FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, (30 * density).toInt()).apply {
-                gravity = Gravity.BOTTOM
+            layoutParams = FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT).apply {
+                gravity = Gravity.CENTER
             }
         }
         
@@ -231,7 +229,7 @@ class SidebarView(
         })
         
         container.addView(viewPager)
-        container.addView(dotsLayout)
+        header.addView(dotsLayout)
         
         addView(header)
         addView(container)
@@ -290,7 +288,7 @@ class SidebarView(
         
         val globalWrap = prefs.getBoolean("sidebar_wrap_content", true)
         val globalHeight = prefs.getInt("sidebar_height", 450)
-        val globalWidth = prefs.getInt("sidebar_width", 320)
+        val globalWidth = prefs.getInt("sidebar_width", 180)
         
         val wrapContent = if (pageConfig?.useCustomSettings == true) pageConfig.wrapContentHeight else {
             when (pageConfig?.type) {
@@ -301,7 +299,7 @@ class SidebarView(
         val prefHeight = if (pageConfig?.useCustomSettings == true) pageConfig.height else {
             when (pageConfig?.type) {
                 "calculator" -> 450
-                "compass" -> 400
+                "compass" -> 500
                 "notification", "scheduler", "reader" -> 500
                 else -> globalHeight
             }
@@ -320,10 +318,10 @@ class SidebarView(
         if (!wrapContent) {
             layoutParams.height = (prefHeight * density).toInt()
         } else {
-            var targetHeight = pageHeightPx + (28 + 30) * density
+            var targetHeight = pageHeightPx + (24 * density)
             val maxHeight = (prefHeight * density).toInt()
             
-            targetHeight = Math.max((150 * density), targetHeight)
+            targetHeight = Math.max((80 * density), targetHeight)
             targetHeight = Math.min(maxHeight.toFloat(), targetHeight)
             
             layoutParams.height = targetHeight.toInt()

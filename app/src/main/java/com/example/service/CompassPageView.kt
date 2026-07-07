@@ -85,7 +85,7 @@ class CompassPageView(context: Context) : FrameLayout(context), SensorEventListe
 @Composable
 fun CompassScreen(azimuth: Float) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

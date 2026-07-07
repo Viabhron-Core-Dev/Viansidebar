@@ -117,6 +117,7 @@ val ALL_QUICK_TILES = listOf(
     SidebarItem.QuickTile("torch", "Torch", android.R.drawable.ic_menu_camera),
     SidebarItem.QuickTile("wifi", "Wi-Fi", android.R.drawable.ic_menu_search),
     SidebarItem.QuickTile("bluetooth", "Bluetooth", android.R.drawable.ic_menu_share),
+    SidebarItem.QuickTile("pair", "Pair Device", android.R.drawable.ic_menu_add),
     SidebarItem.QuickTile("airplane", "Airplane Mode", android.R.drawable.ic_dialog_alert),
     SidebarItem.QuickTile("dnd", "Do Not Disturb", android.R.drawable.ic_lock_silent_mode_off),
     SidebarItem.QuickTile("location", "Location", android.R.drawable.ic_menu_mylocation),

@@ -29,6 +29,9 @@ import androidx.core.graphics.drawable.toBitmap
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.filled.FilterList
 import com.example.NotificationHistoryActivity
 import android.content.Intent
@@ -45,7 +48,7 @@ class NotificationPageView(
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
             setContent {
                 MaterialTheme(colorScheme = darkColorScheme()) {
-                    Box(modifier = Modifier.onSizeChanged { size ->
+                    Box(modifier = Modifier.fillMaxSize().onSizeChanged { size ->
                         if (currentHeightPx != size.height) {
                             currentHeightPx = size.height
                             onHeightChanged(size.height)
@@ -109,7 +112,7 @@ fun NotificationScreen(context: Context) {
 
     val visibleNotifications = notifications.filter { !hiddenPackages.contains(it.packageName) }
 
-    Column(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -134,7 +137,7 @@ fun NotificationScreen(context: Context) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .wrapContentHeight()
+                .weight(1f)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -252,7 +255,12 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
                     .fillMaxWidth()
                     .combinedClickable(
                         onClick = {
-                            expanded = !expanded
+                            try {
+                                notification.contentIntent?.send()
+                                AppNotificationListener.instance?.cancelNotification(sbn.key)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         },
                         onLongClick = {
                             AppNotificationListener.instance?.cancelNotification(sbn.key)
@@ -266,13 +274,6 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                try {
-                                    notification.contentIntent?.send()
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
                             .padding(bottom = 4.dp)
                     ) {
                         Text(
@@ -283,6 +284,16 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
+                        IconButton(
+                            onClick = { expanded = !expanded },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = if (expanded) "Collapse" else "Expand",
+                                tint = Color.LightGray
+                            )
+                        }
                     }
                     
                     Text(

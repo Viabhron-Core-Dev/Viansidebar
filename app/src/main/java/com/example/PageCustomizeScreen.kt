@@ -106,8 +106,8 @@ fun PageCustomizeScreen(
                             Slider(
                                 value = width.toFloat(),
                                 onValueChange = { width = it.toInt() },
-                                valueRange = 200f..maxScreenWidth,
-                                steps = ((maxScreenWidth - 200f) / 10f).toInt()
+                                valueRange = 100f..maxScreenWidth,
+                                steps = ((maxScreenWidth - 100f) / 10f).toInt()
                             )
                         },
                         trailingContent = { Text("${width}dp") }

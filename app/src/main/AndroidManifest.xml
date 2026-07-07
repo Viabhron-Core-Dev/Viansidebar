@@ -134,6 +134,7 @@
         
         <activity android:name=".service.ScreenRecordActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="false" />
         <service android:name=".service.ScreenRecordService" android:exported="false" android:foregroundServiceType="mediaProjection" />
+        <activity android:name=".service.QRCropActivity" android:exported="false" android:theme="@style/Theme.LiteReader" />
     </application>
 
 </manifest>
