@@ -1,0 +1,17 @@
+import re
+
+with open('app/src/main/java/com/example/WelcomeScreen.kt', 'r') as f:
+    content = f.read()
+
+# Match the Icon block
+icon_block = """        Icon(
+            imageVector = androidx.compose.material.icons.Icons.Default.Check,
+            contentDescription = "App Logo",
+            modifier = Modifier.size(100.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )"""
+
+content = content.replace(icon_block, "        // Logo placeholder removed")
+
+with open('app/src/main/java/com/example/WelcomeScreen.kt', 'w') as f:
+    f.write(content)

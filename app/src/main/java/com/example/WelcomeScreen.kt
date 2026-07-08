@@ -63,11 +63,7 @@ fun WelcomeScreen(onContinue: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(24.dp))
-        Image(
-            painter = painterResource(id = R.mipmap.app_icon_adaptive_fore),
-            contentDescription = "App Logo",
-            modifier = Modifier.size(100.dp)
-        )
+        // Logo placeholder removed
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Welcome to LiteReader",
