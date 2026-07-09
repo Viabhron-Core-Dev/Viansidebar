@@ -300,6 +300,10 @@ class AppsPageView(
                     }
                     currentFolderPopup?.dismiss()
                         onCloseSidebar()
+                } else if (item is SidebarItem.Widget) {
+                    WidgetOverlayView(context, item.widgetId)
+                    currentFolderPopup?.dismiss()
+                    onCloseSidebar()
                 } else if (item is SidebarItem.QuickTile) {
                     QuickTileHandler.handleQuickTileAction(context, item.action)
                     currentFolderPopup?.dismiss()

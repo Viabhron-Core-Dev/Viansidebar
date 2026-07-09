@@ -242,6 +242,20 @@ class AddElementOverlayView(
                 addSidebarItem(item.id)
                 close()
             }
+            ActionType.WIDGET -> {
+                val intent = android.content.Intent(context, com.example.WidgetPickerActivity::class.java).apply {
+                    putExtra("ACTION_TYPE", "ADD_ELEMENT")
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                if (targetFolderUuid != null) {
+                    intent.putExtra("FOLDER_UUID", targetFolderUuid)
+                }
+                if (onElementSelected != null) {
+                    intent.putExtra("IS_ELEMENT_CALLBACK", true)
+                }
+                context.startActivity(intent)
+                close()
+            }
             ActionType.FOLDER -> {
                 val et = android.widget.EditText(context).apply { hint = "Folder name" }
                 val dialog = android.app.AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Light_Dialog_Alert)

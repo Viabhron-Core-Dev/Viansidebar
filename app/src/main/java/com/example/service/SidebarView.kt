@@ -221,6 +221,8 @@ class SidebarView(
                     updatePageStyles(pageConfig, page.getCurrentHeightPx())
                 } else if (page is NotificationPageView) {
                     updatePageStyles(pageConfig, page.getCurrentHeightPx())
+                } else if (page is WidgetPageView) {
+                    updatePageStyles(pageConfig, page.getCurrentHeightPx())
                 } else if (page != null) {
                     val density = context.resources.displayMetrics.density
                     updatePageStyles(pageConfig, (450 * density).toInt())

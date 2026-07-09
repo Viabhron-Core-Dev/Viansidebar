@@ -27,6 +27,32 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
     var defaultIndex by remember { mutableStateOf(PageManager.getDefaultPageIndex(prefs)) }
     
     var showAddDialog by remember { mutableStateOf(false) }
+
+    DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: android.content.Intent?) {
+                if (intent?.action == "WIDGET_PAGE_CREATED") {
+                    val widgetId = intent.getIntExtra("WIDGET_ID", -1)
+                    if (widgetId != -1) {
+                        val newPages = pages.toMutableList()
+                        val title = "App Widget"
+                        val page = SidebarPage.createDefault(id = "widget:$widgetId", type = "widget", title = title)
+                        newPages.add(page)
+                        pages = newPages
+                        PageManager.savePages(prefs, pages)
+                    }
+                }
+            }
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, android.content.IntentFilter("WIDGET_PAGE_CREATED"), Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, android.content.IntentFilter("WIDGET_PAGE_CREATED"))
+        }
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
     
     fun savePages() {
         PageManager.savePages(prefs, pages)
@@ -135,11 +161,20 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                         )
                         types.forEach { (type, title) ->
                             TextButton(onClick = {
-                                val newPages = pages.toMutableList()
-                                newPages.add(SidebarPage.createDefault(id = UUID.randomUUID().toString(), type = type, title = title))
-                                pages = newPages
-                                savePages()
-                                showAddDialog = false
+                                if (type == "widget") {
+                                    val intent = android.content.Intent(context, WidgetPickerActivity::class.java).apply {
+                                        putExtra("ACTION_TYPE", "CREATE_PAGE")
+                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(intent)
+                                    showAddDialog = false
+                                } else {
+                                    val newPages = pages.toMutableList()
+                                    newPages.add(SidebarPage.createDefault(id = UUID.randomUUID().toString(), type = type, title = title))
+                                    pages = newPages
+                                    savePages()
+                                    showAddDialog = false
+                                }
                             }, modifier = Modifier.fillMaxWidth()) {
                                 Text(title, modifier = Modifier.fillMaxWidth())
                             }

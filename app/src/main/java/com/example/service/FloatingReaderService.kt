@@ -123,8 +123,7 @@ class FloatingReaderService : Service() {
             "sidebar_columns", "sidebar_width", "sidebar_height", 
             "sidebar_wrap_content", "sidebar_transparency", "sidebar_position_left" -> {
                 val wasAttached = sidebarView?.windowToken != null
-                sidebarView?.detach()
-                sidebarView = null
+                closeSidebar()
                 if (wasAttached) {
                     showSidebar()
                 }
@@ -513,7 +512,7 @@ class FloatingReaderService : Service() {
                 "apps" -> {
                     var p: AppsPageView? = null
                     p = AppsPageView(this, config, appsManager, serviceScope,
-                        onCloseSidebar = { sidebarView?.detach() },
+                        onCloseSidebar = { closeSidebar() },
                         onHeightChanged = { newHeight ->
                             // Only update height if this is the currently selected page
                             if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
@@ -530,7 +529,16 @@ class FloatingReaderService : Service() {
                 "compass" -> CompassPageView(this)
                 "notifications" -> {
                     var p: NotificationPageView? = null
-                    p = NotificationPageView(this) { newHeight ->
+                    p = NotificationPageView(this, onCloseSidebar = { closeSidebar() }) { newHeight ->
+                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
+                            sidebarView?.updatePageStyles(config, newHeight)
+                        }
+                    }
+                    p
+                }
+                "widget" -> {
+                    var p: WidgetPageView? = null
+                    p = WidgetPageView(this, config.id) { newHeight ->
                         if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
                             sidebarView?.updatePageStyles(config, newHeight)
                         }
@@ -555,12 +563,18 @@ class FloatingReaderService : Service() {
         }
     }
     
+
+    private fun closeSidebar() {
+        closeSidebar()
+        sidebarView = null
+    }
+
     private fun showSidebar() {
         if (sidebarView == null) {
             rebuildSidebarPages()
             sidebarView = SidebarView(this, prefs, windowManager, sidebarPagesList, PageManager.getPages(prefs), sidebarDefaultIndex,
                 onAddClicked = { showSidebarEditOverlay() },
-                onClose = { sidebarView?.detach() }
+                onClose = { closeSidebar() }
             )
             serviceLifecycleOwner?.let {
                 sidebarView?.setViewTreeLifecycleOwner(it)
@@ -2577,7 +2591,7 @@ class FloatingReaderService : Service() {
         netSpeedManager?.stop()
         callRecorderManager?.stopListening()
         instance = null
-        sidebarView?.detach()
+        closeSidebar()
         sidebarView = null
         sidebarPagesList.clear()
         appPickerOverlayView?.detach()

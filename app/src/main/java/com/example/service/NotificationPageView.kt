@@ -38,12 +38,15 @@ import android.content.Intent
 
 class NotificationPageView(
     context: Context,
+    private val onCloseSidebar: () -> Unit,
     private val onHeightChanged: (Int) -> Unit
 ) : FrameLayout(context) {
 
     private var currentHeightPx: Int = 0
+    
 
     init {
+        
         addView(ComposeView(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
             setContent {
@@ -54,7 +57,7 @@ class NotificationPageView(
                             onHeightChanged(size.height)
                         }
                     }) {
-                        NotificationScreen(context)
+                        NotificationScreen(context, onCloseSidebar)
                     }
                 }
             }
@@ -69,7 +72,7 @@ class NotificationPageView(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun NotificationScreen(context: Context) {
+fun NotificationScreen(context: Context, onCloseSidebar: () -> Unit) {
     LaunchedEffect(Unit) {
         com.example.LogKeeper.writeLog("Sidebar", "Notification page viewed")
     }
@@ -142,7 +145,7 @@ fun NotificationScreen(context: Context) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(visibleNotifications, key = { it.key }) { sbn ->
-                NotificationItem(context, sbn, onHideApp = { pkg ->
+                NotificationItem(context, sbn, onCloseSidebar = onCloseSidebar, onHideApp = { pkg ->
                     val updated = hiddenPackages.toMutableSet().apply { add(pkg) }
                     prefs.edit().putStringSet("hidden_packages", updated).apply()
                     hiddenPackages = updated
@@ -229,7 +232,7 @@ fun NotificationScreen(context: Context) {
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (String) -> Unit) {
+fun NotificationItem(context: Context, sbn: StatusBarNotification, onCloseSidebar: () -> Unit, onHideApp: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var replyText by remember { mutableStateOf("") }
     
@@ -244,37 +247,7 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
         sbn.packageName
     }
 
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { dismissValue ->
-            if (dismissValue == SwipeToDismissBoxValue.EndToStart || dismissValue == SwipeToDismissBoxValue.StartToEnd) {
-                AppNotificationListener.instance?.cancelNotification(sbn.key)
-                true
-            } else {
-                false
-            }
-        }
-    )
 
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = {
-            val color = when (dismissState.targetValue) {
-                SwipeToDismissBoxValue.Settled -> Color.Transparent
-                else -> Color.Red.copy(alpha = 0.5f)
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(color, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
-                    Text("Dismiss", color = Color.White)
-                }
-            }
-        },
-        content = {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -283,6 +256,7 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
                             try {
                                 notification.contentIntent?.send()
                                 AppNotificationListener.instance?.cancelNotification(sbn.key)
+                                onCloseSidebar()
                             } catch (e: Exception) {
                                 com.example.LogKeeper.writeLog("Notification", "Failed to open notification content for ${sbn.packageName}: ${e.message}")
                             }
@@ -406,6 +380,7 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
                                             onClick = {
                                                 try {
                                                     action.actionIntent.send()
+                                                    onCloseSidebar()
                                                 } catch (e: Exception) {
                                                     com.example.LogKeeper.writeLog("Notification", "Failed to execute action ${actionTitle} for ${sbn.packageName}: ${e.message}")
                                                 }
@@ -443,6 +418,4 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onHideApp: (S
                     }
                 }
             }
-        }
-    )
 }

@@ -76,6 +76,14 @@ sealed class SidebarItem {
     ) : SidebarItem() {
         override var id = "settings_shortcut:$action"
     }
+    
+    data class Widget(
+        val widgetId: Int,
+        override val label: String,
+        val iconBitmap: Bitmap? = null
+    ) : SidebarItem() {
+        override var id = "widget:$widgetId"
+    }
 
     data class Folder(
         val uuid: String,
@@ -297,7 +305,20 @@ class SidebarAppsManager(
             is SidebarItem.VolumeAction -> parsed.iconResId
             is SidebarItem.MediaAction -> parsed.iconResId
             is SidebarItem.DisplayAction -> parsed.iconResId
-            is SidebarItem.SettingsShortcut -> parsed.iconResId
+                        is SidebarItem.SettingsShortcut -> parsed.iconResId
+            is SidebarItem.Widget -> {
+                try {
+                    val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
+                    val info = appWidgetManager.getAppWidgetInfo(parsed.widgetId)
+                    if (info != null) {
+                        val dr = info.loadIcon(context, context.resources.displayMetrics.densityDpi)
+                        if (dr != null) {
+                            return getBitmapFromDrawable(dr)
+                        }
+                    }
+                } catch (e: Exception) {}
+                android.R.drawable.ic_menu_gallery
+            }
             is SidebarItem.Link -> android.R.drawable.ic_menu_set_as
             else -> 0
         }
@@ -368,7 +389,23 @@ class SidebarAppsManager(
                 if (settingsAction != null) {
                     return SidebarItem.SettingsShortcut(actionId, settingsAction.label, settingsAction.iconResId)
                 }
-            } else if (id.startsWith("folder:")) {
+                        } else if (id.startsWith("widget:")) {
+            try {
+                val parts = id.split(":", limit = 3)
+                if (parts.size >= 2) {
+                    val widgetId = parts[1].toInt()
+                    val jsonStr = parts.getOrNull(2)
+                    var label = "Widget $widgetId"
+                                        if (jsonStr != null && jsonStr.isNotEmpty()) {
+                        val json = org.json.JSONObject(jsonStr)
+                        label = json.optString("label", label)
+                    }
+                    return SidebarItem.Widget(widgetId, label)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        } else if (id.startsWith("folder:")) {
             try {
                 val parts = id.split(":", limit = 3)
                 val uuid = parts[1]
@@ -490,7 +527,23 @@ class SidebarAppsManager(
                 if (settingsAction != null) {
                     result.add(SidebarItem.SettingsShortcut(actionId, settingsAction.label, settingsAction.iconResId))
                 }
-            } else if (id.startsWith("folder:")) {
+                        } else if (id.startsWith("widget:")) {
+            try {
+                val parts = id.split(":", limit = 3)
+                if (parts.size >= 2) {
+                    val widgetId = parts[1].toInt()
+                    val jsonStr = parts.getOrNull(2)
+                    var label = "Widget $widgetId"
+                    if (jsonStr != null && jsonStr.isNotEmpty()) {
+                        val json = org.json.JSONObject(jsonStr)
+                        label = json.optString("label", label)
+                    }
+                    result.add(SidebarItem.Widget(widgetId, label))
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        } else if (id.startsWith("folder:")) {
                 try {
                     val parts = id.split(":", limit = 3)
                     val uuid = parts[1]
