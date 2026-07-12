@@ -565,7 +565,7 @@ class FloatingReaderService : Service() {
     
 
     private fun closeSidebar() {
-        closeSidebar()
+        sidebarView?.detach()
         sidebarView = null
     }
 
