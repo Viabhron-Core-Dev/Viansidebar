@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -148,7 +150,7 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                 onDismissRequest = { showAddDialog = false },
                 title = { Text("Add Sidebar Page") },
                 text = {
-                    Column {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         val types = listOf(
                             "apps" to "Apps Grid",
                             "system_actions" to "System Actions",
