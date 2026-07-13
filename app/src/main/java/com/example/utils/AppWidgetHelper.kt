@@ -10,8 +10,24 @@ object AppWidgetHelper {
     fun getHost(context: Context): AppWidgetHost {
         if (_host == null) {
             _host = AppWidgetHost(context.applicationContext, HOST_ID)
-            _host?.startListening()
         }
         return _host!!
+    }
+
+    fun startListening(context: Context) {
+        getHost(context)
+        try {
+            _host?.startListening()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun stopListening() {
+        try {
+            _host?.stopListening()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

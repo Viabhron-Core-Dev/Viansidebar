@@ -537,6 +537,15 @@ class FloatingReaderService : Service() {
                     }
                     p
                 }
+                "widgets_grid" -> {
+                    var p: WidgetsGridPageView? = null
+                    p = WidgetsGridPageView(this, config.id) { newHeight ->
+                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
+                            sidebarView?.updatePageStyles(config, newHeight)
+                        }
+                    }
+                    p
+                }
                 "widget" -> {
                     var p: WidgetPageView? = null
                     p = WidgetPageView(this, config.id) { newHeight ->

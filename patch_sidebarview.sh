@@ -1,0 +1,1 @@
+sed -i 's/updateDots(actualPos)/updateDots(actualPos)\n                if (page is WidgetPageView || page is WidgetsGridPageView) {\n                    com.example.utils.AppWidgetHelper.startListening(context)\n                } else {\n                    com.example.utils.AppWidgetHelper.stopListening()\n                }/g' app/src/main/java/com/example/service/SidebarView.kt

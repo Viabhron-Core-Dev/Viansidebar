@@ -214,14 +214,25 @@ class SidebarView(
             override fun onPageSelected(position: Int) {
                 val actualPos = position % pages.size
                 updateDots(actualPos)
+
+
                 val page = pages.getOrNull(actualPos)
                 val pageConfig = pageConfigs.getOrNull(actualPos)
+                if (page is WidgetPageView || page is WidgetsGridPageView) {
+                    com.example.utils.AppWidgetHelper.startListening(context)
+                } else {
+                    com.example.utils.AppWidgetHelper.stopListening()
+                }
+
+
                 
                 if (page is AppsPageView) {
                     updatePageStyles(pageConfig, page.getCurrentHeightPx())
                 } else if (page is NotificationPageView) {
                     updatePageStyles(pageConfig, page.getCurrentHeightPx())
                 } else if (page is WidgetPageView) {
+                    updatePageStyles(pageConfig, page.getCurrentHeightPx())
+                } else if (page is WidgetsGridPageView) {
                     updatePageStyles(pageConfig, page.getCurrentHeightPx())
                 } else if (page != null) {
                     val density = context.resources.displayMetrics.density
@@ -372,6 +383,7 @@ class SidebarView(
     }
 
     fun detach() {
+        com.example.utils.AppWidgetHelper.stopListening()
         if (windowToken != null) {
             windowManager.removeView(this)
         }

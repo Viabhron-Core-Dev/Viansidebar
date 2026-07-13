@@ -141,6 +141,11 @@ class WidgetPickerActivity : ComponentActivity() {
                 serviceIntent.putExtra("IS_ELEMENT_CALLBACK", true)
             }
             startService(serviceIntent)
+        } else if (actionType == "ADD_TO_WIDGETS_GRID") {
+            val broadcastIntent = Intent("WIDGET_ADDED_TO_GRID")
+            broadcastIntent.putExtra("WIDGET_ID", widgetId)
+            broadcastIntent.putExtra("PAGE_ID", intent.getStringExtra("PAGE_ID"))
+            sendBroadcast(broadcastIntent)
         } else if (actionType == "CREATE_PAGE") {
             val broadcastIntent = Intent("WIDGET_PAGE_CREATED")
             broadcastIntent.putExtra("WIDGET_ID", widgetId)
