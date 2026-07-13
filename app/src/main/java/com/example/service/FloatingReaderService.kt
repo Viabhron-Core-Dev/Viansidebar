@@ -190,6 +190,7 @@ class FloatingReaderService : Service() {
     private var intentPickerOverlayView: IntentPickerOverlayView? = null
     private var addElementOverlayView: AddElementOverlayView? = null
     private var sidebarEditOverlayView: SidebarEditOverlayView? = null
+    private var pendingElementCallback: ((String) -> Unit)? = null
     
     private var netSpeedManager: NetSpeedManager? = null
     private var screenStateReceiver: android.content.BroadcastReceiver? = null
@@ -636,6 +637,7 @@ class FloatingReaderService : Service() {
     }
 
     fun showAddElementOverlayForSelection(onElementSelected: (String) -> Unit) {
+        pendingElementCallback = onElementSelected
         addElementOverlayView?.detach()
         addElementOverlayView = AddElementOverlayView(
             this, appsManager, windowManager, null,
@@ -646,6 +648,7 @@ class FloatingReaderService : Service() {
             },
             onElementSelected = { id ->
                 addElementOverlayView?.detach()
+                pendingElementCallback = null
                 onElementSelected(id)
             }
         )
@@ -757,7 +760,8 @@ class FloatingReaderService : Service() {
             val folderUuid = intent.getStringExtra("FOLDER_UUID")
             val isElementCallback = intent.getBooleanExtra("IS_ELEMENT_CALLBACK", false)
             if (isElementCallback) {
-                // Not supported yet directly returning to callback, we could broadcast
+                pendingElementCallback?.invoke(elementId)
+                pendingElementCallback = null
             } else if (folderUuid != null) {
                 appsManager.addItemToFolder(folderUuid, elementId)
             } else {

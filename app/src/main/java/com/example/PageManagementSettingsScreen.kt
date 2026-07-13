@@ -157,7 +157,8 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                             "calculator" to "Calculator",
                             "compass" to "Compass",
                             "notifications" to "Notifications",
-                            "reader" to "Reader"
+                            "reader" to "Reader",
+                            "widget" to "App Widget"
                         )
                         types.forEach { (type, title) ->
                             TextButton(onClick = {

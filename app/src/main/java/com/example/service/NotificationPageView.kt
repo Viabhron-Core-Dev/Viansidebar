@@ -9,6 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import android.app.ActivityOptions
+import android.os.Build
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -254,7 +256,13 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onCloseSideba
                     .combinedClickable(
                         onClick = {
                             try {
-                                notification.contentIntent?.send()
+                                if (android.os.Build.VERSION.SDK_INT >= 34) {
+                                    val options = android.app.ActivityOptions.makeBasic()
+                                    options.pendingIntentBackgroundActivityStartMode = android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                    notification.contentIntent?.send(context, 0, android.content.Intent(), null, null, null, options.toBundle())
+                                } else {
+                                    notification.contentIntent?.send()
+                                }
                                 AppNotificationListener.instance?.cancelNotification(sbn.key)
                                 onCloseSidebar()
                             } catch (e: Exception) {
@@ -353,7 +361,13 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onCloseSideba
                                                     bundle.putCharSequence(input.resultKey, replyText)
                                                 }
                                                 android.app.RemoteInput.addResultsToIntent(remoteInputs, intent, bundle)
-                                                replyAction.actionIntent.send(context, 0, intent)
+                                                if (android.os.Build.VERSION.SDK_INT >= 34) {
+                                                    val options = android.app.ActivityOptions.makeBasic()
+                                                    options.pendingIntentBackgroundActivityStartMode = android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                                    replyAction.actionIntent.send(context, 0, intent, null, null, null, options.toBundle())
+                                                } else {
+                                                    replyAction.actionIntent.send(context, 0, intent)
+                                                }
                                                 replyText = ""
                                             } catch (e: Exception) {
                                                 com.example.LogKeeper.writeLog("Notification", "Failed to send reply to ${sbn.packageName}: ${e.message}")
@@ -379,7 +393,13 @@ fun NotificationItem(context: Context, sbn: StatusBarNotification, onCloseSideba
                                         Button(
                                             onClick = {
                                                 try {
-                                                    action.actionIntent.send()
+                                                    if (android.os.Build.VERSION.SDK_INT >= 34) {
+                                                        val options = android.app.ActivityOptions.makeBasic()
+                                                        options.pendingIntentBackgroundActivityStartMode = android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                                        action.actionIntent.send(context, 0, android.content.Intent(), null, null, null, options.toBundle())
+                                                    } else {
+                                                        action.actionIntent.send()
+                                                    }
                                                     onCloseSidebar()
                                                 } catch (e: Exception) {
                                                     com.example.LogKeeper.writeLog("Notification", "Failed to execute action ${actionTitle} for ${sbn.packageName}: ${e.message}")
