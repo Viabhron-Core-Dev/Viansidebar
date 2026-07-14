@@ -104,10 +104,8 @@ class WidgetsGridPageView(
     private fun loadWidgets() {
         widgetsContainer.removeAllViews()
         val ids = getWidgetIds()
-        
         val appWidgetManager = AppWidgetManager.getInstance(context)
         val host = AppWidgetHelper.getHost(context)
-        
         for (widgetId in ids) {
             try {
                 val info = appWidgetManager.getAppWidgetInfo(widgetId)
@@ -117,26 +115,6 @@ class WidgetsGridPageView(
                         layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                             setMargins(0, 16, 0, 16)
                         }
-                        
-                        // Header with remove button
-                        val header = FrameLayout(context).apply {
-                            layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-                            
-                            val removeBtn = TextView(context).apply {
-                                text = "Remove"
-                                setTextColor(Color.RED)
-                                setPadding(16, 8, 16, 8)
-                                setOnClickListener {
-                                    removeWidgetIdFromPrefs(widgetId)
-                                    loadWidgets()
-                                }
-                            }
-                            addView(removeBtn, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT).apply {
-                                gravity = Gravity.END
-                            })
-                        }
-                        addView(header)
-                        
                         val hostView = host.createView(context, widgetId, info)
                         addView(hostView, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
                     }
@@ -146,24 +124,6 @@ class WidgetsGridPageView(
                 e.printStackTrace()
             }
         }
-        
-        // Add "Add Widget" button
-        val addBtn = Button(context).apply {
-            text = "Add Widget"
-            setOnClickListener {
-                val intent = Intent(context, com.example.WidgetPickerActivity::class.java).apply {
-                    putExtra("ACTION_TYPE", "ADD_TO_WIDGETS_GRID")
-                    putExtra("PAGE_ID", pageId)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-            }
-        }
-        val btnParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-            setMargins(32, 32, 32, 32)
-        }
-        widgetsContainer.addView(addBtn, btnParams)
-        
         post {
             onHeightChanged(getCurrentHeightPx())
         }

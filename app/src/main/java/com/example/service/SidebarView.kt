@@ -28,7 +28,7 @@ class SidebarView(
     private val pagesList: List<View>,
     private val pageConfigs: List<com.example.utils.SidebarPage>,
     private val defaultPageIndex: Int,
-    private val onAddClicked: (() -> Unit)? = null,
+    private val onEditPageClicked: ((View, com.example.utils.SidebarPage) -> Unit)? = null,
     private val onClose: () -> Unit
 ) : FrameLayout(context) {
 
@@ -153,7 +153,14 @@ class SidebarView(
                 layoutParams = LayoutParams(headerHeight, headerHeight).apply {
                     gravity = Gravity.START or Gravity.CENTER_VERTICAL
                 }
-                setOnClickListener { onAddClicked?.invoke() }
+                setOnClickListener {
+                    val currentActual = viewPager.currentItem % pages.size
+                    val page = pages.getOrNull(currentActual)
+                    val config = pageConfigs.getOrNull(currentActual)
+                    if (page != null && config != null) {
+                        onEditPageClicked?.invoke(page, config)
+                    }
+                }
             }
             addView(addIcon)
         }

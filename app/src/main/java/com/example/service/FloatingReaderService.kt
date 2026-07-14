@@ -583,7 +583,13 @@ class FloatingReaderService : Service() {
         if (sidebarView == null) {
             rebuildSidebarPages()
             sidebarView = SidebarView(this, prefs, windowManager, sidebarPagesList, PageManager.getPages(prefs), sidebarDefaultIndex,
-                onAddClicked = { showSidebarEditOverlay() },
+                onEditPageClicked = { page, config ->
+                    if (page is AppsPageView) {
+                        showSidebarEditOverlay()
+                    } else if (page is WidgetsGridPageView) {
+                        showWidgetsGridEditOverlay(config.id)
+                    }
+                },
                 onClose = { closeSidebar() }
             )
             serviceLifecycleOwner?.let {
@@ -614,6 +620,40 @@ class FloatingReaderService : Service() {
         if (index != -1) {
             sidebarView?.goToPage(index)
         }
+    }
+
+    private var widgetsGridEditOverlayView: WidgetsGridEditOverlayView? = null
+
+    fun showWidgetsGridEditOverlay(pageId: String) {
+
+        widgetsGridEditOverlayView?.detach()
+
+        widgetsGridEditOverlayView = WidgetsGridEditOverlayView(
+
+            this, pageId, windowManager,
+
+            onAddClicked = { 
+
+                val intent = android.content.Intent(this, com.example.WidgetPickerActivity::class.java).apply {
+
+                    putExtra("ACTION_TYPE", "ADD_TO_WIDGETS_GRID")
+
+                    putExtra("PAGE_ID", pageId)
+
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+
+                }
+
+                startActivity(intent)
+
+            },
+
+            onClose = { widgetsGridEditOverlayView?.detach() }
+
+        )
+
+        widgetsGridEditOverlayView?.attach()
+
     }
 
     fun showSidebarEditOverlay() {
