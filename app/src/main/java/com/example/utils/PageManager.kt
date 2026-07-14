@@ -37,8 +37,8 @@ data class SidebarPage(
 
     companion object {
         fun createDefault(id: String, type: String, title: String): SidebarPage {
-            val wrap = when(type) { "calculator", "compass", "notification", "scheduler", "widget" -> false else -> true }
-            val h = when(type) { "calculator" -> 450; "compass" -> 500; "notification", "scheduler", "widget" -> 500; else -> 450 }
+            val wrap = when(type) { "calculator", "compass", "notification", "scheduler", "widget", "widgets_grid" -> false else -> true }
+            val h = when(type) { "calculator" -> 450; "compass" -> 500; "notification", "scheduler", "widget", "widgets_grid" -> 500; else -> 450 }
             return SidebarPage(
                 id = id, type = type, title = title,
                 wrapContentHeight = wrap, height = h, width = 320

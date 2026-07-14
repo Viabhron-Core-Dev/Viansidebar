@@ -153,30 +153,19 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         val types = listOf(
                             "apps" to "Apps Grid",
-                            "system_actions" to "System Actions",
-                            "contacts" to "Contacts",
                             "scheduler" to "Scheduler",
                             "calculator" to "Calculator",
                             "compass" to "Compass",
                             "notifications" to "Notifications",
-                            "widget" to "App Widget"
+                            "widgets_grid" to "Widgets Grid"
                         )
                         types.forEach { (type, title) ->
                             TextButton(onClick = {
-                                if (type == "widget") {
-                                    val intent = android.content.Intent(context, WidgetPickerActivity::class.java).apply {
-                                        putExtra("ACTION_TYPE", "CREATE_PAGE")
-                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                    context.startActivity(intent)
-                                    showAddDialog = false
-                                } else {
-                                    val newPages = pages.toMutableList()
-                                    newPages.add(SidebarPage.createDefault(id = UUID.randomUUID().toString(), type = type, title = title))
-                                    pages = newPages
-                                    savePages()
-                                    showAddDialog = false
-                                }
+                                val newPages = pages.toMutableList()
+                                newPages.add(SidebarPage.createDefault(id = UUID.randomUUID().toString(), type = type, title = title))
+                                pages = newPages
+                                savePages()
+                                showAddDialog = false
                             }, modifier = Modifier.fillMaxWidth()) {
                                 Text(title, modifier = Modifier.fillMaxWidth())
                             }
