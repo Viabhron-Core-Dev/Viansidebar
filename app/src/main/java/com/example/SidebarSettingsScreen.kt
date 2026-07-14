@@ -1,5 +1,4 @@
 package com.example
-
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -20,28 +19,22 @@ import androidx.compose.ui.unit.dp
 import com.example.utils.PageManager
 import com.example.utils.SidebarPage
 import java.util.UUID
-
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SidebarSettingsScreen(onBack: () -> Unit) {
     val configuration = LocalConfiguration.current
     val maxScreenWidth = configuration.screenWidthDp.toFloat()
     val maxScreenHeight = configuration.screenHeightDp.toFloat()
-
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE) }
-    
     var customisingPage by remember { mutableStateOf<SidebarPage?>(null) }
     var selectedActionPage by remember { mutableStateOf<SidebarPage?>(null) }
     var pageActionIndex by remember { mutableStateOf(-1) }
-
     // Pages
     var pages by remember { mutableStateOf(PageManager.getPages(prefs)) }
     var defaultIndex by remember { mutableStateOf(PageManager.getDefaultPageIndex(prefs)) }
-    
     if (customisingPage != null) {
         PageCustomizeScreen(
             page = customisingPage!!,
@@ -60,7 +53,6 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
         )
         return
     }
-
     // Sidebar options
     var sidebarColumns by remember { mutableStateOf(prefs.getInt("sidebar_columns", 3)) }
     var sidebarWidth by remember { mutableStateOf(prefs.getInt("sidebar_width", 216)) }
@@ -69,15 +61,11 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
     var sidebarColorHex by remember { mutableStateOf(prefs.getString("sidebar_color", "#000000") ?: "#000000") }
     var sidebarTransparency by remember { mutableStateOf(prefs.getFloat("sidebar_transparency", 0.9f)) }
     var sidebarPositionLeft by remember { mutableStateOf(prefs.getBoolean("sidebar_position_left", false)) }
-
-    
     var showAddDialog by remember { mutableStateOf(false) }
-    
     fun savePages() {
         PageManager.savePages(prefs, pages)
         PageManager.saveDefaultPageIndex(prefs, defaultIndex)
     }
-    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -171,7 +159,6 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                                 val baseColorStr = if (colorString.length >= 7) colorString.substring(colorString.length - 6) else colorString
                                 val currentBaseStr = if (sidebarColorHex.length >= 7) sidebarColorHex.substring(sidebarColorHex.length - 6) else sidebarColorHex
                                 val isSelected = baseColorStr.equals(currentBaseStr, ignoreCase = true)
-                                
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
@@ -237,7 +224,6 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                     }
                 )
                 Divider()
-                
                 Text(
                     text = "Pages Management",
                     style = MaterialTheme.typography.titleMedium,
@@ -245,7 +231,6 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                     modifier = Modifier.padding(16.dp, 8.dp)
                 )
             }
-            
             itemsIndexed(pages) { index, page ->
                 Box {
                     ListItem(
@@ -293,7 +278,6 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                             }
                         }
                     )
-                    
                     DropdownMenu(
                         expanded = selectedActionPage == page && pageActionIndex == index,
                         onDismissRequest = {
@@ -318,7 +302,6 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                                 else if (defaultIndex > pageActionIndex) defaultIndex--
                                 pages = newPages
                                 savePages()
-                                
                                 selectedActionPage = null
                                 pageActionIndex = -1
                             }
@@ -327,12 +310,10 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                 }
                 Divider()
             }
-            
             item {
                 Spacer(modifier = Modifier.height(80.dp)) // padding for FAB
             }
         }
-        
         if (showAddDialog) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
@@ -341,35 +322,16 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                     Column {
                         val types = listOf(
                             "apps" to "Apps Grid",
-                            "system_actions" to "System Actions",
-                            "contacts" to "Contacts",
                             "scheduler" to "Scheduler",
                             "calculator" to "Calculator",
                             "compass" to "Compass",
                             "notifications" to "Notifications",
-                            "reader" to "Reader"
+                            "widgets_grid" to "Widgets Grid"
                         )
                         types.forEach { (type, title) ->
                             TextButton(onClick = {
                                 val newPages = pages.toMutableList()
-                                val newPage = SidebarPage(id = UUID.randomUUID().toString(), type = type, title = title)
-                                if (type == "calculator") {
-                                    newPage.useCustomSettings = true
-                                    newPage.width = 340
-                                    newPage.height = 480
-                                } else if (type == "scheduler") {
-                                    newPage.useCustomSettings = true
-                                    newPage.width = 360
-                                    newPage.height = 500
-                                } else if (type == "compass") {
-                                    newPage.useCustomSettings = true
-                                    newPage.width = 300
-                                    newPage.height = 350
-                                } else if (type == "reader") {
-                                    newPage.useCustomSettings = true
-                                    newPage.width = 380
-                                    newPage.height = 600
-                                }
+                                val newPage = com.example.utils.SidebarPage.createDefault(id = UUID.randomUUID().toString(), type = type, title = title)
                                 newPages.add(newPage)
                                 pages = newPages
                                 savePages()
@@ -387,7 +349,5 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
                 }
             )
         }
-
-        
     }
 }

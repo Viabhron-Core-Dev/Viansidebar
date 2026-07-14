@@ -1,0 +1,1 @@
+sed -i '/val newPage = SidebarPage/,/newPages.add(newPage)/c\                                val newPage = com.example.utils.SidebarPage.createDefault(id = UUID.randomUUID().toString(), type = type, title = title)\n                                newPages.add(newPage)' app/src/main/java/com/example/SidebarSettingsScreen.kt
