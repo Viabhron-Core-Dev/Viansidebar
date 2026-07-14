@@ -1,3 +1,4 @@
+cat << 'INNER_EOF' > script.awk
 /fun WidgetPickerScreen\(/ {
     print "@OptIn(ExperimentalMaterial3Api::class)"
     print "fun WidgetPickerScreen("
@@ -62,3 +63,6 @@ skip3 && /overflow = TextOverflow.Ellipsis/ {
 skip3 { next }
 
 { print }
+INNER_EOF
+awk -f script.awk app/src/main/java/com/example/WidgetPickerActivity.kt > tmp.kt
+mv tmp.kt app/src/main/java/com/example/WidgetPickerActivity.kt

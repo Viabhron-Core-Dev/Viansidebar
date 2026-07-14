@@ -116,7 +116,10 @@ class WidgetsGridPageView(
                             setMargins(0, 16, 0, 16)
                         }
                         val hostView = host.createView(context, widgetId, info)
-                        addView(hostView, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+                        val params = LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                            gravity = Gravity.CENTER_HORIZONTAL
+                        }
+                        addView(hostView, params)
                     }
                     widgetsContainer.addView(wrapper)
                 }

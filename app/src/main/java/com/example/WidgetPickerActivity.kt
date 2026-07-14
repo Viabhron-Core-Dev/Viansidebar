@@ -51,6 +51,15 @@ class WidgetPickerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         appWidgetManager = AppWidgetManager.getInstance(this)
+        val allProviders = mutableListOf<AppWidgetProviderInfo>()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val userManager = getSystemService(android.content.Context.USER_SERVICE) as android.os.UserManager
+            for (profile in userManager.userProfiles) {
+                allProviders.addAll(appWidgetManager.getInstalledProvidersForProfile(profile))
+            }
+        } else {
+            allProviders.addAll(appWidgetManager.installedProviders)
+        }
         
         val host = AppWidgetHelper.getHost(this)
         appWidgetId = host.allocateAppWidgetId()
@@ -58,7 +67,8 @@ class WidgetPickerActivity : ComponentActivity() {
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 WidgetPickerScreen(
-                    providers = appWidgetManager.installedProviders,
+                    providers = allProviders,
+                    actionType = intent.getStringExtra("ACTION_TYPE") ?: "",
                     onWidgetSelected = { provider ->
                         handleWidgetSelected(provider)
                     },
@@ -178,6 +188,7 @@ class WidgetPickerActivity : ComponentActivity() {
 @Composable
 fun WidgetPickerScreen(
     providers: List<AppWidgetProviderInfo>,
+    actionType: String,
     onWidgetSelected: (AppWidgetProviderInfo) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -220,13 +231,19 @@ fun WidgetPickerScreen(
                                 )
                             }
                             items(appProviders) { provider ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onWidgetSelected(provider) }
-                                        .padding(vertical = 12.dp, horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
+                                    val spanX = Math.ceil((provider.minWidth + 30) / 70.0).toInt()
+                                    val spanY = Math.ceil((provider.minHeight + 30) / 70.0).toInt()
+                                    val is1x1 = spanX <= 1 && spanY <= 1
+                                    val isSidebar = actionType == "ADD_ELEMENT"
+                                    val enabled = !isSidebar || is1x1
+                                    
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(enabled = enabled) { onWidgetSelected(provider) }
+                                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                     // Try to load icon
                                     val iconDrawable = provider.loadIcon(context, context.resources.displayMetrics.densityDpi)
                                     if (iconDrawable != null) {
@@ -234,7 +251,8 @@ fun WidgetPickerScreen(
                                         Image(
                                             bitmap = bitmap.asImageBitmap(),
                                             contentDescription = null,
-                                            modifier = Modifier.size(48.dp)
+                                            modifier = Modifier.size(48.dp),
+                                            alpha = if (enabled) 1f else 0.3f
                                         )
                                         Spacer(modifier = Modifier.width(16.dp))
                                     } else {
@@ -242,12 +260,18 @@ fun WidgetPickerScreen(
                                         Spacer(modifier = Modifier.width(16.dp))
                                     }
                                     
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = provider.loadLabel(pm),
                                             style = MaterialTheme.typography.bodyLarge,
+                                            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "${spanX}x${spanY}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                         )
                                     }
                                 }

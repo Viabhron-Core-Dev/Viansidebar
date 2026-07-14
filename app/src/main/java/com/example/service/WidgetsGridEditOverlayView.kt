@@ -18,6 +18,12 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
+
 import androidx.recyclerview.widget.RecyclerView
 import com.example.utils.AppWidgetHelper
 import org.json.JSONArray
@@ -91,7 +97,8 @@ class WidgetsGridEditOverlayView(
         adapter = WidgetEditAdapter()
         recyclerView = RecyclerView(context).apply {
             layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
-            layoutManager = LinearLayoutManager(context)
+            val columns = prefs.getInt("sidebar_columns", 3)
+            layoutManager = GridLayoutManager(context, columns)
             this.adapter = this@WidgetsGridEditOverlayView.adapter
         }
         mainLayout.addView(recyclerView)
@@ -164,7 +171,7 @@ class WidgetsGridEditOverlayView(
     }
 
     private fun setupItemTouchHelper() {
-        val callback = object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
+        val callback = object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT, 0) {
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
@@ -198,11 +205,10 @@ class WidgetsGridEditOverlayView(
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val layout = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 8) }
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(16, 24, 16, 24)
                 setBackgroundColor(Color.parseColor("#33FFFFFF"))
-                (layoutParams as ViewGroup.MarginLayoutParams).bottomMargin = 8
             }
 
             val dragHandle = ImageView(context).apply {
