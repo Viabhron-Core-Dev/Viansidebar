@@ -35,7 +35,7 @@ class WidgetsGridPageView(
                 if (targetPageId == pageId) {
                     val widgetId = intent.getIntExtra("WIDGET_ID", -1)
                     if (widgetId != -1) {
-                        addWidgetIdToPrefs(widgetId)
+                        
                         loadWidgets()
                     }
                 }

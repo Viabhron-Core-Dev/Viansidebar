@@ -36,6 +36,17 @@ class WidgetPickerActivity : ComponentActivity() {
     private lateinit var appWidgetManager: AppWidgetManager
     private var selectedProvider: AppWidgetProviderInfo? = null
 
+    override fun onDestroy() {
+        super.onDestroy()
+        val actionType = intent.getStringExtra("ACTION_TYPE") ?: ""
+        if (actionType == "ADD_TO_WIDGETS_GRID") {
+            val pageId = intent.getStringExtra("PAGE_ID") ?: ""
+            val broadcastIntent = Intent("WIDGET_PICKER_CLOSED")
+            broadcastIntent.putExtra("PAGE_ID", pageId)
+            sendBroadcast(broadcastIntent)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -142,9 +153,16 @@ class WidgetPickerActivity : ComponentActivity() {
             }
             startService(serviceIntent)
         } else if (actionType == "ADD_TO_WIDGETS_GRID") {
+            val pageId = intent.getStringExtra("PAGE_ID") ?: ""
+            val prefs = getSharedPreferences("FloatingReaderPrefs", android.content.Context.MODE_PRIVATE)
+            val currentStr = prefs.getString("widgets_grid_$pageId", "[]") ?: "[]"
+            val current = org.json.JSONArray(currentStr)
+            current.put(widgetId)
+            prefs.edit().putString("widgets_grid_$pageId", current.toString()).apply()
+            
             val broadcastIntent = Intent("WIDGET_ADDED_TO_GRID")
             broadcastIntent.putExtra("WIDGET_ID", widgetId)
-            broadcastIntent.putExtra("PAGE_ID", intent.getStringExtra("PAGE_ID"))
+            broadcastIntent.putExtra("PAGE_ID", pageId)
             sendBroadcast(broadcastIntent)
         } else if (actionType == "CREATE_PAGE") {
             val broadcastIntent = Intent("WIDGET_PAGE_CREATED")

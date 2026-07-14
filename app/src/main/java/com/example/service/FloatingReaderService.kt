@@ -193,6 +193,7 @@ class FloatingReaderService : Service() {
     private var pendingElementCallback: ((String) -> Unit)? = null
     
     private var netSpeedManager: NetSpeedManager? = null
+    private var widgetPickerReceiver: android.content.BroadcastReceiver? = null
     private var screenStateReceiver: android.content.BroadcastReceiver? = null
     private var netSpeedEnabled = false
     private var mobileMb: Long = 0
@@ -349,6 +350,20 @@ class FloatingReaderService : Service() {
             netSpeedManager?.start()
         }
         
+        widgetPickerReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == "WIDGET_PICKER_CLOSED") {
+                    val pageId = intent.getStringExtra("PAGE_ID")
+                    if (pageId != null) {
+                        showSidebar()
+                        showWidgetsGridEditOverlay(pageId)
+                    }
+                }
+            }
+        }
+        val widgetFilter = android.content.IntentFilter("WIDGET_PICKER_CLOSED")
+        registerReceiver(widgetPickerReceiver, widgetFilter, Context.RECEIVER_NOT_EXPORTED)
+
         screenStateReceiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
@@ -633,19 +648,14 @@ class FloatingReaderService : Service() {
             this, pageId, windowManager,
 
             onAddClicked = { 
-
                 val intent = android.content.Intent(this, com.example.WidgetPickerActivity::class.java).apply {
-
                     putExtra("ACTION_TYPE", "ADD_TO_WIDGETS_GRID")
-
                     putExtra("PAGE_ID", pageId)
-
                     addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-
                 }
-
                 startActivity(intent)
-
+                widgetsGridEditOverlayView?.detach()
+                closeSidebar()
             },
 
             onClose = { widgetsGridEditOverlayView?.detach() }
@@ -2640,6 +2650,7 @@ class FloatingReaderService : Service() {
         if (this::prefs.isInitialized) {
             prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         }
+        widgetPickerReceiver?.let { unregisterReceiver(it) }
         screenStateReceiver?.let { unregisterReceiver(it) }
         netSpeedManager?.stop()
         callRecorderManager?.stopListening()
