@@ -39,16 +39,16 @@ class WidgetPickerActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         val actionType = intent.getStringExtra("ACTION_TYPE") ?: ""
-        if (actionType == "ADD_TO_WIDGETS_GRID") {
-            val pageId = intent.getStringExtra("PAGE_ID") ?: ""
-            val broadcastIntent = Intent("WIDGET_PICKER_CLOSED")
-            broadcastIntent.putExtra("PAGE_ID", pageId)
-            sendBroadcast(broadcastIntent)
-        }
+        val pageId = intent.getStringExtra("PAGE_ID") ?: ""
+        val broadcastIntent = Intent("WIDGET_PICKER_CLOSED")
+        broadcastIntent.putExtra("ACTION_TYPE", actionType)
+        broadcastIntent.putExtra("PAGE_ID", pageId)
+        sendBroadcast(broadcastIntent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        sendBroadcast(Intent("WIDGET_PICKER_OPENED"))
         
         appWidgetManager = AppWidgetManager.getInstance(this)
         val allProviders = mutableListOf<AppWidgetProviderInfo>()
@@ -231,8 +231,8 @@ fun WidgetPickerScreen(
                                 )
                             }
                             items(appProviders) { provider ->
-                                    val spanX = Math.ceil((provider.minWidth + 30) / 70.0).toInt()
-                                    val spanY = Math.ceil((provider.minHeight + 30) / 70.0).toInt()
+                                    val spanX = if (android.os.Build.VERSION.SDK_INT >= 31) provider.targetCellWidth else Math.max(1, Math.round(provider.minWidth / 70.0).toInt())
+                                    val spanY = if (android.os.Build.VERSION.SDK_INT >= 31) provider.targetCellHeight else Math.max(1, Math.round(provider.minHeight / 70.0).toInt())
                                     val is1x1 = spanX <= 1 && spanY <= 1
                                     val isSidebar = actionType == "ADD_ELEMENT"
                                     val enabled = !isSidebar || is1x1

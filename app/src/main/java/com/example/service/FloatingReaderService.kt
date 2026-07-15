@@ -123,7 +123,6 @@ class FloatingReaderService : Service() {
             "sidebar_columns", "sidebar_width", "sidebar_height", 
             "sidebar_wrap_content", "sidebar_transparency", "sidebar_position_left" -> {
                 val wasAttached = sidebarView?.windowToken != null
-                closeSidebar()
                 if (wasAttached) {
                     showSidebar()
                 }
@@ -194,6 +193,9 @@ class FloatingReaderService : Service() {
     
     private var netSpeedManager: NetSpeedManager? = null
     private var widgetPickerReceiver: android.content.BroadcastReceiver? = null
+    private var wasSidebarEditOpen = false
+    private var wasWidgetsGridEditOpen = false
+    private var lastWidgetsGridPageId = "" 
     private var screenStateReceiver: android.content.BroadcastReceiver? = null
     private var netSpeedEnabled = false
     private var mobileMb: Long = 0
@@ -352,16 +354,37 @@ class FloatingReaderService : Service() {
         
         widgetPickerReceiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                if (intent.action == "WIDGET_PICKER_CLOSED") {
-                    val pageId = intent.getStringExtra("PAGE_ID")
-                    if (pageId != null) {
-                        showSidebar()
-                        showWidgetsGridEditOverlay(pageId)
+                if (intent.action == "WIDGET_PICKER_OPENED") {
+                    if (sidebarEditOverlayView?.parent != null) {
+                        wasSidebarEditOpen = true
+                        sidebarEditOverlayView?.detach()
                     }
+                    if (widgetsGridEditOverlayView?.parent != null) {
+                        wasWidgetsGridEditOpen = true
+                        widgetsGridEditOverlayView?.detach()
+                    }
+                    closeSidebar()
+                } else if (intent.action == "WIDGET_PICKER_CLOSED") {
+                    val actionType = intent.getStringExtra("ACTION_TYPE")
+                    if (actionType == "ADD_TO_WIDGETS_GRID" || wasWidgetsGridEditOpen) {
+                        val pageId = intent.getStringExtra("PAGE_ID") ?: lastWidgetsGridPageId
+                        if (pageId.isNotEmpty()) {
+                            showSidebar()
+                            showWidgetsGridEditOverlay(pageId)
+                        }
+                    } else if (actionType == "ADD_ELEMENT" || wasSidebarEditOpen) {
+                        showSidebar()
+                        sidebarEditOverlayView?.attach()
+                    }
+                    wasSidebarEditOpen = false
+                    wasWidgetsGridEditOpen = false
                 }
             }
         }
-        val widgetFilter = android.content.IntentFilter("WIDGET_PICKER_CLOSED")
+        val widgetFilter = android.content.IntentFilter().apply {
+            addAction("WIDGET_PICKER_OPENED")
+            addAction("WIDGET_PICKER_CLOSED")
+        }
         registerReceiver(widgetPickerReceiver, widgetFilter, Context.RECEIVER_NOT_EXPORTED)
 
         screenStateReceiver = object : android.content.BroadcastReceiver() {
@@ -545,7 +568,7 @@ class FloatingReaderService : Service() {
                 "compass" -> CompassPageView(this)
                 "notifications" -> {
                     var p: NotificationPageView? = null
-                    p = NotificationPageView(this, onCloseSidebar = { closeSidebar() }) { newHeight ->
+                    p = NotificationPageView(this, { closeSidebar() }) { newHeight ->
                         if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
                             sidebarView?.updatePageStyles(config, newHeight)
                         }
@@ -589,7 +612,7 @@ class FloatingReaderService : Service() {
     }
     
 
-    private fun closeSidebar() {
+    fun closeSidebar() {
         sidebarView?.detach()
         sidebarView = null
     }
@@ -597,7 +620,7 @@ class FloatingReaderService : Service() {
     private fun showSidebar() {
         if (sidebarView == null) {
             rebuildSidebarPages()
-            sidebarView = SidebarView(this, prefs, windowManager, sidebarPagesList, PageManager.getPages(prefs), sidebarDefaultIndex,
+            sidebarView = SidebarView(this, prefs, windowManager, sidebarPagesList, PageManager.getPages(prefs), sidebarDefaultIndex, onClose = { closeSidebar() },
                 onEditPageClicked = { page, config ->
                     if (page is AppsPageView) {
                         showSidebarEditOverlay()
@@ -605,7 +628,6 @@ class FloatingReaderService : Service() {
                         showWidgetsGridEditOverlay(config.id)
                     }
                 },
-                onClose = { closeSidebar() }
             )
             serviceLifecycleOwner?.let {
                 sidebarView?.setViewTreeLifecycleOwner(it)
@@ -640,9 +662,8 @@ class FloatingReaderService : Service() {
     private var widgetsGridEditOverlayView: WidgetsGridEditOverlayView? = null
 
     fun showWidgetsGridEditOverlay(pageId: String) {
-
+        lastWidgetsGridPageId = pageId
         widgetsGridEditOverlayView?.detach()
-
         widgetsGridEditOverlayView = WidgetsGridEditOverlayView(
 
             this, pageId, windowManager,
@@ -654,12 +675,9 @@ class FloatingReaderService : Service() {
                     addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 startActivity(intent)
-                widgetsGridEditOverlayView?.detach()
-                closeSidebar()
             },
 
             onClose = { widgetsGridEditOverlayView?.detach() }
-
         )
 
         widgetsGridEditOverlayView?.attach()
