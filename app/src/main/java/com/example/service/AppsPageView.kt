@@ -308,6 +308,16 @@ class AppsPageView(
                     QuickTileHandler.handleQuickTileAction(context, item.action)
                     currentFolderPopup?.dismiss()
                     onCloseSidebar()
+                } else if (item is SidebarItem.IntentAction) {
+                    try {
+                        val intent = android.content.Intent.parseUri(item.uri, android.content.Intent.URI_INTENT_SCHEME)
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                    currentFolderPopup?.dismiss()
+                    onCloseSidebar()
                 } else if (item is SidebarItem.SystemAction) {
                     if (item.action == "log_keeper") {
                         val intent = android.content.Intent(context, com.example.LogKeeperActivity::class.java)
@@ -529,7 +539,9 @@ class AppsPageView(
                     }
                 }
             } else if (item is SidebarItem.IntentAction) {
-                val pkg = item.componentStr.split("/").getOrNull(0) ?: ""
+                val pkg = try {
+                    android.content.Intent.parseUri(item.uri, android.content.Intent.URI_INTENT_SCHEME).`package` ?: android.content.Intent.parseUri(item.uri, android.content.Intent.URI_INTENT_SCHEME).component?.packageName ?: ""
+                } catch (e: Exception) { "" }
                 val cached = manager.getIconBitmap(item.id)
                 if (cached != null) {
                     icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)

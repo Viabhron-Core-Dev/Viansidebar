@@ -114,11 +114,12 @@ sealed class SidebarItem {
     }
 
     data class IntentAction(
-        val componentStr: String,
+        val uri: String,
         override val label: String
     ) : SidebarItem() {
-        override var id = "intent:$componentStr"
+        override var id = "intent:${java.net.URLEncoder.encode(label, "UTF-8")}:${java.net.URLEncoder.encode(uri, "UTF-8")}"
     }
+
 }
 
 val ALL_QUICK_TILES = listOf(
@@ -341,12 +342,17 @@ class SidebarAppsManager(
                 return SidebarItem.App(appInfo.packageName, appInfo.label)
             }
         } else if (id.startsWith("intent:")) {
-            val componentStr = id.substringAfter("intent:")
-            val pkg = componentStr.split("/").getOrNull(0) ?: ""
-            val cls = componentStr.split("/").getOrNull(1) ?: ""
-            val appInfo = allInstalledApps.find { it.packageName == pkg }
-            val label = if (appInfo != null) "${appInfo.label} - ${cls.substringAfterLast(".")}" else cls
-            return SidebarItem.IntentAction(componentStr, label)
+            val parts = id.split(":")
+            if (parts.size >= 3) {
+                val encodedLabel = parts[1]
+                val encodedUri = id.substringAfter("intent:$encodedLabel:")
+                val label = java.net.URLDecoder.decode(encodedLabel, "UTF-8")
+                val uri = java.net.URLDecoder.decode(encodedUri, "UTF-8")
+                return SidebarItem.IntentAction(uri, label)
+            } else {
+                val componentStr = id.substringAfter("intent:")
+                return SidebarItem.IntentAction(componentStr, componentStr)
+            }
         } else if (id.startsWith("quicktile:")) {
             val action = id.substringAfter("quicktile:")
             val qTile = ALL_QUICK_TILES.find { it.action == action }
@@ -485,12 +491,17 @@ class SidebarAppsManager(
                     result.add(SidebarItem.App(appInfo.packageName, appInfo.label))
                 }
             } else if (id.startsWith("intent:")) {
-                val componentStr = id.substringAfter("intent:")
-                val pkg = componentStr.split("/").getOrNull(0) ?: ""
-                val cls = componentStr.split("/").getOrNull(1) ?: ""
-                val appInfo = allInstalledApps.find { it.packageName == pkg }
-                val label = if (appInfo != null) "${appInfo.label} - ${cls.substringAfterLast(".")}" else cls
-                result.add(SidebarItem.IntentAction(componentStr, label))
+                val parts = id.split(":")
+                if (parts.size >= 3) {
+                    val encodedLabel = parts[1]
+                    val encodedUri = id.substringAfter("intent:$encodedLabel:")
+                    val label = java.net.URLDecoder.decode(encodedLabel, "UTF-8")
+                    val uri = java.net.URLDecoder.decode(encodedUri, "UTF-8")
+                    result.add(SidebarItem.IntentAction(uri, label))
+                } else {
+                    val componentStr = id.substringAfter("intent:")
+                    result.add(SidebarItem.IntentAction(componentStr, componentStr))
+                }
             } else if (id.startsWith("quicktile:")) {
                 val action = id.substringAfter("quicktile:")
                 val qTile = ALL_QUICK_TILES.find { it.action == action }

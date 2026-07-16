@@ -730,6 +730,10 @@ class FloatingReaderService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "UPDATE_CONFIG") {
+            appsManager.reloadActiveApps()
+            return START_NOT_STICKY
+        }
         if (intent?.action == "ADD_ELEMENT") {
             val elementId = intent.getStringExtra("element_id") ?: return START_NOT_STICKY
             val folderUuid = intent.getStringExtra("FOLDER_UUID")
