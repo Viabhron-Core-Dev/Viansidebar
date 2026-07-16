@@ -598,7 +598,7 @@ class FloatingReaderService : Service() {
             sidebarView = SidebarView(this, prefs, windowManager, sidebarPagesList, PageManager.getPages(prefs), sidebarDefaultIndex, onClose = { closeSidebar() },
                 onEditPageClicked = { page, config ->
                     if (page is AppsPageView) {
-                        showSidebarEditOverlay()
+                        showSidebarEditOverlay(config.id)
                     } else if (page is WidgetsGridPageView) {
                         showWidgetsGridEditOverlay(config.id)
                     }
@@ -644,8 +644,9 @@ class FloatingReaderService : Service() {
         startActivity(intent)
     }
 
-    fun showSidebarEditOverlay() {
+    fun showSidebarEditOverlay(pageId: String = "default_apps") {
         val intent = android.content.Intent(this, com.example.SidebarEditActivity::class.java).apply {
+            putExtra("PAGE_ID", pageId)
             addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)

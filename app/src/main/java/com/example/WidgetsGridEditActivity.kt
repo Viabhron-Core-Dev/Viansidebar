@@ -89,48 +89,6 @@ class WidgetsGridEditActivity : ComponentActivity() {
         headerLayout.addView(btnClose)
         mainLayout.addView(headerLayout)
         
-        // Grid Total Size Editor
-        val gridTotalLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 16)
-        }
-        
-        tvTotalCols = TextView(this).apply {
-            text = "Grid Columns: $totalCols"
-            setTextColor(Color.WHITE)
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        
-        val btnMinusCol = Button(this).apply {
-            text = "-"
-            setOnClickListener {
-                if (totalCols > 1) {
-                    totalCols--
-                    prefs.edit().putInt("widgets_grid_cols_$pageId", totalCols).apply()
-                    tvTotalCols.text = "Grid Columns: $totalCols"
-                    updatePreview()
-                }
-            }
-        }
-        
-        val btnPlusCol = Button(this).apply {
-            text = "+"
-            setOnClickListener {
-                if (totalCols < 10) {
-                    totalCols++
-                    prefs.edit().putInt("widgets_grid_cols_$pageId", totalCols).apply()
-                    tvTotalCols.text = "Grid Columns: $totalCols"
-                    updatePreview()
-                }
-            }
-        }
-        
-        gridTotalLayout.addView(tvTotalCols)
-        gridTotalLayout.addView(btnMinusCol)
-        gridTotalLayout.addView(btnPlusCol)
-        mainLayout.addView(gridTotalLayout)
         
         // Preview Box
         previewContainer = FrameLayout(this).apply {
@@ -174,6 +132,13 @@ class WidgetsGridEditActivity : ComponentActivity() {
         registerReceiver(receiver, android.content.IntentFilter("WIDGET_ADDED_TO_GRID"), Context.RECEIVER_NOT_EXPORTED)
     }
     
+    override fun onResume() {
+        super.onResume()
+        loadLocalItems()
+        adapter.notifyDataSetChanged()
+        updatePreview()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         try { unregisterReceiver(receiver) } catch (e: Exception) {}

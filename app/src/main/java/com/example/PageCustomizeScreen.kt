@@ -17,6 +17,7 @@ fun PageCustomizeScreen(
     onSave: (SidebarPage) -> Unit,
     onBack: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val maxScreenWidth = configuration.screenWidthDp.toFloat()
     val maxScreenHeight = configuration.screenHeightDp.toFloat()
@@ -27,7 +28,7 @@ fun PageCustomizeScreen(
     var wrapContentHeight by remember { mutableStateOf(page.wrapContentHeight) }
     var transparency by remember { mutableStateOf(page.transparency) }
     var title by remember { mutableStateOf(page.title) }
-    var gridColumns by remember { mutableStateOf(page.gridColumns) }
+    var gridColumns by remember { mutableStateOf(if (page.type == "widgets_grid") context.getSharedPreferences("FloatingReaderPrefs", android.content.Context.MODE_PRIVATE).getInt("widgets_grid_cols_${page.id}", 4) else page.gridColumns) }
 
     Scaffold(
         topBar = {
@@ -51,6 +52,10 @@ fun PageCustomizeScreen(
                     transparency = transparency,
                     gridColumns = gridColumns
                 )
+                if (page.type == "widgets_grid") {
+                    val p = context.getSharedPreferences("FloatingReaderPrefs", android.content.Context.MODE_PRIVATE)
+                    p.edit().putInt("widgets_grid_cols_${page.id}", gridColumns).apply()
+                }
                 onSave(updatedPage)
                 onBack()
             }) {
@@ -85,7 +90,7 @@ fun PageCustomizeScreen(
                 Divider()
 
                 if (useCustomSettings) {
-                    if (page.type == "apps") {
+                    if (page.type == "apps" || page.type == "widgets_grid") {
                         ListItem(
                             headlineContent = { Text("App Grid Columns") },
                             supportingContent = {

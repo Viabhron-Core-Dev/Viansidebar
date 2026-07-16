@@ -43,7 +43,7 @@ class WidgetPickerActivity : ComponentActivity() {
         val broadcastIntent = Intent("WIDGET_PICKER_CLOSED")
         broadcastIntent.putExtra("ACTION_TYPE", actionType)
         broadcastIntent.putExtra("PAGE_ID", pageId)
-        sendBroadcast(broadcastIntent)
+        broadcastIntent.setPackage(packageName); sendBroadcast(broadcastIntent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -173,11 +173,11 @@ class WidgetPickerActivity : ComponentActivity() {
             val broadcastIntent = Intent("WIDGET_ADDED_TO_GRID")
             broadcastIntent.putExtra("WIDGET_ID", widgetId)
             broadcastIntent.putExtra("PAGE_ID", pageId)
-            sendBroadcast(broadcastIntent)
+            broadcastIntent.setPackage(packageName); sendBroadcast(broadcastIntent)
         } else if (actionType == "CREATE_PAGE") {
             val broadcastIntent = Intent("WIDGET_PAGE_CREATED")
             broadcastIntent.putExtra("WIDGET_ID", widgetId)
-            sendBroadcast(broadcastIntent)
+            broadcastIntent.setPackage(packageName); sendBroadcast(broadcastIntent)
         } else if (actionType == "RETURN_ID") {
             val info = appWidgetManager.getAppWidgetInfo(widgetId)
             val label = info?.loadLabel(packageManager) ?: "Widget"

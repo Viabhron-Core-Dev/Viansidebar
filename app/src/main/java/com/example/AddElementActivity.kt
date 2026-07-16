@@ -124,7 +124,10 @@ class AddElementActivity : ComponentActivity() {
             startActivityForResult(Intent(this, AppPickerActivity::class.java), 200)
         }
         addItem(android.R.drawable.ic_menu_share, "Shortcut") {
-            startActivityForResult(Intent(this, IntentPickerActivity::class.java), 300)
+            startActivityForResult(Intent(this, ShortcutPickerActivity::class.java), 300)
+        }
+        addItem(android.R.drawable.ic_menu_manage, "Intent") {
+            startActivityForResult(Intent(this, IntentPickerActivity::class.java), 301)
         }
         addItem(android.R.drawable.ic_menu_gallery, "Widget") {
             val intent = Intent(this, WidgetPickerActivity::class.java).apply {
@@ -186,10 +189,6 @@ class AddElementActivity : ComponentActivity() {
         addHeader("App Custom")
         addItem(com.example.R.drawable.ic_library_books, "eBook Reader") { finishWithId("system:ebook_reader") }
         addItem(android.R.drawable.ic_menu_agenda, "Log Keeper") { finishWithId("system:log_keeper") }
-        addItem(android.R.drawable.ic_menu_sort_by_size, "Floating Calculator") { finishWithId("action:calculator") }
-        addItem(android.R.drawable.ic_menu_compass, "Compass") { finishWithId("action:compass") }
-        addItem(android.R.drawable.ic_menu_today, "Scheduler") { finishWithId("action:scheduler") }
-        addItem(android.R.drawable.ic_menu_delete, "BlockAds") { finishWithId("action:blockads") }
         
         scrollView.addView(contentLayout)
         mainLayout.addView(scrollView)

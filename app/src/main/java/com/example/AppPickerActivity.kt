@@ -21,14 +21,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class AppPickerActivity : ComponentActivity() {
-
     private lateinit var manager: SidebarAppsManager
     private val scope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        manager = SidebarAppsManager(this, getSharedPreferences("prefs", Context.MODE_PRIVATE), CoroutineScope(Dispatchers.IO)) {}
         
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -52,42 +49,44 @@ class AppPickerActivity : ComponentActivity() {
         layout.addView(list)
         setContentView(layout)
         
-        scope.launch {
-            val apps = withContext(Dispatchers.IO) { manager.allInstalledApps }
-            list.adapter = object : ArrayAdapter<com.example.service.AppInfo>(this@AppPickerActivity, android.R.layout.simple_list_item_1, apps) {
-                override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                    val view = (convertView as? LinearLayout) ?: LinearLayout(this@AppPickerActivity).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        setPadding(16, 16, 16, 16)
-                        gravity = Gravity.CENTER_VERTICAL
-                        
-                        addView(ImageView(this@AppPickerActivity).apply {
-                            id = 1
-                            layoutParams = LinearLayout.LayoutParams(96, 96)
-                        })
-                        addView(TextView(this@AppPickerActivity).apply {
-                            id = 2
-                            setTextColor(Color.WHITE)
-                            textSize = 16f
-                            setPadding(16, 0, 0, 0)
-                        })
+        manager = SidebarAppsManager(this, getSharedPreferences("prefs", Context.MODE_PRIVATE), CoroutineScope(Dispatchers.IO)) {
+            scope.launch {
+                val apps = manager.allInstalledApps
+                list.adapter = object : ArrayAdapter<com.example.service.AppInfo>(this@AppPickerActivity, android.R.layout.simple_list_item_1, apps) {
+                    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                        val view = (convertView as? LinearLayout) ?: LinearLayout(this@AppPickerActivity).apply {
+                            orientation = LinearLayout.HORIZONTAL
+                            setPadding(16, 16, 16, 16)
+                            gravity = Gravity.CENTER_VERTICAL
+                            
+                            addView(ImageView(this@AppPickerActivity).apply {
+                                id = 1
+                                layoutParams = LinearLayout.LayoutParams(96, 96)
+                            })
+                            addView(TextView(this@AppPickerActivity).apply {
+                                id = 2
+                                setTextColor(Color.WHITE)
+                                textSize = 16f
+                                setPadding(16, 0, 0, 0)
+                            })
+                        }
+                        val appInfo = getItem(position)!!
+                        val bmp = manager.getIconBitmap("app:${appInfo.packageName}")
+                        if (bmp != null) {
+                            view.findViewById<ImageView>(1).setImageBitmap(bmp)
+                        } else {
+                            view.findViewById<ImageView>(1).setImageResource(android.R.drawable.sym_def_app_icon)
+                        }
+                        view.findViewById<TextView>(2).text = appInfo.label
+                        return view
                     }
-                    val appInfo = getItem(position)!!
-                    val bmp = manager.getIconBitmap("app:${appInfo.packageName}")
-                    if (bmp != null) {
-                        view.findViewById<ImageView>(1).setImageBitmap(bmp)
-                    } else {
-                        view.findViewById<ImageView>(1).setImageResource(android.R.drawable.sym_def_app_icon)
-                    }
-                    view.findViewById<TextView>(2).text = appInfo.label
-                    return view
                 }
-            }
-            list.setOnItemClickListener { _, _, position, _ ->
-                val app = apps[position]
-                val resultIntent = Intent().apply { putExtra("ELEMENT_ID", "app:${app.packageName}") }
-                setResult(Activity.RESULT_OK, resultIntent)
-                finish()
+                list.setOnItemClickListener { _, _, position, _ ->
+                    val app = apps[position]
+                    val resultIntent = Intent().apply { putExtra("ELEMENT_ID", "app:${app.packageName}") }
+                    setResult(Activity.RESULT_OK, resultIntent)
+                    finish()
+                }
             }
         }
     }

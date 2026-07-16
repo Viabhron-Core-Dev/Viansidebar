@@ -98,48 +98,6 @@ class SidebarEditActivity : ComponentActivity() {
         headerLayout.addView(btnCancel)
         mainLayout.addView(headerLayout)
 
-        // Grid Total Size Editor
-        val gridTotalLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 16)
-        }
-        
-        val tvTotalCols = TextView(this).apply {
-            text = "Grid Columns: $totalCols"
-            setTextColor(Color.WHITE)
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        
-        val btnMinusCol = Button(this).apply {
-            text = "-"
-            setOnClickListener {
-                if (totalCols > 1) {
-                    totalCols--
-                    prefs.edit().putInt("sidebar_columns", totalCols).apply()
-                    tvTotalCols.text = "Grid Columns: $totalCols"
-                    (recyclerView.layoutManager as GridLayoutManager).spanCount = totalCols
-                }
-            }
-        }
-        
-        val btnPlusCol = Button(this).apply {
-            text = "+"
-            setOnClickListener {
-                if (totalCols < 10) {
-                    totalCols++
-                    prefs.edit().putInt("sidebar_columns", totalCols).apply()
-                    tvTotalCols.text = "Grid Columns: $totalCols"
-                    (recyclerView.layoutManager as GridLayoutManager).spanCount = totalCols
-                }
-            }
-        }
-        
-        gridTotalLayout.addView(tvTotalCols)
-        gridTotalLayout.addView(btnMinusCol)
-        gridTotalLayout.addView(btnPlusCol)
-        mainLayout.addView(gridTotalLayout)
 
         adapter = EditAdapter()
         recyclerView = RecyclerView(this).apply {
