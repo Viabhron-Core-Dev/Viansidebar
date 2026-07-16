@@ -1,4 +1,6 @@
-package com.example.service
+import sys
+
+new_content = """package com.example.service
 
 import android.annotation.SuppressLint
 import android.appwidget.AppWidgetManager
@@ -428,3 +430,8 @@ class WidgetsGridEditOverlayView(
         override fun getItemCount(): Int = localItems.size
     }
 }
+"""
+
+with open('app/src/main/java/com/example/service/WidgetsGridEditOverlayView.kt', 'w') as f:
+    f.write(new_content)
+

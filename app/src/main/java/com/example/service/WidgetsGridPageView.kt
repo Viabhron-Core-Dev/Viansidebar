@@ -8,13 +8,18 @@ import android.content.IntentFilter
 import android.graphics.Color
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.FrameLayout
-import android.widget.LinearLayout
+import android.widget.GridLayout
 import android.widget.ScrollView
-import android.widget.TextView
 import com.example.utils.AppWidgetHelper
 import org.json.JSONArray
+import org.json.JSONObject
+
+data class GridWidgetItem(
+    val id: Int,
+    var cols: Int = 2,
+    var rows: Int = 2
+)
 
 class WidgetsGridPageView(
     context: Context,
@@ -23,11 +28,11 @@ class WidgetsGridPageView(
 ) : FrameLayout(context) {
 
     private val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-    private val widgetsContainer = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
+    
+    private val gridLayout = GridLayout(context).apply {
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
     }
-    
+
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == "WIDGET_ADDED_TO_GRID") {
@@ -35,9 +40,9 @@ class WidgetsGridPageView(
                 if (targetPageId == pageId) {
                     val widgetId = intent.getIntExtra("WIDGET_ID", -1)
                     if (widgetId != -1) {
-                        
-                        loadWidgets()
+                        addWidgetIdToPrefs(widgetId)
                     }
+                    loadWidgets()
                 }
             }
         }
@@ -46,10 +51,9 @@ class WidgetsGridPageView(
     init {
         val scrollView = ScrollView(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-            addView(widgetsContainer)
+            addView(gridLayout)
         }
         addView(scrollView)
-        
         loadWidgets()
     }
 
@@ -65,35 +69,45 @@ class WidgetsGridPageView(
         } catch (e: Exception) {}
     }
 
-    private fun getWidgetIds(): List<Int> {
+    private fun getWidgetItems(): List<GridWidgetItem> {
         val jsonStr = prefs.getString("widgets_grid_$pageId", "[]") ?: "[]"
         val arr = JSONArray(jsonStr)
-        val list = mutableListOf<Int>()
+        val list = mutableListOf<GridWidgetItem>()
         for (i in 0 until arr.length()) {
-            list.add(arr.getInt(i))
+            val obj = arr.optJSONObject(i)
+            if (obj != null) {
+                list.add(GridWidgetItem(
+                    obj.getInt("id"),
+                    obj.optInt("cols", 2),
+                    obj.optInt("rows", 2)
+                ))
+            } else {
+                val id = arr.optInt(i, -1)
+                if (id != -1) {
+                    list.add(GridWidgetItem(id, 2, 2))
+                }
+            }
         }
         return list
     }
 
-    private fun addWidgetIdToPrefs(widgetId: Int) {
-        val ids = getWidgetIds().toMutableList()
-        ids.add(widgetId)
+    private fun saveWidgetItems(items: List<GridWidgetItem>) {
         val arr = JSONArray()
-        ids.forEach { arr.put(it) }
+        items.forEach { 
+            val obj = JSONObject()
+            obj.put("id", it.id)
+            obj.put("cols", it.cols)
+            obj.put("rows", it.rows)
+            arr.put(obj)
+        }
         prefs.edit().putString("widgets_grid_$pageId", arr.toString()).apply()
     }
 
-    private fun removeWidgetIdFromPrefs(widgetId: Int) {
-        val ids = getWidgetIds().toMutableList()
-        ids.remove(widgetId)
-        val arr = JSONArray()
-        ids.forEach { arr.put(it) }
-        prefs.edit().putString("widgets_grid_$pageId", arr.toString()).apply()
-        
-        // Also delete the widget
-        try {
-            AppWidgetHelper.getHost(context).deleteAppWidgetId(widgetId)
-        } catch (e: Exception) {}
+    private fun addWidgetIdToPrefs(widgetId: Int) {
+        val items = getWidgetItems().toMutableList()
+        // Default size 2x2
+        items.add(GridWidgetItem(widgetId, 2, 2))
+        saveWidgetItems(items)
     }
 
     fun getCurrentHeightPx(): Int {
@@ -102,32 +116,48 @@ class WidgetsGridPageView(
     }
 
     private fun loadWidgets() {
-        widgetsContainer.removeAllViews()
-        val ids = getWidgetIds()
-        val appWidgetManager = AppWidgetManager.getInstance(context)
-        val host = AppWidgetHelper.getHost(context)
-        for (widgetId in ids) {
-            try {
-                val info = appWidgetManager.getAppWidgetInfo(widgetId)
-                if (info != null) {
-                    val wrapper = LinearLayout(context).apply {
-                        orientation = LinearLayout.VERTICAL
-                        layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-                            setMargins(0, 16, 0, 16)
-                        }
-                        val hostView = host.createView(context, widgetId, info)
-                        val params = LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
-                            gravity = Gravity.CENTER_HORIZONTAL
-                        }
-                        addView(hostView, params)
-                    }
-                    widgetsContainer.addView(wrapper)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        gridLayout.removeAllViews()
+        val totalCols = prefs.getInt("widgets_grid_cols_$pageId", 4)
+        gridLayout.columnCount = totalCols
+        
+        // Wait until grid layout has a width to calculate cell sizes
         post {
+            val gridWidth = width
+            if (gridWidth == 0) {
+                // Try again if width is 0
+                loadWidgets()
+                return@post
+            }
+            
+            val cellWidth = gridWidth / totalCols
+            // Make cells square for simplicity, or use a fixed aspect ratio
+            val cellHeight = cellWidth 
+            
+            val items = getWidgetItems()
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val host = AppWidgetHelper.getHost(context)
+            
+            for (item in items) {
+                try {
+                    val info = appWidgetManager.getAppWidgetInfo(item.id)
+                    if (info != null) {
+                        val hostView = host.createView(context, item.id, info)
+                        
+                        val wCols = minOf(item.cols, totalCols)
+                        val wRows = item.rows
+                        
+                        val params = GridLayout.LayoutParams().apply {
+                            width = cellWidth * wCols
+                            height = cellHeight * wRows
+                            columnSpec = GridLayout.spec(GridLayout.UNDEFINED, wCols)
+                            rowSpec = GridLayout.spec(GridLayout.UNDEFINED, wRows)
+                        }
+                        gridLayout.addView(hostView, params)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
             onHeightChanged(getCurrentHeightPx())
         }
     }

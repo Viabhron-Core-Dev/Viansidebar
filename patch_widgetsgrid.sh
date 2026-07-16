@@ -1,1 +1,2 @@
-sed -i 's/    private fun loadWidgets() {/    fun getCurrentHeightPx(): Int {\n        val density = context.resources.displayMetrics.density\n        return (500 * density).toInt()\n    }\n\n    private fun loadWidgets() {/g' app/src/main/java/com/example/service/WidgetsGridPageView.kt
+#!/bin/bash
+cat app/src/main/java/com/example/service/WidgetsGridPageView.kt | grep -A 20 "private fun getWidgetIds"
