@@ -43,6 +43,8 @@ class SidebarEditActivity : ComponentActivity() {
         
         loadLocalIds()
 
+        var totalCols = prefs.getInt("sidebar_columns", 3)
+
         val mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -70,7 +72,7 @@ class SidebarEditActivity : ComponentActivity() {
         val btnEmpty = Button(this).apply {
             text = "Empty"
             setOnClickListener {
-                localIds.add("empty:${System.currentTimeMillis()}")
+                localIds.add("spacer:${System.currentTimeMillis()}:{\"heightDp\":56}")
                 adapter.notifyItemInserted(localIds.size - 1)
             }
         }
@@ -96,10 +98,53 @@ class SidebarEditActivity : ComponentActivity() {
         headerLayout.addView(btnCancel)
         mainLayout.addView(headerLayout)
 
+        // Grid Total Size Editor
+        val gridTotalLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, 16)
+        }
+        
+        val tvTotalCols = TextView(this).apply {
+            text = "Grid Columns: $totalCols"
+            setTextColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        
+        val btnMinusCol = Button(this).apply {
+            text = "-"
+            setOnClickListener {
+                if (totalCols > 1) {
+                    totalCols--
+                    prefs.edit().putInt("sidebar_columns", totalCols).apply()
+                    tvTotalCols.text = "Grid Columns: $totalCols"
+                    (recyclerView.layoutManager as GridLayoutManager).spanCount = totalCols
+                }
+            }
+        }
+        
+        val btnPlusCol = Button(this).apply {
+            text = "+"
+            setOnClickListener {
+                if (totalCols < 10) {
+                    totalCols++
+                    prefs.edit().putInt("sidebar_columns", totalCols).apply()
+                    tvTotalCols.text = "Grid Columns: $totalCols"
+                    (recyclerView.layoutManager as GridLayoutManager).spanCount = totalCols
+                }
+            }
+        }
+        
+        gridTotalLayout.addView(tvTotalCols)
+        gridTotalLayout.addView(btnMinusCol)
+        gridTotalLayout.addView(btnPlusCol)
+        mainLayout.addView(gridTotalLayout)
+
         adapter = EditAdapter()
         recyclerView = RecyclerView(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-            layoutManager = GridLayoutManager(this@SidebarEditActivity, 3)
+            layoutManager = GridLayoutManager(this@SidebarEditActivity, totalCols)
             this.adapter = this@SidebarEditActivity.adapter
         }
         mainLayout.addView(recyclerView)
@@ -120,7 +165,7 @@ class SidebarEditActivity : ComponentActivity() {
     }
 
     private fun loadLocalIds() {
-        val jsonStr = prefs.getString("sidebar_items", "[]") ?: "[]"
+        val jsonStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
         val arr = JSONArray(jsonStr)
         localIds.clear()
         for (i in 0 until arr.length()) {
@@ -131,10 +176,14 @@ class SidebarEditActivity : ComponentActivity() {
     private fun saveIds() {
         val arr = JSONArray()
         localIds.forEach { arr.put(it) }
-        prefs.edit().putString("sidebar_items", arr.toString()).apply()
+        prefs.edit().putString("sidebar_apps", arr.toString()).apply()
         
-        val intent = Intent("UPDATE_SIDEBAR_UI")
-        sendBroadcast(intent)
+        com.example.LogKeeper.writeLog("SidebarEdit", "Saved ${localIds.size} items to apps grid.")
+        
+        val updateIntent = Intent(this, com.example.service.FloatingReaderService::class.java).apply {
+            action = "UPDATE_CONFIG"
+        }
+        startService(updateIntent)
     }
 
     private fun setupItemTouchHelper() {
@@ -170,12 +219,13 @@ class SidebarEditActivity : ComponentActivity() {
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val density = resources.displayMetrics.density
             val layout = FrameLayout(this@SidebarEditActivity).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    250 // dp roughly
+                    (72 * density).toInt()
                 )
-                setPadding(8, 8, 8, 8)
+                setPadding((4 * density).toInt(), (4 * density).toInt(), (4 * density).toInt(), (4 * density).toInt())
             }
             
             val contentLayout = LinearLayout(this@SidebarEditActivity).apply {
@@ -187,19 +237,19 @@ class SidebarEditActivity : ComponentActivity() {
 
             val iconView = ImageView(this@SidebarEditActivity).apply {
                 id = 1
-                layoutParams = LinearLayout.LayoutParams(100, 100)
+                layoutParams = LinearLayout.LayoutParams((32 * density).toInt(), (32 * density).toInt())
                 scaleType = ImageView.ScaleType.FIT_CENTER
             }
 
             val nameView = TextView(this@SidebarEditActivity).apply {
                 id = 2
                 setTextColor(Color.WHITE)
-                textSize = 12f
+                textSize = 10f
                 gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                    topMargin = 8
+                    topMargin = (4 * density).toInt()
                 }
-                maxLines = 2
+                maxLines = 1
             }
 
             contentLayout.addView(iconView)
@@ -208,7 +258,7 @@ class SidebarEditActivity : ComponentActivity() {
             val btnRemove = ImageView(this@SidebarEditActivity).apply {
                 id = 3
                 setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                layoutParams = FrameLayout.LayoutParams(64, 64).apply {
+                layoutParams = FrameLayout.LayoutParams((24 * density).toInt(), (24 * density).toInt()).apply {
                     gravity = Gravity.TOP or Gravity.END
                 }
                 setColorFilter(Color.RED)

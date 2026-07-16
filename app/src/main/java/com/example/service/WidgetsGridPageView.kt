@@ -111,8 +111,15 @@ class WidgetsGridPageView(
     }
 
     fun getCurrentHeightPx(): Int {
-        val density = context.resources.displayMetrics.density
-        return (500 * density).toInt()
+        if (gridLayout.childCount == 0) {
+            val density = context.resources.displayMetrics.density
+            return (150 * density).toInt()
+        }
+        gridLayout.measure(
+            View.MeasureSpec.makeMeasureSpec(context.resources.displayMetrics.widthPixels, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        return gridLayout.measuredHeight
     }
 
     private fun loadWidgets() {

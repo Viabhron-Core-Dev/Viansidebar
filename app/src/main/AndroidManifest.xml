@@ -84,6 +84,7 @@
         <activity android:name=".AddElementActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
         <activity android:name=".AppPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
         <activity android:name=".IntentPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
+        <activity android:name=".ActionPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
 
         <service
             android:name=".service.FloatingReaderService"

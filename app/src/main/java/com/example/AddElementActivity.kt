@@ -4,86 +4,197 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
-import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ListView
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.core.content.ContextCompat
+import org.json.JSONObject
 
 class AddElementActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val layout = LinearLayout(this).apply {
+        val density = resources.displayMetrics.density
+        
+        val mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setBackgroundColor(Color.BLACK)
-            setPadding(32, 32, 32, 32)
+            setBackgroundColor(Color.parseColor("#121212"))
         }
         
-        val title = TextView(this).apply {
-            text = "Add Element"
+        // Toolbar
+        val toolbar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (56 * density).toInt())
+            setBackgroundColor(Color.parseColor("#1DB954")) // A green-ish or teal color
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding((16 * density).toInt(), 0, (16 * density).toInt(), 0)
+        }
+        
+        val backIcon = ImageView(this).apply {
+            setImageResource(android.R.drawable.ic_menu_revert) // Use revert as back
+            setColorFilter(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams((24 * density).toInt(), (24 * density).toInt()).apply { marginEnd = (16 * density).toInt() }
+            setOnClickListener { finish() }
+        }
+        
+        val titleView = TextView(this).apply {
+            text = "Add element"
             setTextColor(Color.WHITE)
-            textSize = 24f
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 32)
+            textSize = 20f
+            setTypeface(null, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        layout.addView(title)
         
-        val items = listOf(
-            "App",
-            "Action: eBook Reader",
-            "Action: Screenshot",
-            "Action: Quick Tiles",
-            "Action: Compass",
-            "Action: BlockAds",
-            "Action: Scheduler",
-            "Action: Log Keeper",
-            "Action: Floating Calculator",
-            "Custom Intent"
-        )
+        toolbar.addView(backIcon)
+        toolbar.addView(titleView)
+        mainLayout.addView(toolbar)
         
-        val list = ListView(this).apply {
-            adapter = ArrayAdapter(this@AddElementActivity, android.R.layout.simple_list_item_1, items)
-            setBackgroundColor(Color.parseColor("#222222"))
-            setOnItemClickListener { _, _, position, _ ->
-                when (position) {
-                    0 -> {
-                        val intent = Intent(this@AddElementActivity, AppPickerActivity::class.java)
-                        startActivityForResult(intent, 200)
-                    }
-                    1 -> finishWithId("action:ebook_reader")
-                    2 -> finishWithId("action:screenshot")
-                    3 -> finishWithId("action:quick_tiles")
-                    4 -> finishWithId("action:compass")
-                    5 -> finishWithId("action:blockads")
-                    6 -> finishWithId("action:scheduler")
-                    7 -> finishWithId("action:log_keeper")
-                    8 -> finishWithId("action:calculator")
-                    9 -> {
-                        val intent = Intent(this@AddElementActivity, IntentPickerActivity::class.java)
-                        startActivityForResult(intent, 300)
-                    }
-                }
+        val scrollView = ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+        }
+        
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        
+        fun addHeader(text: String) {
+            val header = TextView(this).apply {
+                this.text = text
+                setTextColor(Color.WHITE)
+                textSize = 14f
+                setTypeface(null, Typeface.BOLD)
+                setBackgroundColor(Color.parseColor("#333333"))
+                setPadding((16 * density).toInt(), (8 * density).toInt(), (16 * density).toInt(), (8 * density).toInt())
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             }
+            contentLayout.addView(header)
         }
         
-        // Fix text color in list view
-        list.adapter = object : ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, items) {
-            override fun getView(position: Int, convertView: android.view.View?, parent: ViewGroup): android.view.View {
-                val view = super.getView(position, convertView, parent) as TextView
-                view.setTextColor(Color.WHITE)
-                return view
+        fun addItem(iconRes: Int, text: String, onClick: () -> Unit) {
+            val itemLayout = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding((16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt())
+                isClickable = true
+                isFocusable = true
+                val outValue = android.util.TypedValue()
+                theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                setBackgroundResource(outValue.resourceId)
+                setOnClickListener { onClick() }
             }
+            
+            val icon = ImageView(this).apply {
+                setImageResource(iconRes)
+                setColorFilter(Color.WHITE)
+                layoutParams = LinearLayout.LayoutParams((24 * density).toInt(), (24 * density).toInt()).apply { marginEnd = (16 * density).toInt() }
+            }
+            
+            val label = TextView(this).apply {
+                this.text = text
+                setTextColor(Color.WHITE)
+                textSize = 16f
+                setTypeface(null, Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            
+            itemLayout.addView(icon)
+            itemLayout.addView(label)
+            contentLayout.addView(itemLayout)
+            
+            // Divider
+            val divider = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                setBackgroundColor(Color.parseColor("#222222"))
+            }
+            contentLayout.addView(divider)
         }
         
-        layout.addView(list)
-        setContentView(layout)
+        addHeader("Default actions")
+        addItem(android.R.drawable.ic_menu_agenda, "App") {
+            startActivityForResult(Intent(this, AppPickerActivity::class.java), 200)
+        }
+        addItem(android.R.drawable.ic_menu_share, "Shortcut") {
+            startActivityForResult(Intent(this, IntentPickerActivity::class.java), 300)
+        }
+        addItem(android.R.drawable.ic_menu_gallery, "Widget") {
+            val intent = Intent(this, WidgetPickerActivity::class.java).apply {
+                putExtra("ACTION_TYPE", "RETURN_ID")
+            }
+            startActivityForResult(intent, 400)
+        }
+        
+        addHeader("Special items")
+        addItem(android.R.drawable.ic_menu_more, "Folder") {
+            val uuid = java.util.UUID.randomUUID().toString()
+            val folderJson = JSONObject().apply {
+                put("name", "New Folder")
+                put("colorHex", "#333333")
+                put("items", org.json.JSONArray())
+                put("folderStyle", 0)
+                put("popupColumns", 3)
+                put("popupRows", 3)
+            }
+            finishWithId("folder:$uuid:${folderJson.toString()}")
+        }
+        addItem(android.R.drawable.ic_menu_set_as, "Link") {
+            // Need a link picker in future, for now just create dummy link
+            val uuid = java.util.UUID.randomUUID().toString()
+            val linkJson = JSONObject().apply {
+                put("url", "https://google.com")
+                put("label", "Google")
+            }
+            finishWithId("link:$uuid:${linkJson.toString()}")
+        }
+        addItem(android.R.drawable.ic_menu_close_clear_cancel, "Empty item") {
+            val uuid = java.util.UUID.randomUUID().toString()
+            val spacerJson = JSONObject().apply {
+                put("heightDp", 56)
+            }
+            finishWithId("spacer:$uuid:${spacerJson.toString()}")
+        }
+        
+        addHeader("Screen Capture")
+        addItem(android.R.drawable.ic_menu_camera, "Screenshot") { finishWithId("system:screenshot") }
+        addItem(android.R.drawable.ic_menu_crop, "Region Capture") { finishWithId("system:region_capture") }
+        addItem(android.R.drawable.ic_media_play, "Screen Record") { finishWithId("system:screen_record") }
+        
+        addHeader("Android actions")
+        fun openActionPicker(category: String, title: String) {
+            val intent = Intent(this, ActionPickerActivity::class.java).apply {
+                putExtra("CATEGORY", category)
+                putExtra("TITLE", title)
+            }
+            startActivityForResult(intent, 500)
+        }
+        addItem(android.R.drawable.ic_menu_manage, "System Quick Tiles") { openActionPicker("quick_tiles", "Quick Tiles") }
+        addItem(android.R.drawable.ic_menu_preferences, "Android Settings Shortcut") { openActionPicker("settings_shortcut", "Settings Shortcut") }
+        addItem(android.R.drawable.ic_menu_info_details, "System") { openActionPicker("system", "System Actions") }
+        addItem(android.R.drawable.ic_lock_silent_mode, "Volume") { openActionPicker("volume", "Volume Actions") }
+        addItem(android.R.drawable.ic_media_play, "Media") { openActionPicker("media", "Media Actions") }
+        addItem(android.R.drawable.ic_menu_view, "Display") { openActionPicker("display", "Display Actions") }
+        
+        addHeader("App Custom")
+        addItem(com.example.R.drawable.ic_library_books, "eBook Reader") { finishWithId("system:ebook_reader") }
+        addItem(android.R.drawable.ic_menu_agenda, "Log Keeper") { finishWithId("system:log_keeper") }
+        addItem(android.R.drawable.ic_menu_sort_by_size, "Floating Calculator") { finishWithId("action:calculator") }
+        addItem(android.R.drawable.ic_menu_compass, "Compass") { finishWithId("action:compass") }
+        addItem(android.R.drawable.ic_menu_today, "Scheduler") { finishWithId("action:scheduler") }
+        addItem(android.R.drawable.ic_menu_delete, "BlockAds") { finishWithId("action:blockads") }
+        
+        scrollView.addView(contentLayout)
+        mainLayout.addView(scrollView)
+        
+        setContentView(mainLayout)
     }
     
     private fun finishWithId(id: String) {

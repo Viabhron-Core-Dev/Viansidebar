@@ -178,6 +178,17 @@ class WidgetPickerActivity : ComponentActivity() {
             val broadcastIntent = Intent("WIDGET_PAGE_CREATED")
             broadcastIntent.putExtra("WIDGET_ID", widgetId)
             sendBroadcast(broadcastIntent)
+        } else if (actionType == "RETURN_ID") {
+            val info = appWidgetManager.getAppWidgetInfo(widgetId)
+            val label = info?.loadLabel(packageManager) ?: "Widget"
+            
+            val json = JSONObject()
+            json.put("widgetId", widgetId)
+            json.put("label", label)
+            val id = "widget:${widgetId}:${json.toString()}"
+            
+            val resultIntent = Intent().apply { putExtra("ELEMENT_ID", id) }
+            setResult(android.app.Activity.RESULT_OK, resultIntent)
         }
         
         finish()

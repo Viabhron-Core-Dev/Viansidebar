@@ -217,6 +217,8 @@ class WidgetsGridEditActivity : ComponentActivity() {
         }
         prefs.edit().putString("widgets_grid_$pageId", arr.toString()).apply()
         
+        com.example.LogKeeper.writeLog("WidgetEdit", "Saved ${localItems.size} widgets to grid $pageId.")
+        
         // Notify grid to update
         val intent = Intent("WIDGET_ADDED_TO_GRID")
         intent.putExtra("PAGE_ID", pageId)
