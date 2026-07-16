@@ -83,8 +83,15 @@ class AppPickerActivity : ComponentActivity() {
                         if (bmp != null) {
                             view.findViewById<ImageView>(1).setImageBitmap(bmp)
                         } else {
-
                             view.findViewById<ImageView>(1).setImageResource(android.R.drawable.sym_def_app_icon)
+                            scope.launch {
+                                val loaded = manager.loadIcon(appInfo.packageName)
+                                withContext(Dispatchers.Main) {
+                                    if (loaded != null) {
+                                        view.findViewById<ImageView>(1).setImageBitmap(loaded)
+                                    }
+                                }
+                            }
                         }
 
                         view.findViewById<TextView>(2).text = appInfo.label

@@ -321,6 +321,7 @@ class SidebarAppsManager(
                 android.R.drawable.ic_menu_gallery
             }
             is SidebarItem.Link -> android.R.drawable.ic_menu_set_as
+            is SidebarItem.Folder -> android.R.drawable.ic_menu_agenda
             else -> 0
         }
         if (resId != 0) {
