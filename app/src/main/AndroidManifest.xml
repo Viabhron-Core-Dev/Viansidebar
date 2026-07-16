@@ -79,6 +79,11 @@
         <activity android:name=".SettingsActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
         <activity android:name=".ShortcutHandlerActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="false" />
         <activity android:name=".WidgetPickerActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="false" />
+        <activity android:name=".SidebarEditActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
+        <activity android:name=".WidgetsGridEditActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
+        <activity android:name=".AddElementActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
+        <activity android:name=".AppPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
+        <activity android:name=".IntentPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
 
         <service
             android:name=".service.FloatingReaderService"

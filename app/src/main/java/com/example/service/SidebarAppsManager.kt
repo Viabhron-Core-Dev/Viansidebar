@@ -715,7 +715,7 @@ class SidebarAppsManager(
     }
 
     fun addItemToFolder(folderUuid: String, itemId: String) {
-        (context as? com.example.service.FloatingReaderService)?.onFolderItemAdded(folderUuid, itemId)
+        
         coroutineScope.launch(Dispatchers.IO) {
             val currentStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: return@launch
             val current = JSONArray(currentStr)

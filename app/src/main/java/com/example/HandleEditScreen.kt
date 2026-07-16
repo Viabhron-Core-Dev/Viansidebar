@@ -307,12 +307,13 @@ fun HandleEditScreen(handleId: String, onBack: () -> Unit) {
                             showAddGestureDialog = false
                         }
                     } else if (selectedCategory == "element") {
-                        val intent = android.content.Intent(context, com.example.service.FloatingReaderService::class.java).apply {
+                        val intent = android.content.Intent(context, com.example.AddElementActivity::class.java).apply {
                             action = "SELECT_ELEMENT_FOR_HANDLE"
                             putExtra("handle_prefix", prefix)
                             putExtra("gesture", selectedGesture)
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
-                        context.startService(intent)
+                        context.startActivity(intent)
                         showAddGestureDialog = false
                     }
                 }) {

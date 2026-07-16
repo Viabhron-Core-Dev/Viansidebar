@@ -32,27 +32,6 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 class FloatingReaderService : Service() {
 
-    fun onFolderItemAdded(folderUuid: String, itemId: String) {
-        val editView = sidebarEditOverlayView ?: return
-        val localIds = editView.localIds
-        for (i in 0 until localIds.size) {
-            var item = localIds[i]
-            if (item.startsWith("folder:$folderUuid:")) {
-                try {
-                    val parts = item.split(":", limit = 3)
-                    val folderDataStr = parts[2]
-                    val obj = org.json.JSONObject(folderDataStr)
-                    val itemsArr = obj.optJSONArray("items") ?: org.json.JSONArray()
-                    itemsArr.put(itemId)
-                    obj.put("items", itemsArr)
-                    localIds[i] = "folder:$folderUuid:${obj.toString()}"
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-        editView.refresh()
-    }
     private var serviceLifecycleOwner: ServiceLifecycleOwner? = null
     private lateinit var windowManager: WindowManager
     private lateinit var floatingView: View
@@ -185,10 +164,6 @@ class FloatingReaderService : Service() {
     private var sidebarDefaultIndex = 0
     private lateinit var appsManager: SidebarAppsManager
     private var callRecorderManager: CallRecorderManager? = null
-    private var appPickerOverlayView: AppPickerOverlayView? = null
-    private var intentPickerOverlayView: IntentPickerOverlayView? = null
-    private var addElementOverlayView: AddElementOverlayView? = null
-    private var sidebarEditOverlayView: SidebarEditOverlayView? = null
     private var pendingElementCallback: ((String) -> Unit)? = null
     
     private var netSpeedManager: NetSpeedManager? = null
@@ -355,13 +330,13 @@ class FloatingReaderService : Service() {
         widgetPickerReceiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 if (intent.action == "WIDGET_PICKER_OPENED") {
-                    if (sidebarEditOverlayView?.parent != null) {
+                    if (false) {
                         wasSidebarEditOpen = true
-                        sidebarEditOverlayView?.detach()
+                        
                     }
-                    if (widgetsGridEditOverlayView?.parent != null) {
+                    if (false) {
                         wasWidgetsGridEditOpen = true
-                        widgetsGridEditOverlayView?.detach()
+                        
                     }
                     closeSidebar()
                 } else if (intent.action == "WIDGET_PICKER_CLOSED") {
@@ -374,7 +349,7 @@ class FloatingReaderService : Service() {
                         }
                     } else if (actionType == "ADD_ELEMENT" || wasSidebarEditOpen) {
                         showSidebar()
-                        sidebarEditOverlayView?.attach()
+                        
                     }
                     wasSidebarEditOpen = false
                     wasWidgetsGridEditOpen = false
@@ -659,105 +634,27 @@ class FloatingReaderService : Service() {
         }
     }
 
-    private var widgetsGridEditOverlayView: WidgetsGridEditOverlayView? = null
 
     fun showWidgetsGridEditOverlay(pageId: String) {
         lastWidgetsGridPageId = pageId
-        widgetsGridEditOverlayView?.detach()
-        widgetsGridEditOverlayView = WidgetsGridEditOverlayView(
-
-            this, pageId, windowManager,
-
-            onAddClicked = { 
-                val intent = android.content.Intent(this, com.example.WidgetPickerActivity::class.java).apply {
-                    putExtra("ACTION_TYPE", "ADD_TO_WIDGETS_GRID")
-                    putExtra("PAGE_ID", pageId)
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                startActivity(intent)
-            },
-
-            onClose = { widgetsGridEditOverlayView?.detach() }
-        )
-
-        widgetsGridEditOverlayView?.attach()
-
+        val intent = android.content.Intent(this, com.example.WidgetsGridEditActivity::class.java).apply {
+            putExtra("PAGE_ID", pageId)
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
     }
 
     fun showSidebarEditOverlay() {
-        sidebarEditOverlayView?.detach()
-        sidebarEditOverlayView = SidebarEditOverlayView(
-            this, appsManager, windowManager, serviceScope,
-            onAddClicked = { 
-                showAddElementOverlayForSelection { id ->
-                    com.example.LogKeeper.writeLog("SidebarEdit", "Added new element: $id")
-                    sidebarEditOverlayView?.localIds?.add(id)
-                    sidebarEditOverlayView?.refresh()
-                }
-            },
-            onClose = { sidebarEditOverlayView?.detach() }
-        )
-        sidebarEditOverlayView?.attach()
-    }
-
-    fun showAddElementOverlay(targetFolderUuid: String? = null) {
-        addElementOverlayView?.detach()
-        addElementOverlayView = AddElementOverlayView(
-            this, appsManager, windowManager, targetFolderUuid,
-            onClose = { addElementOverlayView?.detach() },
-            onAppSelected = { folderUuid -> 
-                addElementOverlayView?.detach()
-                showAppPicker(folderUuid) 
-            }
-        )
-        addElementOverlayView?.attach()
-    }
-
-    fun showAddElementOverlayForSelection(onElementSelected: (String) -> Unit) {
-        pendingElementCallback = onElementSelected
-        addElementOverlayView?.detach()
-        addElementOverlayView = AddElementOverlayView(
-            this, appsManager, windowManager, null,
-            onClose = { addElementOverlayView?.detach() },
-            onAppSelected = { _ -> 
-                addElementOverlayView?.detach()
-                showAppPickerForSelection(onElementSelected) 
-            },
-            onElementSelected = { id ->
-                addElementOverlayView?.detach()
-                pendingElementCallback = null
-                onElementSelected(id)
-            }
-        )
-        addElementOverlayView?.attach()
-    }
-
-    private fun showAppPicker(targetFolderUuid: String? = null) {
-        appPickerOverlayView?.detach()
-        appPickerOverlayView = AppPickerOverlayView(this, appsManager, serviceScope, windowManager, targetFolderUuid) {
-            appPickerOverlayView?.detach()
+        val intent = android.content.Intent(this, com.example.SidebarEditActivity::class.java).apply {
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        appPickerOverlayView?.attach()
+        startActivity(intent)
     }
 
-    fun showIntentPicker(targetFolderUuid: String? = null, onElementSelected: ((String) -> Unit)? = null) {
-        intentPickerOverlayView?.detach()
-        intentPickerOverlayView = IntentPickerOverlayView(this, appsManager, serviceScope, windowManager, targetFolderUuid, onIntentSelected = onElementSelected) {
-            intentPickerOverlayView?.detach()
-        }
-        intentPickerOverlayView?.attach()
-    }
 
-    private fun showAppPickerForSelection(onElementSelected: (String) -> Unit) {
-        appPickerOverlayView?.detach()
-        appPickerOverlayView = AppPickerOverlayView(this, appsManager, serviceScope, windowManager, null, onAppSelected = { id ->
-            appPickerOverlayView?.detach()
-            onElementSelected(id)
-        }) {
-            appPickerOverlayView?.detach()
-        }
-        appPickerOverlayView?.attach()
-    }
+
+
+
 
     fun executeElementAction(id: String) {
         if (id.startsWith("app:")) {
@@ -847,14 +744,6 @@ class FloatingReaderService : Service() {
             return START_NOT_STICKY
         }
         
-        if (intent?.action == "SELECT_ELEMENT_FOR_HANDLE") {
-            val prefix = intent.getStringExtra("handle_prefix") ?: return START_NOT_STICKY
-            val gesture = intent.getStringExtra("gesture") ?: return START_NOT_STICKY
-            showAddElementOverlayForSelection { selectedId ->
-                prefs.edit().putString("${prefix}$gesture", "open_element:$selectedId").apply()
-            }
-            return START_NOT_STICKY
-        }
         
         val bookId = intent?.getIntExtra("BOOK_ID", -1) ?: -1
         val fromLauncher = intent?.getBooleanExtra("OPEN_FROM_LAUNCHER", false) ?: false
@@ -2676,10 +2565,6 @@ class FloatingReaderService : Service() {
         closeSidebar()
         sidebarView = null
         sidebarPagesList.clear()
-        appPickerOverlayView?.detach()
-        appPickerOverlayView = null
-        addElementOverlayView?.detach()
-        addElementOverlayView = null
         appsPageViews.clear()
         if (::appsManager.isInitialized) {
             appsManager.destroy()

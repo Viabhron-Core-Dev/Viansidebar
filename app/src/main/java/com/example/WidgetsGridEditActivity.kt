@@ -1,89 +1,87 @@
-package com.example.service
+package com.example
 
-import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.PixelFormat
-import android.os.Build
+import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.ComponentActivity
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.utils.AppWidgetHelper
+import com.example.service.WidgetsGridPageView
+import com.example.service.GridWidgetItem
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Collections
 
-@SuppressLint("ViewConstructor")
-class WidgetsGridEditOverlayView(
-    context: Context,
-    private val pageId: String,
-    private val windowManager: WindowManager,
-    private val onAddClicked: () -> Unit,
-    private val onClose: () -> Unit
-) : FrameLayout(context) {
+class WidgetsGridEditActivity : ComponentActivity() {
 
-    private val layoutParams: WindowManager.LayoutParams
-    private val recyclerView: RecyclerView
-    private val adapter: WidgetEditAdapter
-    private val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: WidgetEditAdapter
+    private lateinit var prefs: android.content.SharedPreferences
+    private lateinit var pageId: String
     
     val localItems = mutableListOf<GridWidgetItem>()
-    private val appWidgetManager = AppWidgetManager.getInstance(context)
+    private lateinit var appWidgetManager: AppWidgetManager
     
-    // Preview container
-    private val previewContainer = FrameLayout(context)
+    private lateinit var previewContainer: FrameLayout
+    private lateinit var tvTotalCols: TextView
+    private var totalCols = 4
 
-    init {
-        setBackgroundColor(Color.parseColor("#F2000000")) // Darker semi-transparent black
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
         
-        layoutParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        )
-
+        pageId = intent.getStringExtra("PAGE_ID") ?: run {
+            finish()
+            return
+        }
+        
+        prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
+        appWidgetManager = AppWidgetManager.getInstance(this)
+        
         loadLocalItems()
+        
+        totalCols = prefs.getInt("widgets_grid_cols_$pageId", 4)
 
-        val mainLayout = LinearLayout(context).apply {
+        val mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setPadding(32, 32, 32, 32)
             gravity = Gravity.CENTER_HORIZONTAL
+            setBackgroundColor(Color.BLACK)
         }
 
         // Header
-        val headerLayout = LinearLayout(context).apply {
+        val headerLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, 0, 0, 16)
         }
 
-        val titleView = TextView(context).apply {
+        val titleView = TextView(this).apply {
             text = "Edit Widgets Grid"
             setTextColor(Color.WHITE)
             textSize = 20f
-            layoutParams = LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
 
-        val btnClose = Button(context).apply {
+        val btnClose = Button(this).apply {
             text = "Done"
             setOnClickListener {
                 saveItems()
-                onClose()
+                finish()
             }
         }
 
@@ -92,22 +90,20 @@ class WidgetsGridEditOverlayView(
         mainLayout.addView(headerLayout)
         
         // Grid Total Size Editor
-        val gridTotalLayout = LinearLayout(context).apply {
+        val gridTotalLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, 0, 0, 16)
         }
         
-        var totalCols = prefs.getInt("widgets_grid_cols_$pageId", 4)
-        
-        val tvTotalCols = TextView(context).apply {
+        tvTotalCols = TextView(this).apply {
             text = "Grid Columns: $totalCols"
             setTextColor(Color.WHITE)
-            layoutParams = LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         
-        val btnMinusCol = Button(context).apply {
+        val btnMinusCol = Button(this).apply {
             text = "-"
             setOnClickListener {
                 if (totalCols > 1) {
@@ -119,7 +115,7 @@ class WidgetsGridEditOverlayView(
             }
         }
         
-        val btnPlusCol = Button(context).apply {
+        val btnPlusCol = Button(this).apply {
             text = "+"
             setOnClickListener {
                 if (totalCols < 10) {
@@ -137,42 +133,55 @@ class WidgetsGridEditOverlayView(
         mainLayout.addView(gridTotalLayout)
         
         // Preview Box
-        previewContainer.layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.4f).apply {
-            setMargins(0, 16, 0, 16)
+        previewContainer = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.4f).apply {
+                setMargins(0, 16, 0, 16)
+            }
+            setBackgroundColor(Color.parseColor("#22FFFFFF"))
         }
-        previewContainer.setBackgroundColor(Color.parseColor("#22FFFFFF")) // slight white bg for the block
         mainLayout.addView(previewContainer)
         updatePreview()
 
         // Recycler View for drag-and-drop & editing sizes
         adapter = WidgetEditAdapter()
-        recyclerView = RecyclerView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.6f)
-            layoutManager = LinearLayoutManager(context)
-            this.adapter = this@WidgetsGridEditOverlayView.adapter
+        recyclerView = RecyclerView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.6f)
+            layoutManager = LinearLayoutManager(this@WidgetsGridEditActivity)
+            this.adapter = this@WidgetsGridEditActivity.adapter
         }
         mainLayout.addView(recyclerView)
 
         // Add Widget Button
-        val btnAdd = Button(context).apply {
+        val btnAdd = Button(this).apply {
             text = "Add Widget"
-            layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 topMargin = 16
             }
             setOnClickListener {
                 saveItems() 
-                onAddClicked()
+                val intent = Intent(this@WidgetsGridEditActivity, WidgetPickerActivity::class.java).apply {
+                    putExtra("ACTION_TYPE", "ADD_TO_WIDGETS_GRID")
+                    putExtra("PAGE_ID", pageId)
+                }
+                startActivity(intent)
             }
         }
         mainLayout.addView(btnAdd)
 
-        addView(mainLayout)
+        setContentView(mainLayout)
         setupItemTouchHelper()
+        
+        registerReceiver(receiver, android.content.IntentFilter("WIDGET_ADDED_TO_GRID"), Context.RECEIVER_NOT_EXPORTED)
     }
     
+    override fun onDestroy() {
+        super.onDestroy()
+        try { unregisterReceiver(receiver) } catch (e: Exception) {}
+    }
+
     private fun updatePreview() {
         previewContainer.removeAllViews()
-        val pagePreview = WidgetsGridPageView(context, pageId) {}
+        val pagePreview = WidgetsGridPageView(this, pageId) {}
         previewContainer.addView(pagePreview)
     }
 
@@ -211,39 +220,19 @@ class WidgetsGridEditOverlayView(
         // Notify grid to update
         val intent = Intent("WIDGET_ADDED_TO_GRID")
         intent.putExtra("PAGE_ID", pageId)
-        context.sendBroadcast(intent)
+        sendBroadcast(intent)
         
         updatePreview()
     }
 
-    private val receiver = object : android.content.BroadcastReceiver() {
+    private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == "WIDGET_ADDED_TO_GRID") {
-                refresh()
+                loadLocalItems()
+                adapter.notifyDataSetChanged()
+                updatePreview()
             }
         }
-    }
-
-    fun attach() {
-        try {
-            windowManager.addView(this, layoutParams)
-            context.registerReceiver(receiver, android.content.IntentFilter("WIDGET_ADDED_TO_GRID"), Context.RECEIVER_NOT_EXPORTED)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    fun detach() {
-        try {
-            windowManager.removeView(this)
-            try { context.unregisterReceiver(receiver) } catch (e: Exception) {}
-        } catch (e: Exception) {}
-    }
-
-    fun refresh() {
-        loadLocalItems()
-        adapter.notifyDataSetChanged()
-        updatePreview()
     }
 
     private fun setupItemTouchHelper() {
@@ -277,7 +266,6 @@ class WidgetsGridEditOverlayView(
             val btnRemove: ImageView = view.findViewById(2)
             val dragHandle: ImageView = view.findViewById(3)
             
-            // Size editors
             val tvCols: TextView = view.findViewById(4)
             val btnColMinus: Button = view.findViewById(5)
             val btnColPlus: Button = view.findViewById(6)
@@ -288,36 +276,36 @@ class WidgetsGridEditOverlayView(
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val layout = LinearLayout(context).apply {
+            val layout = LinearLayout(this@WidgetsGridEditActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 16) }
                 setPadding(16, 16, 16, 16)
                 setBackgroundColor(Color.parseColor("#33FFFFFF"))
             }
             
-            val topRow = LinearLayout(context).apply {
+            val topRow = LinearLayout(this@WidgetsGridEditActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 gravity = Gravity.CENTER_VERTICAL
             }
             
-            val dragHandle = ImageView(context).apply {
+            val dragHandle = ImageView(this@WidgetsGridEditActivity).apply {
                 id = 3
                 setImageResource(android.R.drawable.ic_menu_sort_by_size)
                 setColorFilter(Color.WHITE)
                 setPadding(16, 16, 16, 16)
             }
             
-            val tvName = TextView(context).apply {
+            val tvName = TextView(this@WidgetsGridEditActivity).apply {
                 id = 1
                 setTextColor(Color.WHITE)
                 textSize = 16f
-                layoutParams = LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply {
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
                     marginStart = 16
                 }
             }
             
-            val btnRemove = ImageView(context).apply {
+            val btnRemove = ImageView(this@WidgetsGridEditActivity).apply {
                 id = 2
                 setImageResource(android.R.drawable.ic_menu_delete)
                 setColorFilter(Color.RED)
@@ -330,40 +318,40 @@ class WidgetsGridEditOverlayView(
             layout.addView(topRow)
             
             // Editors Row
-            val editorsRow = LinearLayout(context).apply {
+            val editorsRow = LinearLayout(this@WidgetsGridEditActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(16, 16, 16, 0)
             }
             
             // Cols Editor
-            val colsLayout = LinearLayout(context).apply {
+            val colsLayout = LinearLayout(this@WidgetsGridEditActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 gravity = Gravity.CENTER_VERTICAL
             }
-            colsLayout.addView(TextView(context).apply { text = "Cols: "; setTextColor(Color.LTGRAY) })
+            colsLayout.addView(TextView(this@WidgetsGridEditActivity).apply { text = "Cols: "; setTextColor(Color.LTGRAY) })
             
-            val btnColMinus = Button(context).apply { id = 5; text = "-"; textSize = 10f; layoutParams = LinearLayout.LayoutParams(100, 100) }
-            val tvCols = TextView(context).apply { id = 4; setTextColor(Color.WHITE); setPadding(16, 0, 16, 0) }
-            val btnColPlus = Button(context).apply { id = 6; text = "+"; textSize = 10f; layoutParams = LinearLayout.LayoutParams(100, 100) }
+            val btnColMinus = Button(this@WidgetsGridEditActivity).apply { id = 5; text = "-"; textSize = 10f; layoutParams = LinearLayout.LayoutParams(100, 100) }
+            val tvCols = TextView(this@WidgetsGridEditActivity).apply { id = 4; setTextColor(Color.WHITE); setPadding(16, 0, 16, 0) }
+            val btnColPlus = Button(this@WidgetsGridEditActivity).apply { id = 6; text = "+"; textSize = 10f; layoutParams = LinearLayout.LayoutParams(100, 100) }
             
             colsLayout.addView(btnColMinus)
             colsLayout.addView(tvCols)
             colsLayout.addView(btnColPlus)
             
             // Rows Editor
-            val rowsLayout = LinearLayout(context).apply {
+            val rowsLayout = LinearLayout(this@WidgetsGridEditActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 gravity = Gravity.CENTER_VERTICAL
             }
-            rowsLayout.addView(TextView(context).apply { text = "Rows: "; setTextColor(Color.LTGRAY) })
+            rowsLayout.addView(TextView(this@WidgetsGridEditActivity).apply { text = "Rows: "; setTextColor(Color.LTGRAY) })
             
-            val btnRowMinus = Button(context).apply { id = 8; text = "-"; textSize = 10f; layoutParams = LinearLayout.LayoutParams(100, 100) }
-            val tvRows = TextView(context).apply { id = 7; setTextColor(Color.WHITE); setPadding(16, 0, 16, 0) }
-            val btnRowPlus = Button(context).apply { id = 9; text = "+"; textSize = 10f; layoutParams = LinearLayout.LayoutParams(100, 100) }
+            val btnRowMinus = Button(this@WidgetsGridEditActivity).apply { id = 8; text = "-"; textSize = 10f; layoutParams = LinearLayout.LayoutParams(100, 100) }
+            val tvRows = TextView(this@WidgetsGridEditActivity).apply { id = 7; setTextColor(Color.WHITE); setPadding(16, 0, 16, 0) }
+            val btnRowPlus = Button(this@WidgetsGridEditActivity).apply { id = 9; text = "+"; textSize = 10f; layoutParams = LinearLayout.LayoutParams(100, 100) }
             
             rowsLayout.addView(btnRowMinus)
             rowsLayout.addView(tvRows)
@@ -380,7 +368,7 @@ class WidgetsGridEditOverlayView(
             val item = localItems[position]
             val info = appWidgetManager.getAppWidgetInfo(item.id)
             
-            holder.tvName.text = info?.loadLabel(context.packageManager) ?: "Widget ${item.id} (Unknown)"
+            holder.tvName.text = info?.loadLabel(packageManager) ?: "Widget ${item.id} (Unknown)"
             
             holder.tvCols.text = item.cols.toString()
             holder.tvRows.text = item.rows.toString()
@@ -412,14 +400,14 @@ class WidgetsGridEditOverlayView(
             }
             
             holder.btnRemove.setOnClickListener {
-                val pos = holder.adapterPosition
+                val pos = holder.bindingAdapterPosition
                 if (pos != RecyclerView.NO_POSITION) {
                     val removed = localItems.removeAt(pos)
                     notifyItemRemoved(pos)
                     saveItems()
                     
                     try {
-                        AppWidgetHelper.getHost(context).deleteAppWidgetId(removed.id)
+                        AppWidgetHelper.getHost(this@WidgetsGridEditActivity).deleteAppWidgetId(removed.id)
                     } catch (e: Exception) {}
                 }
             }
