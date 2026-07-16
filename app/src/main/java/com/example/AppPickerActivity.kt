@@ -84,11 +84,13 @@ class AppPickerActivity : ComponentActivity() {
                             view.findViewById<ImageView>(1).setImageBitmap(bmp)
                         } else {
                             view.findViewById<ImageView>(1).setImageResource(android.R.drawable.sym_def_app_icon)
+                            val imgView = view.findViewById<ImageView>(1)
+                            imgView.tag = appInfo.packageName
                             scope.launch {
                                 val loaded = manager.loadIcon(appInfo.packageName)
                                 withContext(Dispatchers.Main) {
-                                    if (loaded != null) {
-                                        view.findViewById<ImageView>(1).setImageBitmap(loaded)
+                                    if (loaded != null && imgView.tag == appInfo.packageName) {
+                                        imgView.setImageBitmap(loaded)
                                     }
                                 }
                             }

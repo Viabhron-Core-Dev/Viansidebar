@@ -53,6 +53,7 @@ class SidebarEditActivity : ComponentActivity() {
 
         if (folderUuid == null) {
             totalCols = prefs.getInt("sidebar_columns", 3)
+            totalRows = prefs.getInt("sidebar_rows", 3)
         }
 
         val mainLayout = LinearLayout(this).apply {
@@ -61,82 +62,85 @@ class SidebarEditActivity : ComponentActivity() {
             setPadding(32, 32, 32, 32)
             gravity = Gravity.CENTER_HORIZONTAL
             setBackgroundColor(Color.BLACK)
-        }
-
-        // Header
-        val headerLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        }        // Header
+        val fullHeaderLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 16)
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, 0, 0, 8)
         }
 
         val controlsLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, 4)
         }
+        
         val colsLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        colsLayout.addView(TextView(this).apply { text = "Cols: "; setTextColor(Color.LTGRAY) })
-        val btnColMinus = Button(this).apply { text = "-"; layoutParams = LinearLayout.LayoutParams(100, 100); setOnClickListener { if (totalCols > 1) { totalCols--; updateColsDisplay(); updateGrid() } } }
-        val tvCols = TextView(this).apply { id = 101; setTextColor(Color.WHITE); setPadding(16, 0, 16, 0); text = totalCols.toString() }
-        val btnColPlus = Button(this).apply { text = "+"; layoutParams = LinearLayout.LayoutParams(100, 100); setOnClickListener { totalCols++; updateColsDisplay(); updateGrid() } }
+        colsLayout.addView(TextView(this).apply { text = "Cols: "; textSize = 12f; setTextColor(Color.LTGRAY) })
+        val btnColMinus = Button(this).apply { text = "-"; textSize = 14f; setPadding(0, 0, 0, 0); layoutParams = LinearLayout.LayoutParams(80, 80); setOnClickListener { if (totalCols > 1) { totalCols--; updateColsDisplay(); updateGrid() } } }
+        val tvCols = TextView(this).apply { id = 101; setTextColor(Color.WHITE); textSize = 14f; setPadding(8, 0, 8, 0); text = totalCols.toString() }
+        val btnColPlus = Button(this).apply { text = "+"; textSize = 14f; setPadding(0, 0, 0, 0); layoutParams = LinearLayout.LayoutParams(80, 80); setOnClickListener { totalCols++; updateColsDisplay(); updateGrid() } }
         colsLayout.addView(btnColMinus); colsLayout.addView(tvCols); colsLayout.addView(btnColPlus)
         controlsLayout.addView(colsLayout)
         
         val rowsLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        rowsLayout.addView(TextView(this).apply { text = "Rows: "; setTextColor(Color.LTGRAY) })
-        val btnRowMinus = Button(this).apply { text = "-"; layoutParams = LinearLayout.LayoutParams(100, 100); setOnClickListener { if (totalRows > 1) { totalRows--; updateRowsDisplay() } } }
-        val tvRows = TextView(this).apply { id = 102; setTextColor(Color.WHITE); setPadding(16, 0, 16, 0); text = totalRows.toString() }
-        val btnRowPlus = Button(this).apply { text = "+"; layoutParams = LinearLayout.LayoutParams(100, 100); setOnClickListener { totalRows++; updateRowsDisplay() } }
+        rowsLayout.addView(TextView(this).apply { text = "Rows: "; textSize = 12f; setTextColor(Color.LTGRAY) })
+        val btnRowMinus = Button(this).apply { text = "-"; textSize = 14f; setPadding(0, 0, 0, 0); layoutParams = LinearLayout.LayoutParams(80, 80); setOnClickListener { if (totalRows > 1) { totalRows--; updateRowsDisplay() } } }
+        val tvRows = TextView(this).apply { id = 102; setTextColor(Color.WHITE); textSize = 14f; setPadding(8, 0, 8, 0); text = totalRows.toString() }
+        val btnRowPlus = Button(this).apply { text = "+"; textSize = 14f; setPadding(0, 0, 0, 0); layoutParams = LinearLayout.LayoutParams(80, 80); setOnClickListener { totalRows++; updateRowsDisplay() } }
         rowsLayout.addView(btnRowMinus); rowsLayout.addView(tvRows); rowsLayout.addView(btnRowPlus)
-        if (folderUuid != null) {
-            controlsLayout.addView(rowsLayout)
-        }
-        headerLayout.addView(controlsLayout)
+        controlsLayout.addView(rowsLayout)
+        fullHeaderLayout.addView(controlsLayout)
 
-        val btnAdd = Button(this).apply {
-            text = "Add"
-            setOnClickListener {
-                val intent = Intent(this@SidebarEditActivity, AddElementActivity::class.java)
-                startActivityForResult(intent, 100)
+        val buttonsLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        fun createSmallBtn(txt: String, onClick: () -> Unit): Button {
+            return Button(this).apply {
+                text = txt
+                textSize = 10f
+                setPadding(4, 0, 4, 0)
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                setOnClickListener { onClick() }
             }
         }
 
-        val btnEmpty = Button(this).apply {
-            text = "Empty"
-            setOnClickListener {
-                localIds.add("spacer:${System.currentTimeMillis()}:{\"heightDp\":56}")
-                adapter.notifyItemInserted(localIds.size - 1)
-            }
+        val btnAdd = createSmallBtn("Add") {
+            val intent = Intent(this@SidebarEditActivity, AddElementActivity::class.java)
+            startActivityForResult(intent, 100)
+        }
+        val btnEmpty = createSmallBtn("Empty") {
+            localIds.add("spacer:${System.currentTimeMillis()}:{\"heightDp\":56}")
+            adapter.notifyItemInserted(localIds.size - 1)
+        }
+        val btnSave = createSmallBtn("Save") {
+            saveIds()
+            finish()
+        }
+        val btnCancel = createSmallBtn("Cancel") {
+            finish()
         }
         
-        val btnSave = Button(this).apply {
-            text = "Save"
-            setOnClickListener {
-                saveIds()
-                finish()
-            }
-        }
-
-        val btnCancel = Button(this).apply {
-            text = "Cancel"
-            setOnClickListener {
-                finish()
-            }
-        }
+        buttonsLayout.addView(btnAdd)
+        buttonsLayout.addView(btnEmpty)
+        buttonsLayout.addView(btnSave)
+        buttonsLayout.addView(btnCancel)
+        fullHeaderLayout.addView(buttonsLayout)
         
-        headerLayout.addView(btnAdd)
-        headerLayout.addView(btnEmpty)
-        headerLayout.addView(btnSave)
-        headerLayout.addView(btnCancel)
-        mainLayout.addView(headerLayout)
+        mainLayout.addView(fullHeaderLayout)
 
 
         adapter = EditAdapter()
@@ -236,6 +240,7 @@ class SidebarEditActivity : ComponentActivity() {
         } else {
             prefs.edit().putString("sidebar_apps", arr.toString()).apply()
             prefs.edit().putInt("sidebar_columns", totalCols).apply()
+            prefs.edit().putInt("sidebar_rows", totalRows).apply()
             com.example.LogKeeper.writeLog("SidebarEdit", "Saved ${localIds.size} items to apps grid.")
         }
         
@@ -345,13 +350,24 @@ class SidebarEditActivity : ComponentActivity() {
                         } else {
                             holder.nameView.text = "Unknown"
                         }
-                        if (iconBitmap != null) {
+                        holder.iconView.tag = id
+                        if (item is com.example.service.SidebarItem.Folder) {
+                            holder.iconView.setImageDrawable(null)
+                            holder.iconView.clearColorFilter()
+                            holder.iconView.setBackgroundColor(Color.TRANSPARENT)
+                            
+                            val cHex = try { Color.parseColor(item.colorHex) } catch(e:Exception){ Color.parseColor("#00BFA5") }
+                            val iconC = Color.WHITE
+                            
+                            val miniIcons = item.items.take(9).mapNotNull { manager.getIconBitmap(it) }
+                            holder.iconView.setImageDrawable(com.example.service.FolderStyleDrawable(item.folderStyle, cHex, iconC, miniIcons))
+                        } else if (iconBitmap != null) {
                             holder.iconView.setImageBitmap(iconBitmap)
                         } else {
                             holder.iconView.setImageResource(android.R.drawable.sym_def_app_icon)
                             if (item is com.example.service.SidebarItem.App) {
                                 val loaded = manager.loadIcon(item.packageName)
-                                if (loaded != null) {
+                                if (loaded != null && holder.iconView.tag == id) {
                                     holder.iconView.setImageBitmap(loaded)
                                 }
                             } else if (item is com.example.service.SidebarItem.IntentAction) {
@@ -359,7 +375,7 @@ class SidebarEditActivity : ComponentActivity() {
                                     val uriStr = item.uri
                                     val pkg = android.content.Intent.parseUri(uriStr, android.content.Intent.URI_INTENT_SCHEME).`package` ?: android.content.Intent.parseUri(uriStr, android.content.Intent.URI_INTENT_SCHEME).component?.packageName ?: ""
                                     val loaded = manager.loadIcon(pkg)
-                                    if (loaded != null) {
+                                    if (loaded != null && holder.iconView.tag == id) {
                                         holder.iconView.setImageBitmap(loaded)
                                     }
                                 } catch (e: Exception) {}

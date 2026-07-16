@@ -138,16 +138,22 @@ class AddElementActivity : ComponentActivity() {
         
         addHeader("Special items")
         addItem(android.R.drawable.ic_menu_more, "Folder") {
-            val uuid = java.util.UUID.randomUUID().toString()
-            val folderJson = JSONObject().apply {
-                put("name", "New Folder")
-                put("colorHex", "#333333")
-                put("items", org.json.JSONArray())
-                put("folderStyle", 0)
-                put("popupColumns", 3)
-                put("popupRows", 3)
-            }
-            finishWithId("folder:$uuid:${folderJson.toString()}")
+            val options = arrayOf("Grid", "Stack")
+            android.app.AlertDialog.Builder(this)
+                .setTitle("Folder style")
+                .setItems(options) { _, which ->
+                    val uuid = java.util.UUID.randomUUID().toString()
+                    val folderJson = JSONObject().apply {
+                        put("name", "New Folder")
+                        put("colorHex", "#444444")
+                        put("items", org.json.JSONArray())
+                        put("folderStyle", which)
+                        put("popupColumns", 3)
+                        put("popupRows", 3)
+                    }
+                    finishWithId("folder:$uuid:${folderJson.toString()}")
+                }
+                .show()
         }
         addItem(android.R.drawable.ic_menu_set_as, "Link") {
             // Need a link picker in future, for now just create dummy link
