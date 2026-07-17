@@ -167,6 +167,11 @@ class SidebarEditActivity : ComponentActivity() {
         }
     }
 
+    override fun onBackPressed() {
+        saveIds()
+        super.onBackPressed()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 100 && resultCode == RESULT_OK) {
@@ -175,38 +180,42 @@ class SidebarEditActivity : ComponentActivity() {
                 localIds.add(id)
                 adapter.notifyItemInserted(localIds.size - 1)
             }
+        } else if (requestCode == 200 && resultCode == RESULT_OK) {
+            val updatedFolder = data?.getStringExtra("UPDATED_FOLDER")
+            val uuid = data?.getStringExtra("FOLDER_UUID")
+            if (updatedFolder != null && uuid != null) {
+                val index = localIds.indexOfFirst { it.startsWith("folder:$uuid:") }
+                if (index != -1) {
+                    localIds[index] = updatedFolder
+                    adapter.notifyItemChanged(index)
+                }
+            }
         }
     }
 
     private fun loadLocalIds() {
         localIds.clear()
-        val jsonStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
-        val arr = JSONArray(jsonStr)
-        
-        if (folderUuid != null) {
-            for (i in 0 until arr.length()) {
-                var item = arr.getString(i)
-                if (item.startsWith("folder:$folderUuid:")) {
-                    try {
-                        val parts = item.split(":", limit = 3)
-                        val folderDataStr = parts[2]
-                        val obj = org.json.JSONObject(folderDataStr)
-                        folderName = obj.optString("name", "Folder")
-                        folderColor = obj.optString("colorHex", "#444444")
-                        folderStyle = obj.optInt("folderStyle", 0)
-                        totalCols = obj.optInt("popupColumns", 0)
-                        if (totalCols <= 0) totalCols = prefs.getInt("sidebar_columns", 3)
-                        totalRows = obj.optInt("popupRows", 0)
-                        
-                        val itemsArr = obj.optJSONArray("items") ?: org.json.JSONArray()
-                        for (j in 0 until itemsArr.length()) {
-                            localIds.add(itemsArr.getString(j))
-                        }
-                    } catch (e: Exception) {}
-                    break
+        val fullFolderId = intent.getStringExtra("FOLDER_FULL_ID")
+        if (folderUuid != null && fullFolderId != null && fullFolderId.startsWith("folder:")) {
+            try {
+                val parts = fullFolderId.split(":", limit = 3)
+                val folderDataStr = parts[2]
+                val obj = org.json.JSONObject(folderDataStr)
+                folderName = obj.optString("name", "Folder")
+                folderColor = obj.optString("colorHex", "#444444")
+                folderStyle = obj.optInt("folderStyle", 0)
+                totalCols = obj.optInt("popupColumns", 0)
+                if (totalCols <= 0) totalCols = prefs.getInt("sidebar_columns", 3)
+                totalRows = obj.optInt("popupRows", 0)
+                
+                val itemsArr = obj.optJSONArray("items") ?: org.json.JSONArray()
+                for (j in 0 until itemsArr.length()) {
+                    localIds.add(itemsArr.getString(j))
                 }
-            }
+            } catch (e: Exception) {}
         } else {
+            val jsonStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
+            val arr = JSONArray(jsonStr)
             for (i in 0 until arr.length()) {
                 localIds.add(arr.getString(i))
             }
@@ -218,25 +227,21 @@ class SidebarEditActivity : ComponentActivity() {
         localIds.forEach { arr.put(it) }
         
         if (folderUuid != null) {
-            val jsonStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: return
-            val mainArr = JSONArray(jsonStr)
-            val newMainArr = JSONArray()
-            for (i in 0 until mainArr.length()) {
-                var item = mainArr.getString(i)
-                if (item.startsWith("folder:$folderUuid:")) {
-                    val obj = org.json.JSONObject()
-                    obj.put("name", folderName)
-                    obj.put("colorHex", folderColor)
-                    obj.put("folderStyle", folderStyle)
-                    obj.put("popupColumns", totalCols)
-                    obj.put("popupRows", totalRows)
-                    obj.put("items", arr)
-                    item = "folder:$folderUuid:${obj.toString()}"
-                }
-                newMainArr.put(item)
+            val obj = org.json.JSONObject()
+            obj.put("name", folderName)
+            obj.put("colorHex", folderColor)
+            obj.put("folderStyle", folderStyle)
+            obj.put("popupColumns", totalCols)
+            obj.put("popupRows", totalRows)
+            obj.put("items", arr)
+            val newItemStr = "folder:$folderUuid:${obj.toString()}"
+            
+            val resultIntent = Intent().apply { 
+                putExtra("UPDATED_FOLDER", newItemStr)
+                putExtra("FOLDER_UUID", folderUuid)
             }
-            prefs.edit().putString("sidebar_apps", newMainArr.toString()).apply()
-            com.example.LogKeeper.writeLog("SidebarEdit", "Saved ${localIds.size} items to folder $folderUuid.")
+            setResult(RESULT_OK, resultIntent)
+            // Removed direct save to prefs; parent grid will save
         } else {
             prefs.edit().putString("sidebar_apps", arr.toString()).apply()
             prefs.edit().putInt("sidebar_columns", totalCols).apply()
@@ -390,8 +395,9 @@ class SidebarEditActivity : ComponentActivity() {
                     val uuid = id.split(":")[1]
                     val intent = Intent(this@SidebarEditActivity, SidebarEditActivity::class.java).apply {
                         putExtra("FOLDER_UUID", uuid)
+                        putExtra("FOLDER_FULL_ID", id)
                     }
-                    startActivity(intent)
+                    startActivityForResult(intent, 200)
                 }
             }
             holder.btnRemove.setOnClickListener {

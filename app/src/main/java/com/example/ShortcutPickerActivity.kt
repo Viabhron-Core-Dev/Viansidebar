@@ -9,22 +9,23 @@ import java.net.URLEncoder
 class ShortcutPickerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val pickIntent = Intent(Intent.ACTION_PICK_ACTIVITY)
-        pickIntent.putExtra(Intent.EXTRA_INTENT, Intent(Intent.ACTION_CREATE_SHORTCUT))
-        pickIntent.putExtra(Intent.EXTRA_TITLE, "Select Shortcut")
-        startActivityForResult(pickIntent, 100)
+        val pickIntent = Intent(Intent.ACTION_CREATE_SHORTCUT)
+        startActivityForResult(pickIntent, 101)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100 && resultCode == Activity.RESULT_OK && data != null) {
-            // Android gives us back an Intent to start the shortcut creation activity
-            startActivityForResult(data, 101)
-        } else if (requestCode == 101 && resultCode == Activity.RESULT_OK && data != null) {
+        if (requestCode == 101 && resultCode == Activity.RESULT_OK && data != null) {
             // Android gives us back the shortcut itself
-            val intent = data.getParcelableExtra<Intent>(Intent.EXTRA_SHORTCUT_INTENT)
+            val intent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                data.getParcelableExtra<Intent>(Intent.EXTRA_SHORTCUT_INTENT)
+            }
             val name = data.getStringExtra(Intent.EXTRA_SHORTCUT_NAME) ?: "Shortcut"
             
+            android.util.Log.d("ShortcutPicker", "Got shortcut intent: $intent, name: $name")
             if (intent != null) {
                 val uri = intent.toUri(0)
                 val encodedLabel = URLEncoder.encode(name, "UTF-8")
