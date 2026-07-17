@@ -115,9 +115,10 @@ sealed class SidebarItem {
 
     data class IntentAction(
         val uri: String,
-        override val label: String
+        override val label: String,
+        val iconPath: String? = null
     ) : SidebarItem() {
-        override var id = "intent:${java.net.URLEncoder.encode(label, "UTF-8")}:${java.net.URLEncoder.encode(uri, "UTF-8")}"
+        override var id = if (iconPath != null) "intent:${java.net.URLEncoder.encode(label, "UTF-8")}:${java.net.URLEncoder.encode(uri, "UTF-8")}:$iconPath" else "intent:${java.net.URLEncoder.encode(label, "UTF-8")}:${java.net.URLEncoder.encode(uri, "UTF-8")}"
     }
 
 }
@@ -343,13 +344,14 @@ class SidebarAppsManager(
                 return SidebarItem.App(appInfo.packageName, appInfo.label)
             }
         } else if (id.startsWith("intent:")) {
-            val parts = id.split(":")
+            val parts = id.split(":", limit = 4)
             if (parts.size >= 3) {
                 val encodedLabel = parts[1]
-                val encodedUri = id.substringAfter("intent:$encodedLabel:")
+                val encodedUri = parts[2]
+                val iconPath = if (parts.size >= 4) parts[3] else null
                 val label = java.net.URLDecoder.decode(encodedLabel, "UTF-8")
                 val uri = java.net.URLDecoder.decode(encodedUri, "UTF-8")
-                return SidebarItem.IntentAction(uri, label)
+                return SidebarItem.IntentAction(uri, label, iconPath)
             } else {
                 val componentStr = id.substringAfter("intent:")
                 return SidebarItem.IntentAction(componentStr, componentStr)
@@ -492,13 +494,14 @@ class SidebarAppsManager(
                     result.add(SidebarItem.App(appInfo.packageName, appInfo.label))
                 }
             } else if (id.startsWith("intent:")) {
-                val parts = id.split(":")
+                val parts = id.split(":", limit = 4)
                 if (parts.size >= 3) {
                     val encodedLabel = parts[1]
-                    val encodedUri = id.substringAfter("intent:$encodedLabel:")
+                    val encodedUri = parts[2]
+                    val iconPath = if (parts.size >= 4) parts[3] else null
                     val label = java.net.URLDecoder.decode(encodedLabel, "UTF-8")
                     val uri = java.net.URLDecoder.decode(encodedUri, "UTF-8")
-                    result.add(SidebarItem.IntentAction(uri, label))
+                    result.add(SidebarItem.IntentAction(uri, label, iconPath))
                 } else {
                     val componentStr = id.substringAfter("intent:")
                     result.add(SidebarItem.IntentAction(componentStr, componentStr))

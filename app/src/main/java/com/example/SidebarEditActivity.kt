@@ -46,7 +46,13 @@ class SidebarEditActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-        manager = SidebarAppsManager(this, prefs, serviceScope) {}
+        manager = SidebarAppsManager(this, prefs, serviceScope) {
+            runOnUiThread {
+                if (::adapter.isInitialized) {
+                    adapter.notifyDataSetChanged()
+                }
+            }
+        }
         
         folderUuid = intent.getStringExtra("FOLDER_UUID")
         loadLocalIds()
@@ -179,6 +185,7 @@ class SidebarEditActivity : ComponentActivity() {
             if (id != null) {
                 localIds.add(id)
                 adapter.notifyItemInserted(localIds.size - 1)
+                saveIds() // Auto-save after addition
             }
         } else if (requestCode == 200 && resultCode == RESULT_OK) {
             val updatedFolder = data?.getStringExtra("UPDATED_FOLDER")
@@ -188,6 +195,7 @@ class SidebarEditActivity : ComponentActivity() {
                 if (index != -1) {
                     localIds[index] = updatedFolder
                     adapter.notifyItemChanged(index)
+                    saveIds() // Auto-save after folder edit
                 }
             }
         }
@@ -376,14 +384,29 @@ class SidebarEditActivity : ComponentActivity() {
                                     holder.iconView.setImageBitmap(loaded)
                                 }
                             } else if (item is com.example.service.SidebarItem.IntentAction) {
-                                try {
-                                    val uriStr = item.uri
-                                    val pkg = android.content.Intent.parseUri(uriStr, android.content.Intent.URI_INTENT_SCHEME).`package` ?: android.content.Intent.parseUri(uriStr, android.content.Intent.URI_INTENT_SCHEME).component?.packageName ?: ""
-                                    val loaded = manager.loadIcon(pkg)
-                                    if (loaded != null && holder.iconView.tag == id) {
-                                        holder.iconView.setImageBitmap(loaded)
-                                    }
-                                } catch (e: Exception) {}
+                                var customIconLoaded = false
+                                if (item.iconPath != null) {
+                                    try {
+                                        val file = java.io.File(item.iconPath)
+                                        if (file.exists()) {
+                                            val bmp = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+                                            if (bmp != null && holder.iconView.tag == id) {
+                                                holder.iconView.setImageBitmap(bmp)
+                                                customIconLoaded = true
+                                            }
+                                        }
+                                    } catch(e: Exception){}
+                                }
+                                if (!customIconLoaded) {
+                                    try {
+                                        val uriStr = item.uri
+                                        val pkg = android.content.Intent.parseUri(uriStr, android.content.Intent.URI_INTENT_SCHEME).`package` ?: android.content.Intent.parseUri(uriStr, android.content.Intent.URI_INTENT_SCHEME).component?.packageName ?: ""
+                                        val loaded = manager.loadIcon(pkg)
+                                        if (loaded != null && holder.iconView.tag == id) {
+                                            holder.iconView.setImageBitmap(loaded)
+                                        }
+                                    } catch (e: Exception) {}
+                                }
                             }
                         }
                     }

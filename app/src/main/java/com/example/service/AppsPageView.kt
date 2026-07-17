@@ -548,7 +548,17 @@ class AppsPageView(
                     icon.setImageBitmap(cached)
                 } else {
                     serviceScope.launch {
-                        val bitmap = manager.loadIcon(pkg)
+                        var customIconBitmap: android.graphics.Bitmap? = null
+                        if (item.iconPath != null) {
+                            try {
+                                val file = java.io.File(item.iconPath)
+                                if (file.exists()) {
+                                    customIconBitmap = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+                                }
+                            } catch(e: Exception) {}
+                        }
+                        
+                        val bitmap = customIconBitmap ?: manager.loadIcon(pkg)
                         if (bitmap != null) {
                             withContext(Dispatchers.Main) {
                                 icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
