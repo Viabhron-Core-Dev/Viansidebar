@@ -246,7 +246,7 @@ fun WidgetPickerScreen(
                                     val spanY = if (android.os.Build.VERSION.SDK_INT >= 31) provider.targetCellHeight else Math.max(1, Math.round(provider.minHeight / 70.0).toInt())
                                     val is1x1 = spanX <= 1 && spanY <= 1
                                     val isSidebar = actionType == "ADD_ELEMENT" || actionType == "RETURN_ID"
-                                    val enabled = !isSidebar || is1x1
+                                    val enabled = true
                                     
                                     Row(
                                         modifier = Modifier
