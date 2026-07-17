@@ -350,6 +350,15 @@ class SidebarAppsManager(
             val appInfo = allInstalledApps.find { it.packageName == pkg }
             if (appInfo != null) {
                 return SidebarItem.App(appInfo.packageName, appInfo.label)
+            } else {
+                try {
+                    val pm = context.packageManager
+                    val info = pm.getApplicationInfo(pkg, 0)
+                    val label = pm.getApplicationLabel(info).toString()
+                    return SidebarItem.App(pkg, label)
+                } catch(e: Exception) {
+                    return SidebarItem.App(pkg, pkg)
+                }
             }
         } else if (id.startsWith("intent:")) {
             val parts = id.split(":", limit = 4)
@@ -458,7 +467,14 @@ class SidebarAppsManager(
             try {
                 val parts = id.split(":", limit = 3)
                 val uuid = parts[1]
-                val height = if (parts.size > 2) parts[2].toIntOrNull() ?: 50 else 50
+                val spacerDataStr = if (parts.size > 2) parts[2] else "{}"
+                var height = 50
+                try {
+                    val obj = org.json.JSONObject(spacerDataStr)
+                    height = obj.optInt("heightDp", 50)
+                } catch(e: Exception) {
+                    height = spacerDataStr.toIntOrNull() ?: 50
+                }
                 return SidebarItem.Spacer(uuid, height, id)
             } catch (e: Exception) { 
                     com.example.LogKeeper.writeLog("SidebarAppsManager", "Error parsing folder id: $id - ${e.message}")
@@ -495,6 +511,11 @@ class SidebarAppsManager(
 
         val result = mutableListOf<SidebarItem>()
         for (id in selectedIds) {
+            val parsed = parseId(id)
+            if (parsed != null) {
+                result.add(parsed)
+                continue
+            }
             if (id.startsWith("app:")) {
                 val pkg = id.substringAfter("app:")
                 val appInfo = allInstalledApps.find { it.packageName == pkg }

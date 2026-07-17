@@ -133,13 +133,7 @@ class FolderStyleDrawable(
         val cx = bounds.centerX().toFloat()
         val cy = bounds.centerY().toFloat()
         
-        // Draw transparent bubble background
-        paint.style = Paint.Style.FILL
-        paint.color = themeColor
-        paint.alpha = 100
-        canvas.drawCircle(cx, cy, w / 2.2f, paint)
-
-        val symbolSize = w * 0.75f
+        val symbolSize = w * 0.9f
         val sx = cx - symbolSize / 2f
         val sy = cy - symbolSize / 2f
         

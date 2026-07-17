@@ -567,6 +567,12 @@ class AppsPageView(
                         }
                     }
                 }
+            } else if (item is SidebarItem.Widget) {
+                val cached = manager.getIconBitmap(item.id)
+                if (cached != null) {
+                    icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    icon.setImageBitmap(cached)
+                }
             } else if (item is SidebarItem.QuickTile) {
                 icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 icon.setImageResource(item.iconResId)

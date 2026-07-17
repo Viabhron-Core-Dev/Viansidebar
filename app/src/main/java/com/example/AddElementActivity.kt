@@ -172,11 +172,6 @@ class AddElementActivity : ComponentActivity() {
             finishWithId("spacer:$uuid:${spacerJson.toString()}")
         }
         
-        addHeader("Screen Capture")
-        addItem(android.R.drawable.ic_menu_camera, "Screenshot") { finishWithId("system:screenshot") }
-        addItem(android.R.drawable.ic_menu_crop, "Region Capture") { finishWithId("system:region_capture") }
-        addItem(android.R.drawable.ic_media_play, "Screen Record") { finishWithId("system:screen_record") }
-        
         addHeader("Android actions")
         fun openActionPicker(category: String, title: String) {
             val intent = Intent(this, ActionPickerActivity::class.java).apply {
@@ -185,6 +180,8 @@ class AddElementActivity : ComponentActivity() {
             }
             startActivityForResult(intent, 500)
         }
+        
+        addItem(android.R.drawable.ic_menu_camera, "Screen Capture") { openActionPicker("screen_capture", "Screen Capture") }
         addItem(android.R.drawable.ic_menu_manage, "System Quick Tiles") { openActionPicker("quick_tiles", "Quick Tiles") }
         addItem(android.R.drawable.ic_menu_preferences, "Android Settings Shortcut") { openActionPicker("settings_shortcut", "Settings Shortcut") }
         addItem(android.R.drawable.ic_menu_info_details, "System") { openActionPicker("system", "System Actions") }
