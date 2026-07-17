@@ -337,6 +337,14 @@ class SidebarAppsManager(
     }
 
     fun parseId(id: String): SidebarItem? {
+        val result = parseIdInternal(id)
+        if (result == null) {
+            com.example.LogKeeper.writeLog("SidebarAppsManager", "parseId returning null for: $id")
+        }
+        return result
+    }
+    
+    private fun parseIdInternal(id: String): SidebarItem? {
         if (id.startsWith("app:")) {
             val pkg = id.substringAfter("app:")
             val appInfo = allInstalledApps.find { it.packageName == pkg }
