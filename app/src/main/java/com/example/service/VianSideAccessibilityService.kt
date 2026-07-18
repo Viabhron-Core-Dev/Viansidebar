@@ -191,7 +191,7 @@ class VianSideAccessibilityService : AccessibilityService() {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
             val intent = Intent(this, QRCropActivity::class.java).apply {
-                putExtra("image_path", cacheFile.absolutePath)
+                putExtra("IMAGE_PATH", cacheFile.absolutePath)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             startActivity(intent)

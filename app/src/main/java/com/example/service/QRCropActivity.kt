@@ -43,10 +43,38 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class QRCropActivity : ComponentActivity() {
+    private var tempImagePath: String? = null
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tempImagePath?.let { path ->
+            try {
+                val file = File(path)
+                if (file.exists()) {
+                    file.delete()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        
+        try {
+            val cacheFiles = cacheDir.listFiles { _, name -> name.startsWith("shared_crop_") }
+            cacheFiles?.forEach { file ->
+                if (file.lastModified() < System.currentTimeMillis() - 60 * 60 * 1000) { // 1 hour old
+                    file.delete()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         val imagePath = intent.getStringExtra("IMAGE_PATH")
+        tempImagePath = imagePath
         if (imagePath == null) {
             Toast.makeText(this, "No image provided", Toast.LENGTH_SHORT).show()
             finish()
