@@ -16,6 +16,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -74,6 +75,21 @@ class QRCropActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Cleanup old shared crop images
+        Thread {
+            try {
+                cacheDir.listFiles()?.forEach { file ->
+                    if (file.name.startsWith("shared_crop_") && file.name.endsWith(".jpg")) {
+                        file.delete()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }.start()
+
+        super.onCreate(savedInstanceState)
+        
         val imagePath = intent.getStringExtra("IMAGE_PATH")
         tempImagePath = imagePath
         if (imagePath == null) {
@@ -101,11 +117,11 @@ class QRCropActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
                     QRCropScreen(
                         bitmap = bitmap,
-                        onAction = { action, x, y, width, height, shape ->
+                        onAction = { action, x, y, width, height, shape, points ->
                             if (action == "scan") {
-                                scanCroppedArea(bitmap, x, y, width, height)
+                                scanCroppedArea(bitmap, x, y, width, height, shape, points)
                             } else if (action == "share") {
-                                shareCroppedArea(bitmap, x, y, width, height, shape)
+                                shareCroppedArea(bitmap, x, y, width, height, shape, points)
                             }
                         },
                         onClose = { finish() }
@@ -115,7 +131,7 @@ class QRCropActivity : ComponentActivity() {
         }
     }
 
-    private fun shareCroppedArea(bitmap: Bitmap, x: Float, y: Float, w: Float, h: Float, shape: String) {
+    private fun shareCroppedArea(bitmap: Bitmap, x: Float, y: Float, w: Float, h: Float, shape: String, points: List<Offset>) {
         val cropX = maxOf(0, x.toInt())
         val cropY = maxOf(0, y.toInt())
         val cropW = minOf(bitmap.width - cropX, w.toInt())
@@ -140,19 +156,15 @@ class QRCropActivity : ComponentActivity() {
                 val output = Bitmap.createBitmap(cropW, cropH, Bitmap.Config.ARGB_8888)
                 val canvas = android.graphics.Canvas(output)
                 canvas.drawColor(android.graphics.Color.WHITE)
-                val path = android.graphics.Path()
-                val cx = cropW / 2f
-                val cy = cropH / 2f
-                val rx = cropW / 2f
-                val ry = cropH / 2f
-                path.moveTo(cx, cy - ry)
-                path.lineTo(cx + rx * 0.866f, cy - ry * 0.5f)
-                path.lineTo(cx + rx * 0.866f, cy + ry * 0.5f)
-                path.lineTo(cx, cy + ry)
-                path.lineTo(cx - rx * 0.866f, cy + ry * 0.5f)
-                path.lineTo(cx - rx * 0.866f, cy - ry * 0.5f)
-                path.close()
-                canvas.clipPath(path)
+                if (points.isNotEmpty()) {
+                    val path = android.graphics.Path()
+                    path.moveTo(points.first().x - cropX, points.first().y - cropY)
+                    for (i in 1 until points.size) {
+                        path.lineTo(points[i].x - cropX, points[i].y - cropY)
+                    }
+                    path.close()
+                    canvas.clipPath(path)
+                }
                 canvas.drawBitmap(croppedBitmap, 0f, 0f, null)
                 croppedBitmap = output
             }
@@ -178,7 +190,7 @@ class QRCropActivity : ComponentActivity() {
         }
     }
 
-    private fun scanCroppedArea(bitmap: Bitmap, x: Float, y: Float, w: Float, h: Float) {
+    private fun scanCroppedArea(bitmap: Bitmap, x: Float, y: Float, w: Float, h: Float, shape: String, points: List<Offset>) {
         val cropX = maxOf(0, x.toInt())
         val cropY = maxOf(0, y.toInt())
         val cropW = minOf(bitmap.width - cropX, w.toInt())
@@ -263,10 +275,11 @@ class QRCropActivity : ComponentActivity() {
 }
 
 @Composable
-fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, String) -> Unit, onClose: () -> Unit) {
+fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, String, List<Offset>) -> Unit, onClose: () -> Unit) {
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
     var cropRect by remember { mutableStateOf(Rect.Zero) }
     var cropShape by remember { mutableStateOf("square") }
+    val polygonPoints = remember { mutableStateListOf<Offset>() }
     
     Box(modifier = Modifier.fillMaxSize().onSizeChanged { size ->
         viewSize = size
@@ -291,42 +304,50 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, 
             Canvas(modifier = Modifier
                 .graphicsLayer { alpha = 0.99f }
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    var dragHandle: String? = null
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            val touchRadius = 60.dp.toPx()
-                            val left = cropRect.left
-                            val right = cropRect.right
-                            val top = cropRect.top
-                            val bottom = cropRect.bottom
-                            
-                            dragHandle = when {
-                                offset.x in (left - touchRadius)..(left + touchRadius) && offset.y in (top - touchRadius)..(top + touchRadius) -> "topLeft"
-                                offset.x in (right - touchRadius)..(right + touchRadius) && offset.y in (top - touchRadius)..(top + touchRadius) -> "topRight"
-                                offset.x in (left - touchRadius)..(left + touchRadius) && offset.y in (bottom - touchRadius)..(bottom + touchRadius) -> "bottomLeft"
-                                offset.x in (right - touchRadius)..(right + touchRadius) && offset.y in (bottom - touchRadius)..(bottom + touchRadius) -> "bottomRight"
-                                offset.x in left..right && offset.y in top..bottom -> "center"
-                                else -> null
+                .pointerInput(cropShape) {
+                    if (cropShape == "polygon") {
+                        detectTapGestures(
+                            onTap = { offset ->
+                                polygonPoints.add(offset)
                             }
-                        },
-                        onDragEnd = { dragHandle = null },
-                        onDragCancel = { dragHandle = null },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            when (dragHandle) {
-                                "topLeft" -> cropRect = Rect(cropRect.left + dragAmount.x, cropRect.top + dragAmount.y, cropRect.right, cropRect.bottom)
-                                "topRight" -> cropRect = Rect(cropRect.left, cropRect.top + dragAmount.y, cropRect.right + dragAmount.x, cropRect.bottom)
-                                "bottomLeft" -> cropRect = Rect(cropRect.left + dragAmount.x, cropRect.top, cropRect.right, cropRect.bottom + dragAmount.y)
-                                "bottomRight" -> cropRect = Rect(cropRect.left, cropRect.top, cropRect.right + dragAmount.x, cropRect.bottom + dragAmount.y)
-                                "center" -> cropRect = cropRect.translate(dragAmount.x, dragAmount.y)
+                        )
+                    } else {
+                        var dragHandle: String? = null
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                val touchRadius = 60.dp.toPx()
+                                val left = cropRect.left
+                                val right = cropRect.right
+                                val top = cropRect.top
+                                val bottom = cropRect.bottom
+                                
+                                dragHandle = when {
+                                    offset.x in (left - touchRadius)..(left + touchRadius) && offset.y in (top - touchRadius)..(top + touchRadius) -> "topLeft"
+                                    offset.x in (right - touchRadius)..(right + touchRadius) && offset.y in (top - touchRadius)..(top + touchRadius) -> "topRight"
+                                    offset.x in (left - touchRadius)..(left + touchRadius) && offset.y in (bottom - touchRadius)..(bottom + touchRadius) -> "bottomLeft"
+                                    offset.x in (right - touchRadius)..(right + touchRadius) && offset.y in (bottom - touchRadius)..(bottom + touchRadius) -> "bottomRight"
+                                    offset.x in left..right && offset.y in top..bottom -> "center"
+                                    else -> null
+                                }
+                            },
+                            onDragEnd = { dragHandle = null },
+                            onDragCancel = { dragHandle = null },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                when (dragHandle) {
+                                    "topLeft" -> cropRect = Rect(cropRect.left + dragAmount.x, cropRect.top + dragAmount.y, cropRect.right, cropRect.bottom)
+                                    "topRight" -> cropRect = Rect(cropRect.left, cropRect.top + dragAmount.y, cropRect.right + dragAmount.x, cropRect.bottom)
+                                    "bottomLeft" -> cropRect = Rect(cropRect.left + dragAmount.x, cropRect.top, cropRect.right, cropRect.bottom + dragAmount.y)
+                                    "bottomRight" -> cropRect = Rect(cropRect.left, cropRect.top, cropRect.right + dragAmount.x, cropRect.bottom + dragAmount.y)
+                                    "center" -> cropRect = cropRect.translate(dragAmount.x, dragAmount.y)
+                                }
+                                
+                                // Enforce minimum size and constraints
+                                if (cropRect.width < 50f) cropRect = Rect(cropRect.left, cropRect.top, cropRect.left + 50f, cropRect.bottom)
+                                if (cropRect.height < 50f) cropRect = Rect(cropRect.left, cropRect.top, cropRect.right, cropRect.top + 50f)
                             }
-                            
-                            // Enforce minimum size and constraints
-                            if (cropRect.width < 50f) cropRect = Rect(cropRect.left, cropRect.top, cropRect.left + 50f, cropRect.bottom)
-                            if (cropRect.height < 50f) cropRect = Rect(cropRect.left, cropRect.top, cropRect.right, cropRect.top + 50f)
-                        }
-                    )
+                        )
+                    }
                 }
             ) {
                 val dimColor = Color.Black.copy(alpha = 0.5f)
@@ -335,18 +356,13 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, 
                     if (cropShape == "circle") {
                         addOval(cropRect)
                     } else if (cropShape == "polygon") {
-                        // Draw a hexagon
-                        val cx = cropRect.center.x
-                        val cy = cropRect.center.y
-                        val rx = cropRect.width / 2f
-                        val ry = cropRect.height / 2f
-                        moveTo(cx, cy - ry)
-                        lineTo(cx + rx * 0.866f, cy - ry * 0.5f)
-                        lineTo(cx + rx * 0.866f, cy + ry * 0.5f)
-                        lineTo(cx, cy + ry)
-                        lineTo(cx - rx * 0.866f, cy + ry * 0.5f)
-                        lineTo(cx - rx * 0.866f, cy - ry * 0.5f)
-                        close()
+                        if (polygonPoints.isNotEmpty()) {
+                            moveTo(polygonPoints.first().x, polygonPoints.first().y)
+                            for (i in 1 until polygonPoints.size) {
+                                lineTo(polygonPoints[i].x, polygonPoints[i].y)
+                            }
+                            close()
+                        }
                     } else {
                         addRect(cropRect)
                     }
@@ -354,33 +370,34 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, 
                 }
                 drawPath(path, dimColor)
                 
+                val hs = handleSize.toPx() / 2
                 if (cropShape == "circle") {
                     drawOval(Color.Green, cropRect.topLeft, cropRect.size, style = Stroke(width = 4.dp.toPx()))
                 } else if (cropShape == "polygon") {
-                    val hexPath = androidx.compose.ui.graphics.Path().apply {
-                        val cx = cropRect.center.x
-                        val cy = cropRect.center.y
-                        val rx = cropRect.width / 2f
-                        val ry = cropRect.height / 2f
-                        moveTo(cx, cy - ry)
-                        lineTo(cx + rx * 0.866f, cy - ry * 0.5f)
-                        lineTo(cx + rx * 0.866f, cy + ry * 0.5f)
-                        lineTo(cx, cy + ry)
-                        lineTo(cx - rx * 0.866f, cy + ry * 0.5f)
-                        lineTo(cx - rx * 0.866f, cy - ry * 0.5f)
-                        close()
+                    if (polygonPoints.isNotEmpty()) {
+                        val polyPath = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(polygonPoints.first().x, polygonPoints.first().y)
+                            for (i in 1 until polygonPoints.size) {
+                                lineTo(polygonPoints[i].x, polygonPoints[i].y)
+                            }
+                            close()
+                        }
+                        drawPath(polyPath, Color.Green, style = Stroke(width = 4.dp.toPx()))
+                        polygonPoints.forEach { pt ->
+                            drawCircle(Color.Green, radius = hs, center = pt)
+                        }
                     }
-                    drawPath(hexPath, Color.Green, style = Stroke(width = 4.dp.toPx()))
                 } else {
                     drawRect(Color.Green, cropRect.topLeft, cropRect.size, style = Stroke(width = 4.dp.toPx()))
                 }
                 
-                // Draw handles
-                val hs = handleSize.toPx() / 2
-                drawCircle(Color.Green, radius = hs, center = cropRect.topLeft)
-                drawCircle(Color.Green, radius = hs, center = cropRect.topRight)
-                drawCircle(Color.Green, radius = hs, center = cropRect.bottomLeft)
-                drawCircle(Color.Green, radius = hs, center = cropRect.bottomRight)
+                // Draw handles for square and circle
+                if (cropShape != "polygon") {
+                    drawCircle(Color.Green, radius = hs, center = cropRect.topLeft)
+                    drawCircle(Color.Green, radius = hs, center = cropRect.topRight)
+                    drawCircle(Color.Green, radius = hs, center = cropRect.bottomLeft)
+                    drawCircle(Color.Green, radius = hs, center = cropRect.bottomRight)
+                }
             }
         }
         
@@ -397,7 +414,12 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, 
                 Text("Circle", modifier = Modifier.padding(8.dp))
             }
             FloatingActionButton(onClick = { cropShape = "polygon" }, containerColor = if (cropShape == "polygon") Color.Green else Color.Gray) {
-                Text("Hex", modifier = Modifier.padding(8.dp))
+                Text("Polygon", modifier = Modifier.padding(8.dp))
+            }
+            if (cropShape == "polygon" && polygonPoints.isNotEmpty()) {
+                FloatingActionButton(onClick = { polygonPoints.clear() }, containerColor = Color.Red) {
+                    Text("Clear", modifier = Modifier.padding(8.dp), color = Color.White)
+                }
             }
         }
         
@@ -427,11 +449,18 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, 
                     offsetX = (viewSize.width - renderedW) / 2f
                 }
                 val scale = bitmap.width / renderedW
-                val realX = (cropRect.left - offsetX) * scale
-                val realY = (cropRect.top - offsetY) * scale
-                val realW = cropRect.width * scale
-                val realH = cropRect.height * scale
-                onAction("share", realX, realY, realW, realH, cropShape)
+                val minX = polygonPoints.minOfOrNull { it.x } ?: 0f
+                val maxX = polygonPoints.maxOfOrNull { it.x } ?: 0f
+                val minY = polygonPoints.minOfOrNull { it.y } ?: 0f
+                val maxY = polygonPoints.maxOfOrNull { it.y } ?: 0f
+                val rectToUse = if (cropShape == "polygon" && polygonPoints.isNotEmpty()) Rect(minX, minY, maxX, maxY) else cropRect
+                
+                val realX = (rectToUse.left - offsetX) * scale
+                val realY = (rectToUse.top - offsetY) * scale
+                val realW = rectToUse.width * scale
+                val realH = rectToUse.height * scale
+                val mappedPoints = polygonPoints.map { Offset((it.x - offsetX) * scale, (it.y - offsetY) * scale) }
+                onAction("share", realX, realY, realW, realH, cropShape, mappedPoints)
             }) {
                 Text("Share")
             }
@@ -451,11 +480,18 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, 
                     offsetX = (viewSize.width - renderedW) / 2f
                 }
                 val scale = bitmap.width / renderedW
-                val realX = (cropRect.left - offsetX) * scale
-                val realY = (cropRect.top - offsetY) * scale
-                val realW = cropRect.width * scale
-                val realH = cropRect.height * scale
-                onAction("scan", realX, realY, realW, realH, cropShape)
+                val minX = polygonPoints.minOfOrNull { it.x } ?: 0f
+                val maxX = polygonPoints.maxOfOrNull { it.x } ?: 0f
+                val minY = polygonPoints.minOfOrNull { it.y } ?: 0f
+                val maxY = polygonPoints.maxOfOrNull { it.y } ?: 0f
+                val rectToUse = if (cropShape == "polygon" && polygonPoints.isNotEmpty()) Rect(minX, minY, maxX, maxY) else cropRect
+                
+                val realX = (rectToUse.left - offsetX) * scale
+                val realY = (rectToUse.top - offsetY) * scale
+                val realW = rectToUse.width * scale
+                val realH = rectToUse.height * scale
+                val mappedPoints = polygonPoints.map { Offset((it.x - offsetX) * scale, (it.y - offsetY) * scale) }
+                onAction("scan", realX, realY, realW, realH, cropShape, mappedPoints)
             }) {
                 Text("Scan QR")
             }

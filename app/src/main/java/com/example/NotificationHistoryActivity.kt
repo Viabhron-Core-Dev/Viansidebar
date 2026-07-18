@@ -85,7 +85,7 @@ fun NotificationHistoryScreen(onBack: () -> Unit, onExport: (List<NotificationHi
     
     val prefs = remember { context.getSharedPreferences("NotificationPrefs", Context.MODE_PRIVATE) }
     var hiddenPackages by remember { 
-        mutableStateOf(prefs.getStringSet("history_hidden_packages", prefs.getStringSet("hidden_packages", emptySet())) ?: emptySet())
+        mutableStateOf(prefs.getStringSet("history_hidden_packages", emptySet()) ?: emptySet())
     }
     
     var showFilterDialog by remember { mutableStateOf(false) }
@@ -178,7 +178,14 @@ fun NotificationHistoryScreen(onBack: () -> Unit, onExport: (List<NotificationHi
                         )
                         
                         val pm = context.packageManager
-                        val appsInHistory = history.map { it.packageName to it.appName }.distinctBy { it.first }
+                        val appsInHistory = remember {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN, null).apply {
+                                addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+                            }
+                            pm.queryIntentActivities(intent, 0).map { 
+                                it.activityInfo.packageName to it.loadLabel(pm).toString()
+                            }.distinctBy { it.first }.sortedBy { it.second }
+                        }
                         
                         LazyColumn(modifier = Modifier.weight(1f)) {
                             items(appsInHistory) { (pkg, name) ->

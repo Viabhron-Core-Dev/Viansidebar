@@ -41,7 +41,7 @@ class AppNotificationListener : NotificationListenerService() {
         // Record history
         if (sbn.isClearable) {
             val prefs = getSharedPreferences("NotificationPrefs", Context.MODE_PRIVATE)
-            val historyHidden = prefs.getStringSet("history_hidden_packages", prefs.getStringSet("hidden_packages", emptySet())) ?: emptySet()
+            val historyHidden = prefs.getStringSet("history_hidden_packages", emptySet()) ?: emptySet()
             if (!historyHidden.contains(sbn.packageName)) {
                 scope.launch {
                     try {

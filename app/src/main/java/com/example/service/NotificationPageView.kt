@@ -186,10 +186,14 @@ fun NotificationScreen(context: Context, onCloseSidebar: () -> Unit) {
                     )
                     
                     val pm = context.packageManager
-                    val appsInList = notifications.map { it.packageName to 
-                        try { pm.getApplicationLabel(pm.getApplicationInfo(it.packageName, 0)).toString() } 
-                        catch(e: Exception) { it.packageName }
-                    }.distinctBy { it.first }
+                    val appsInList = remember {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_MAIN, null).apply {
+                            addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+                        }
+                        pm.queryIntentActivities(intent, 0).map { 
+                            it.activityInfo.packageName to it.loadLabel(pm).toString()
+                        }.distinctBy { it.first }.sortedBy { it.second }
+                    }
                     
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(appsInList) { (pkg, name) ->
