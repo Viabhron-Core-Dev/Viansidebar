@@ -25,6 +25,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -100,11 +101,11 @@ class QRCropActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
                     QRCropScreen(
                         bitmap = bitmap,
-                        onAction = { action, x, y, width, height ->
+                        onAction = { action, x, y, width, height, shape ->
                             if (action == "scan") {
                                 scanCroppedArea(bitmap, x, y, width, height)
                             } else if (action == "share") {
-                                shareCroppedArea(bitmap, x, y, width, height)
+                                shareCroppedArea(bitmap, x, y, width, height, shape)
                             }
                         },
                         onClose = { finish() }
@@ -114,7 +115,7 @@ class QRCropActivity : ComponentActivity() {
         }
     }
 
-    private fun shareCroppedArea(bitmap: Bitmap, x: Float, y: Float, w: Float, h: Float) {
+    private fun shareCroppedArea(bitmap: Bitmap, x: Float, y: Float, w: Float, h: Float, shape: String) {
         val cropX = maxOf(0, x.toInt())
         val cropY = maxOf(0, y.toInt())
         val cropW = minOf(bitmap.width - cropX, w.toInt())
@@ -124,18 +125,53 @@ class QRCropActivity : ComponentActivity() {
             return
         }
         try {
-            val croppedBitmap = Bitmap.createBitmap(bitmap, cropX, cropY, cropW, cropH)
-            val cacheFile = java.io.File(cacheDir, "shared_crop_${System.currentTimeMillis()}.png")
+            var croppedBitmap = Bitmap.createBitmap(bitmap, cropX, cropY, cropW, cropH)
+            
+            if (shape == "circle") {
+                val output = Bitmap.createBitmap(cropW, cropH, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(output)
+                canvas.drawColor(android.graphics.Color.WHITE)
+                val path = android.graphics.Path()
+                path.addOval(android.graphics.RectF(0f, 0f, cropW.toFloat(), cropH.toFloat()), android.graphics.Path.Direction.CW)
+                canvas.clipPath(path)
+                canvas.drawBitmap(croppedBitmap, 0f, 0f, null)
+                croppedBitmap = output
+            } else if (shape == "polygon") {
+                val output = Bitmap.createBitmap(cropW, cropH, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(output)
+                canvas.drawColor(android.graphics.Color.WHITE)
+                val path = android.graphics.Path()
+                val cx = cropW / 2f
+                val cy = cropH / 2f
+                val rx = cropW / 2f
+                val ry = cropH / 2f
+                path.moveTo(cx, cy - ry)
+                path.lineTo(cx + rx * 0.866f, cy - ry * 0.5f)
+                path.lineTo(cx + rx * 0.866f, cy + ry * 0.5f)
+                path.lineTo(cx, cy + ry)
+                path.lineTo(cx - rx * 0.866f, cy + ry * 0.5f)
+                path.lineTo(cx - rx * 0.866f, cy - ry * 0.5f)
+                path.close()
+                canvas.clipPath(path)
+                canvas.drawBitmap(croppedBitmap, 0f, 0f, null)
+                croppedBitmap = output
+            }
+
+            val cacheFile = java.io.File(cacheDir, "shared_crop_${System.currentTimeMillis()}.jpg")
             java.io.FileOutputStream(cacheFile).use { out ->
-                croppedBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                croppedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
             }
             val uri = androidx.core.content.FileProvider.getUriForFile(this, "${packageName}.provider", cacheFile)
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "image/png"
+                type = "image/jpeg"
                 putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = android.content.ClipData.newRawUri("", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            startActivity(Intent.createChooser(shareIntent, "Share Image"))
+            val chooser = Intent.createChooser(shareIntent, "Share Image")
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(chooser)
+            finish()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Error sharing image", Toast.LENGTH_SHORT).show()
@@ -227,9 +263,10 @@ class QRCropActivity : ComponentActivity() {
 }
 
 @Composable
-fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float) -> Unit, onClose: () -> Unit) {
+fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, String) -> Unit, onClose: () -> Unit) {
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
     var cropRect by remember { mutableStateOf(Rect.Zero) }
+    var cropShape by remember { mutableStateOf("square") }
     
     Box(modifier = Modifier.fillMaxSize().onSizeChanged { size ->
         viewSize = size
@@ -252,6 +289,7 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float) 
             val handleSize = 40.dp
             
             Canvas(modifier = Modifier
+                .graphicsLayer { alpha = 0.99f }
                 .fillMaxSize()
                 .pointerInput(Unit) {
                     var dragHandle: String? = null
@@ -291,24 +329,51 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float) 
                     )
                 }
             ) {
-                // Dim background
-                drawRect(Color.Black.copy(alpha = 0.5f))
+                val dimColor = Color.Black.copy(alpha = 0.5f)
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    addRect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+                    if (cropShape == "circle") {
+                        addOval(cropRect)
+                    } else if (cropShape == "polygon") {
+                        // Draw a hexagon
+                        val cx = cropRect.center.x
+                        val cy = cropRect.center.y
+                        val rx = cropRect.width / 2f
+                        val ry = cropRect.height / 2f
+                        moveTo(cx, cy - ry)
+                        lineTo(cx + rx * 0.866f, cy - ry * 0.5f)
+                        lineTo(cx + rx * 0.866f, cy + ry * 0.5f)
+                        lineTo(cx, cy + ry)
+                        lineTo(cx - rx * 0.866f, cy + ry * 0.5f)
+                        lineTo(cx - rx * 0.866f, cy - ry * 0.5f)
+                        close()
+                    } else {
+                        addRect(cropRect)
+                    }
+                    fillType = androidx.compose.ui.graphics.PathFillType.EvenOdd
+                }
+                drawPath(path, dimColor)
                 
-                // Cutout center
-                drawRect(
-                    color = Color.Transparent,
-                    topLeft = cropRect.topLeft,
-                    size = cropRect.size,
-                    blendMode = androidx.compose.ui.graphics.BlendMode.Clear
-                )
-                
-                // Draw border
-                drawRect(
-                    color = Color.Green,
-                    topLeft = cropRect.topLeft,
-                    size = cropRect.size,
-                    style = Stroke(width = 4.dp.toPx())
-                )
+                if (cropShape == "circle") {
+                    drawOval(Color.Green, cropRect.topLeft, cropRect.size, style = Stroke(width = 4.dp.toPx()))
+                } else if (cropShape == "polygon") {
+                    val hexPath = androidx.compose.ui.graphics.Path().apply {
+                        val cx = cropRect.center.x
+                        val cy = cropRect.center.y
+                        val rx = cropRect.width / 2f
+                        val ry = cropRect.height / 2f
+                        moveTo(cx, cy - ry)
+                        lineTo(cx + rx * 0.866f, cy - ry * 0.5f)
+                        lineTo(cx + rx * 0.866f, cy + ry * 0.5f)
+                        lineTo(cx, cy + ry)
+                        lineTo(cx - rx * 0.866f, cy + ry * 0.5f)
+                        lineTo(cx - rx * 0.866f, cy - ry * 0.5f)
+                        close()
+                    }
+                    drawPath(hexPath, Color.Green, style = Stroke(width = 4.dp.toPx()))
+                } else {
+                    drawRect(Color.Green, cropRect.topLeft, cropRect.size, style = Stroke(width = 4.dp.toPx()))
+                }
                 
                 // Draw handles
                 val hs = handleSize.toPx() / 2
@@ -316,6 +381,23 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float) 
                 drawCircle(Color.Green, radius = hs, center = cropRect.topRight)
                 drawCircle(Color.Green, radius = hs, center = cropRect.bottomLeft)
                 drawCircle(Color.Green, radius = hs, center = cropRect.bottomRight)
+            }
+        }
+        
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            FloatingActionButton(onClick = { cropShape = "square" }, containerColor = if (cropShape == "square") Color.Green else Color.Gray) {
+                Text("Square", modifier = Modifier.padding(8.dp))
+            }
+            FloatingActionButton(onClick = { cropShape = "circle" }, containerColor = if (cropShape == "circle") Color.Green else Color.Gray) {
+                Text("Circle", modifier = Modifier.padding(8.dp))
+            }
+            FloatingActionButton(onClick = { cropShape = "polygon" }, containerColor = if (cropShape == "polygon") Color.Green else Color.Gray) {
+                Text("Hex", modifier = Modifier.padding(8.dp))
             }
         }
         
@@ -349,7 +431,7 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float) 
                 val realY = (cropRect.top - offsetY) * scale
                 val realW = cropRect.width * scale
                 val realH = cropRect.height * scale
-                onAction("share", realX, realY, realW, realH)
+                onAction("share", realX, realY, realW, realH, cropShape)
             }) {
                 Text("Share")
             }
@@ -373,7 +455,7 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float) 
                 val realY = (cropRect.top - offsetY) * scale
                 val realW = cropRect.width * scale
                 val realH = cropRect.height * scale
-                onAction("scan", realX, realY, realW, realH)
+                onAction("scan", realX, realY, realW, realH, cropShape)
             }) {
                 Text("Scan QR")
             }

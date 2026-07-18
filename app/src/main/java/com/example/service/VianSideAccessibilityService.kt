@@ -185,22 +185,24 @@ class VianSideAccessibilityService : AccessibilityService() {
     }
 
     private fun launchCropActivity(bitmap: Bitmap) {
-        try {
-            val cacheFile = java.io.File(cacheDir, "temp_qr_screenshot.png")
-            java.io.FileOutputStream(cacheFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+        Thread {
+            try {
+                val cacheFile = java.io.File(cacheDir, "temp_qr_screenshot.jpg")
+                java.io.FileOutputStream(cacheFile).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                }
+                val intent = Intent(this@VianSideAccessibilityService, QRCropActivity::class.java).apply {
+                    putExtra("IMAGE_PATH", cacheFile.absolutePath)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(this@VianSideAccessibilityService, "Failed to prepare screenshot", Toast.LENGTH_SHORT).show()
+                }
             }
-            val intent = Intent(this, QRCropActivity::class.java).apply {
-                putExtra("IMAGE_PATH", cacheFile.absolutePath)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Handler(Looper.getMainLooper()).post {
-                Toast.makeText(this, "Failed to prepare screenshot", Toast.LENGTH_SHORT).show()
-            }
-        }
+        }.start()
     }
 
     private fun scanBitmapForQRCode(bitmap: Bitmap) {
