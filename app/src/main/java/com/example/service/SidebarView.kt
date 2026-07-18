@@ -225,11 +225,7 @@ class SidebarView(
 
                 val page = pages.getOrNull(actualPos)
                 val pageConfig = pageConfigs.getOrNull(actualPos)
-                if (page is WidgetPageView || page is WidgetsGridPageView) {
-                    com.example.utils.AppWidgetHelper.startListening(context)
-                } else {
-                    com.example.utils.AppWidgetHelper.stopListening()
-                }
+                com.example.utils.AppWidgetHelper.startListening(context)
 
 
                 

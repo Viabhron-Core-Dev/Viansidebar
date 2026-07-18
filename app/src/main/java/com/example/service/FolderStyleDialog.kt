@@ -133,7 +133,7 @@ class FolderStyleDrawable(
         val cx = bounds.centerX().toFloat()
         val cy = bounds.centerY().toFloat()
         
-        val symbolSize = w * 0.9f
+        val symbolSize = w * 0.98f
         val sx = cx - symbolSize / 2f
         val sy = cy - symbolSize / 2f
         
@@ -157,7 +157,7 @@ class FolderStyleDrawable(
             val isize = size - 2*p
             canvas.drawBitmap(miniIcons[0], null, RectF(ix, iy, ix + isize, iy + isize), iconPaint)
         } else if (count == 2) {
-            val padding = size * 0.04f
+            val padding = size * 0.015f
             val iconSize = (size - padding * 3) / 2f
             val startY = y + (size - iconSize) / 2f
             for (i in 0 until 2) {
@@ -166,7 +166,7 @@ class FolderStyleDrawable(
             }
         } else {
             val maxCount = minOf(4, count)
-            val padding = size * 0.04f
+            val padding = size * 0.015f
             val iconSize = (size - padding * 3) / 2f
             for (i in 0 until maxCount) {
                 val row = i / 2
