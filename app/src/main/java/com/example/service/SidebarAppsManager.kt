@@ -150,7 +150,7 @@ val ALL_SYSTEM_ACTIONS = listOf(
 val ALL_SCREEN_CAPTURE_ACTIONS = listOf(
     SidebarItem.SystemAction("screenshot", "Screenshot", android.R.drawable.ic_menu_camera),
     SidebarItem.SystemAction("screen_record", "Screen Record", android.R.drawable.ic_media_play),
-    SidebarItem.SystemAction("qr_scan", "Screen QR Scanner", android.R.drawable.ic_menu_search)
+    SidebarItem.SystemAction("qr_scan", "Screen Crop / QR", android.R.drawable.ic_menu_search)
 )
 
 val ALL_VOLUME_ACTIONS = listOf(
