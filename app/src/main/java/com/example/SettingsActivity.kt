@@ -85,6 +85,7 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                 )
                 "handles" -> HandlesListSettingsScreen(
                     onNavigateToHandle = { currentRoute = "handle_$it" },
+                    onNavigateToSidebarSettings = { currentRoute = "pages" },
                     onBack = { currentRoute = "main" }
                 )
                 "call_recorder" -> CallRecorderSettingsScreen(
@@ -127,13 +128,7 @@ fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -
                 )
                 Divider()
                 ListItem(
-                    headlineContent = { Text("Sidebar Settings") },
-                    supportingContent = { Text("Sidebar appearance and pages management") },
-                    modifier = Modifier.clickable { onNavigateToGeneral() }
-                )
-                Divider()
-                ListItem(
-                    headlineContent = { Text("Handles Settings") },
+                    headlineContent = { Text("Handles & Sidebar") },
                     supportingContent = { Text("Customize trigger handles & gestures") },
                     modifier = Modifier.clickable { onNavigateToHandles() }
                 )

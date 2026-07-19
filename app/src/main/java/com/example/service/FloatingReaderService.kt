@@ -69,7 +69,11 @@ class FloatingReaderService : Service() {
 
     private lateinit var prefs: SharedPreferences
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+        if (key != null && key.startsWith("handle_") && key != "handles_list") {
+            triggerHandleViews.forEach { it.updatePosition() }
+        }
         when (key) {
+
             "keep_screen_on" -> {
                 if (::windowContainer.isInitialized) {
                     windowContainer.keepScreenOn = sharedPreferences.getBoolean("keep_screen_on", true)
@@ -89,12 +93,10 @@ class FloatingReaderService : Service() {
                 applyThemeFromPrefs()
             }
             "trigger_position", "sidebar_position" -> {
-                triggerHandleView?.updatePosition()
+                triggerHandleViews.forEach { it.updatePosition() }
                 readerHandleView?.updatePosition()
             }
-            "handle_sidebar_y", "handle_sidebar_width", "handle_sidebar_height", "handle_sidebar_color", "handle_sidebar_shape" -> {
-                triggerHandleView?.updatePosition()
-            }
+
             "handle_reader_y", "handle_reader_width", "handle_reader_height", "handle_reader_color", "handle_reader_shape" -> {
                 readerHandleView?.updatePosition()
             }
@@ -157,7 +159,7 @@ class FloatingReaderService : Service() {
         overlayChapters?.setBackgroundColor(bgColor)
         overlayLibrary?.setBackgroundColor(bgColor)
     }
-    private var triggerHandleView: TriggerHandleView? = null
+    private val triggerHandleViews = mutableListOf<TriggerHandleView>()
     private var readerHandleView: ReaderHandleView? = null
     private var sidebarView: SidebarView? = null
     private var sidebarPagesList = mutableListOf<View>()
@@ -276,11 +278,16 @@ class FloatingReaderService : Service() {
         rebuildSidebarPages()
         appsManager.ensureLoaded()
 
-        triggerHandleView = TriggerHandleView(this, prefs, windowManager) {
-            android.util.Log.d("VianSide", "trigger tapped")
-            showSidebar()
+        val handles = com.example.HandleManager.getHandles(prefs)
+        for (handle in handles) {
+            if (handle.enabled) {
+                val view = TriggerHandleView(this, prefs, windowManager, handle.id) { handleId ->
+                    showSidebar()
+                }
+                view.attach()
+                triggerHandleViews.add(view)
+            }
         }
-        triggerHandleView?.attach()
 
         // readerHandleView = ReaderHandleView(this, prefs, windowManager) {
         //     android.util.Log.d("VianSide", "reader trigger tapped")
@@ -2574,8 +2581,9 @@ class FloatingReaderService : Service() {
         if (::appsManager.isInitialized) {
             appsManager.destroy()
         }
-        triggerHandleView?.detach()
-        triggerHandleView = null
+        triggerHandleViews.forEach { it.detach() }
+        triggerHandleViews.clear()
+
         readerHandleView?.detach()
         readerHandleView = null
         saveCurrentPosition()

@@ -1,6 +1,7 @@
 package com.example
 
 import androidx.compose.foundation.layout.*
+import android.content.Intent
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -64,7 +65,28 @@ fun PageCustomizeScreen(
         }
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
+
             item {
+                if (page.type == "apps" || page.type == "widgets_grid") {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            val intent = if (page.type == "apps") {
+                                Intent(context, SidebarEditActivity::class.java)
+                            } else {
+                                Intent(context, WidgetsGridEditActivity::class.java).apply {
+                                    putExtra("page_id", page.id)
+                                }
+                            }
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    ) {
+                        Text(if (page.type == "apps") "EDIT APPS" else "EDIT WIDGETS")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
                 ListItem(
                     headlineContent = { Text("Page Title") },
                     supportingContent = {

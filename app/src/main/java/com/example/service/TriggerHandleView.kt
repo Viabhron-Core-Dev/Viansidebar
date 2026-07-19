@@ -23,7 +23,8 @@ class TriggerHandleView(
     context: Context,
     private val prefs: SharedPreferences,
     private val windowManager: WindowManager,
-    private val onTriggerTapped: () -> Unit
+    val handleId: String,
+    private val onTriggerTapped: (String) -> Unit
 ) : View(context) {
 
     private var layoutParams: WindowManager.LayoutParams
@@ -32,7 +33,7 @@ class TriggerHandleView(
     private var isDragging = false
     private val clickSlop = 10f
     
-    private val prefix = "handle_sidebar_"
+    private val prefix = "handle_${handleId}_"
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -47,7 +48,7 @@ class TriggerHandleView(
                 if (tapAction != "none") {
                     handleAction("tap")
                 } else {
-                    onTriggerTapped()
+                    onTriggerTapped(handleId)
                 }
             }
             return true
@@ -85,7 +86,7 @@ class TriggerHandleView(
         val action = prefs.getString("$prefix$gesture", "none") ?: "none"
         com.example.LogKeeper.writeLog("TriggerHandle", "Gesture: $gesture, Action: $action")
         if (action == "toggle_sidebar") {
-            onTriggerTapped()
+            onTriggerTapped(handleId)
         } else if (action == "toggle_reader") {
             FloatingReaderService.instance?.toggleReader()
         } else if (action.startsWith("open_page:")) {
