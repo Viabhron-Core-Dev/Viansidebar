@@ -162,6 +162,7 @@ class FloatingReaderService : Service() {
     private val triggerHandleViews = mutableListOf<TriggerHandleView>()
     private var readerHandleView: ReaderHandleView? = null
     private var sidebarView: SidebarView? = null
+    private var standaloneSidebarView: SidebarView? = null
     private var sidebarPagesList = mutableListOf<View>()
     private var sidebarDefaultIndex = 0
     private lateinit var appsManager: SidebarAppsManager
@@ -597,6 +598,8 @@ class FloatingReaderService : Service() {
     fun closeSidebar() {
         sidebarView?.detach()
         sidebarView = null
+        standaloneSidebarView?.detach()
+        standaloneSidebarView = null
     }
 
     private fun showSidebar() {
@@ -633,13 +636,66 @@ class FloatingReaderService : Service() {
 
     
     fun openSidebarPage(type: String) {
-        showSidebar()
         val pageConfigs = PageManager.getPages(prefs)
         val index = pageConfigs.indexOfFirst { it.type == type }
         if (index != -1) {
+            showSidebar()
             sidebarView?.goToPage(index)
+        } else {
+            showStandalonePage(type)
         }
     }
+
+    private fun showStandalonePage(type: String) {
+        if (standaloneSidebarView != null) {
+            windowManager.removeView(standaloneSidebarView)
+            standaloneSidebarView = null
+        }
+        
+        val config = com.example.utils.SidebarPage(id = "standalone_$type", title = type.replaceFirstChar { it.uppercase() }, type = type)
+        val tempPagesList = mutableListOf<View>()
+        val pageView = when (config.type) {
+            "apps" -> {
+                val p = AppsPageView(this, config, appsManager, serviceScope,
+                    onCloseSidebar = { standaloneSidebarView?.close() },
+                    onHeightChanged = { newHeight -> standaloneSidebarView?.updatePageStyles(config, newHeight) }
+                )
+                p.updateData(appsManager.activeItems)
+                p
+            }
+            "scheduler" -> SchedulerPageView(this, serviceScope)
+            "calculator" -> CalculatorPageView(this)
+            "compass" -> CompassPageView(this)
+            "notifications" -> NotificationPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
+                standaloneSidebarView?.updatePageStyles(config, newHeight)
+            }
+            "widgets_grid" -> WidgetsGridPageView(this, config.id) { newHeight ->
+                standaloneSidebarView?.updatePageStyles(config, newHeight)
+            }
+            else -> null
+        }
+        
+        if (pageView != null) {
+            tempPagesList.add(pageView)
+            standaloneSidebarView = SidebarView(this, prefs, windowManager, tempPagesList, listOf(config), 0, onClose = { 
+                standaloneSidebarView = null 
+            }, onEditPageClicked = null)
+            
+            serviceLifecycleOwner?.let {
+                standaloneSidebarView?.setViewTreeLifecycleOwner(it)
+                standaloneSidebarView?.setViewTreeViewModelStoreOwner(it)
+                standaloneSidebarView?.setViewTreeSavedStateRegistryOwner(it)
+            }
+            
+            standaloneSidebarView?.attach()
+            if (pageView is AppsPageView) {
+                standaloneSidebarView?.updatePageStyles(config, pageView.getCurrentHeightPx())
+            } else if (pageView is WidgetsGridPageView) {
+                standaloneSidebarView?.updatePageStyles(config, pageView.getCurrentHeightPx())
+            }
+        }
+    }
+
 
 
     fun showWidgetsGridEditOverlay(pageId: String) {

@@ -50,6 +50,7 @@ fun HandlesListSettingsScreen(
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 val newId = UUID.randomUUID().toString()
+                prefs.edit().putString("handle_${newId}_tap", "toggle_sidebar").apply()
                 handles = handles + HandleConfig(id = newId, name = "Handle ${handles.size + 1}", enabled = true)
                 save()
             }) {
@@ -201,50 +202,54 @@ fun HandleItem(
                                 else -> action
                             }
                             
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                onClick = {
                                     if (action == "toggle_sidebar") {
                                         onNavigateToSidebarSettings()
                                     }
-                                },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(gestureLabels[gesture] ?: gesture, style = MaterialTheme.typography.titleSmall)
-                                    Text(actionName, style = MaterialTheme.typography.bodyMedium)
                                 }
-                                var showGestureMenu by remember { mutableStateOf(false) }
-                                Box {
-                                    IconButton(onClick = { showGestureMenu = true }) {
-                                        Icon(Icons.Default.MoreVert, "More")
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(gestureLabels[gesture] ?: gesture, style = MaterialTheme.typography.titleSmall)
+                                        Text(actionName, style = MaterialTheme.typography.bodyMedium)
                                     }
-                                    DropdownMenu(
-                                        expanded = showGestureMenu,
-                                        onDismissRequest = { showGestureMenu = false }
-                                    ) {
-                                        if (action == "toggle_sidebar") {
+                                    var showGestureMenu by remember { mutableStateOf(false) }
+                                    Box {
+                                        IconButton(onClick = { showGestureMenu = true }) {
+                                            Icon(Icons.Default.MoreVert, "More")
+                                        }
+                                        DropdownMenu(
+                                            expanded = showGestureMenu,
+                                            onDismissRequest = { showGestureMenu = false }
+                                        ) {
+                                            if (action == "toggle_sidebar") {
+                                                DropdownMenuItem(
+                                                    text = { Text("Sidebar Settings") },
+                                                    onClick = {
+                                                        showGestureMenu = false
+                                                        onNavigateToSidebarSettings()
+                                                    }
+                                                )
+                                            }
                                             DropdownMenuItem(
-                                                text = { Text("Sidebar Settings") },
+                                                text = { Text("Remove") },
                                                 onClick = {
                                                     showGestureMenu = false
-                                                    onNavigateToSidebarSettings()
+                                                    updateGesture(gesture, "none")
                                                 }
                                             )
                                         }
-                                        DropdownMenuItem(
-                                            text = { Text("Remove") },
-                                            onClick = {
-                                                showGestureMenu = false
-                                                updateGesture(gesture, "none")
-                                            }
-                                        )
                                     }
                                 }
                             }
                         }
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = { showAddGestureDialog = true },
@@ -252,7 +257,7 @@ fun HandleItem(
                     ) {
                         Icon(Icons.Default.Add, "Add")
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("ADD SIDEBAR ELEMENT")
+                        Text("ADD GESTURE")
                     }
                     
                     if (showAddGestureDialog) {
@@ -279,12 +284,16 @@ fun HandleItem(
                                     
                                     if (selectedCategory == "page") {
                                         Spacer(modifier = Modifier.height(8.dp))
-                                        if (pageConfigs.isEmpty()) {
-                                            Text("No pages available.", color = Color.Red)
-                                        } else {
-                                            val pageOptions = pageConfigs.map { it.type to it.title }
-                                            ActionDropdown("Select Page", selectedPageType, pageOptions) { selectedPageType = it }
-                                        }
+                                        val pageOptions = listOf(
+                                            "apps" to "Apps Grid",
+                                            "widgets_grid" to "Widgets Grid",
+                                            "calculator" to "Calculator",
+                                            "scheduler" to "Scheduler",
+                                            "compass" to "Compass",
+                                            "notifications" to "Notifications"
+                                        )
+                                        if (selectedPageType.isEmpty()) selectedPageType = "apps"
+                                        ActionDropdown("Select Page", selectedPageType, pageOptions) { selectedPageType = it }
                                     }
                                 }
                             },

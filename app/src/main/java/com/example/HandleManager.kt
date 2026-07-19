@@ -12,6 +12,7 @@ object HandleManager {
         val list = mutableListOf<HandleConfig>()
         if (jsonStr == null) {
             list.add(HandleConfig(id = "sidebar", name = "Handle 1 | Right (Bottom)", enabled = true))
+            prefs.edit().putString("handle_sidebar_tap", "toggle_sidebar").apply()
             return list
         }
         try {
