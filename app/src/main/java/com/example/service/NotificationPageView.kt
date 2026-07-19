@@ -133,6 +133,7 @@ fun NotificationScreen(context: Context, onCloseSidebar: () -> Unit) {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
                     context.startActivity(intent)
+                    onCloseSidebar()
                 }) {
                     Icon(Icons.Default.History, "History", tint = Color.White)
                 }

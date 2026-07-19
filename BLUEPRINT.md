@@ -1,11 +1,11 @@
 # Blueprint
 
 ## Active Tasks
-- [x] Implement custom icon support in sidebar apps grid.
-  - Added "Change Icon" and "Reset Icon" to long-press menu.
-  - Created `IconPickerActivity` that launches image picker, crops image to square, adds 25% rounded corners with transparency, and saves it as WEBP to `custom_icons` folder.
-  - Modified `AppsPageView` and `SidebarAppsManager` to prioritize loading these custom icons overriding default ones.
-  - Broadcast updates to smoothly update UI immediately without restarting service.
+- [x] Fix Notification History not saving all notifications.
+  - Removed `isClearable` check from `AppNotificationListener` so that all notifications (including ongoing) are saved to history.
+  - Added fallback parsing for `EXTRA_BIG_TEXT`, `EXTRA_SUB_TEXT`, and `tickerText` in case `EXTRA_TEXT` is missing.
+- [x] Fix Notification Sidebar not hiding when opening history.
+  - Added `onCloseSidebar()` to the History button click listener in `NotificationPageView`.
 
 ## Next Action
 - Await further user instruction.

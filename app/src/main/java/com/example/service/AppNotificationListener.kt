@@ -39,7 +39,7 @@ class AppNotificationListener : NotificationListenerService() {
         updateNotifications()
         
         // Record history
-        if (sbn.isClearable) {
+        if (true) { // removed isClearable check to save all notifications
             val prefs = getSharedPreferences("NotificationPrefs", Context.MODE_PRIVATE)
             val historyHidden = prefs.getStringSet("history_hidden_packages", emptySet()) ?: emptySet()
             if (!historyHidden.contains(sbn.packageName)) {
@@ -47,7 +47,11 @@ class AppNotificationListener : NotificationListenerService() {
                     try {
                         val notification = sbn.notification
                         val title = notification.extras.getString(android.app.Notification.EXTRA_TITLE) ?: ""
-                        val text = notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
+                        val text = notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() 
+                            ?: notification.extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString()
+                            ?: notification.extras.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT)?.toString()
+                            ?: notification.tickerText?.toString()
+                            ?: "" 
                         
                         // Ignore empty notifications
                         if (title.isBlank() && text.isBlank()) return@launch
