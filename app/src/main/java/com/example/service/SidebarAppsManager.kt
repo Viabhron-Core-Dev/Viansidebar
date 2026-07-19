@@ -290,6 +290,17 @@ class SidebarAppsManager(
 
     
     fun getIconBitmap(id: String): Bitmap? {
+        val customIconFile = java.io.File(context.filesDir, "custom_icons/${id.replace(Regex("[^a-zA-Z0-9.-]"), "_")}.webp")
+        if (customIconFile.exists()) {
+            var b = iconCache.get("custom_$id")
+            if (b == null) {
+                try {
+                    b = android.graphics.BitmapFactory.decodeFile(customIconFile.absolutePath)
+                    if (b != null) iconCache.put("custom_$id", b)
+                } catch(e: Exception) {}
+            }
+            if (b != null) return b
+        }
         if (id.startsWith("app:")) {
             val pkg = id.substringAfter("app:")
             iconCache.get(pkg)?.let { return it }

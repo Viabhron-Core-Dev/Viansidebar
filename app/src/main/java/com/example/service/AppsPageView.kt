@@ -297,6 +297,34 @@ class AppsPageView(
         currentFolderPopup = popupWindow
     }
 
+
+    private val iconUpdateReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: android.content.Intent) {
+            val itemId = intent.getStringExtra("item_id")
+            if (itemId != null) {
+                manager.iconCache.remove("custom_$itemId")
+                manager.iconCache.remove(itemId)
+                adapter.notifyDataSetChanged()
+            }
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(iconUpdateReceiver, android.content.IntentFilter("com.example.UPDATE_SIDEBAR_ICONS"), Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(iconUpdateReceiver, android.content.IntentFilter("com.example.UPDATE_SIDEBAR_ICONS"))
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        try {
+            context.unregisterReceiver(iconUpdateReceiver)
+        } catch(e: Exception) {}
+    }
+
     private inner class AppsAdapter(var items: List<SidebarItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         fun updateItems(newItems: List<SidebarItem>) {
             items = newItems
@@ -497,6 +525,11 @@ class AppsPageView(
                 if (item is SidebarItem.App) {
                     actionList.add("App Info")
                 }
+                actionList.add("Change Icon")
+                val customIconFile = java.io.File(context.filesDir, "custom_icons/${item.id.replace(Regex("[^a-zA-Z0-9.-]"), "_")}.webp")
+                if (customIconFile.exists()) {
+                    actionList.add("Reset Icon")
+                }
                 actionList.add("Remove")
 
                 var popupWindow: android.widget.PopupWindow? = null
@@ -533,6 +566,25 @@ class AppsPageView(
                             popupWindow?.dismiss()
                             when (action) {
                                 "Remove" -> manager.removeItem(item.id)
+                                "Change Icon" -> {
+                                    val intent = android.content.Intent(context, com.example.IconPickerActivity::class.java).apply {
+                                        putExtra("item_id", item.id)
+                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(intent)
+                                    currentFolderPopup?.dismiss()
+                                    onCloseSidebar()
+                                }
+                                "Reset Icon" -> {
+                                    val file = java.io.File(context.filesDir, "custom_icons/${item.id.replace(Regex("[^a-zA-Z0-9.-]"), "_")}.webp")
+                                    if (file.exists()) file.delete()
+                                    manager.iconCache.remove("custom_${item.id}")
+                                    manager.iconCache.remove(item.id)
+                                    context.sendBroadcast(android.content.Intent("com.example.UPDATE_SIDEBAR_ICONS").apply {
+                                        putExtra("item_id", item.id)
+                                    })
+                                    currentFolderPopup?.dismiss()
+                                }
                                 "App Info" -> {
                                     if (item is SidebarItem.App) {
                                         try {
@@ -568,6 +620,17 @@ class AppsPageView(
                 true
             }
 
+            val customIconFile = java.io.File(context.filesDir, "custom_icons/${item.id.replace(Regex("[^a-zA-Z0-9.-]"), "_")}.webp")
+            if (customIconFile.exists()) {
+                val customCached = manager.iconCache.get("custom_${item.id}") ?: android.graphics.BitmapFactory.decodeFile(customIconFile.absolutePath)?.also { manager.iconCache.put("custom_${item.id}", it) }
+                if (customCached != null) {
+                    icon.setImageDrawable(null)
+                    icon.clearColorFilter()
+                    icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    icon.setImageBitmap(customCached)
+                    return
+                }
+            }
             val customIconStr = prefs.getString("custom_icon_${item.id}", null)
             if (!customIconStr.isNullOrEmpty()) {
                 icon.setImageDrawable(null)

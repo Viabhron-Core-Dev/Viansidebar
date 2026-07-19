@@ -92,9 +92,17 @@ fun NotificationHistoryScreen(onBack: () -> Unit, onExport: (List<NotificationHi
 
     LaunchedEffect(searchQuery, hiddenPackages) {
         if (searchQuery.isBlank()) {
-            dao.getFiltered(hiddenPackages.toList()).collectLatest { history = it }
+            if (hiddenPackages.isEmpty()) {
+                dao.getAll().collectLatest { history = it }
+            } else {
+                dao.getFiltered(hiddenPackages.toList()).collectLatest { history = it }
+            }
         } else {
-            dao.search(searchQuery, hiddenPackages.toList()).collectLatest { history = it }
+            if (hiddenPackages.isEmpty()) {
+                dao.searchAll(searchQuery).collectLatest { history = it }
+            } else {
+                dao.search(searchQuery, hiddenPackages.toList()).collectLatest { history = it }
+            }
         }
     }
 
