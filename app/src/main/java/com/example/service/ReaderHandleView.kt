@@ -130,7 +130,8 @@ class ReaderHandleView(
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.END or Gravity.TOP
+            val isRight = prefs.getString("${prefix}edge", "right") == "right"
+            gravity = (if (isRight) Gravity.END else Gravity.START) or Gravity.TOP
             x = 0 
             // Default y is slightly above the normal trigger
             y = prefs.getInt("${prefix}y", 400)

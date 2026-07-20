@@ -131,7 +131,8 @@ class TriggerHandleView(
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.END or Gravity.TOP
+            val isRight = prefs.getString("${prefix}edge", "right") == "right"
+            gravity = (if (isRight) Gravity.END else Gravity.START) or Gravity.TOP
             x = 0 
             y = prefs.getInt("${prefix}y", 500)
         }

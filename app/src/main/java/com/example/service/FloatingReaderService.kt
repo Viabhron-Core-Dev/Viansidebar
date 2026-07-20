@@ -100,7 +100,7 @@ class FloatingReaderService : Service() {
                 readerHandleView?.updatePosition()
             }
 
-            "handle_reader_y", "handle_reader_width", "handle_reader_height", "handle_reader_color", "handle_reader_shape" -> {
+            "handle_reader_y", "handle_reader_width", "handle_reader_height", "handle_reader_color", "handle_reader_shape", "handle_reader_edge" -> {
                 readerHandleView?.updatePosition()
             }
             "sidebar_pages", "sidebar_default_page_index",
@@ -214,7 +214,16 @@ class FloatingReaderService : Service() {
         triggerHandleViews.forEach { it.detach() }
         triggerHandleViews.clear()
 
-        reloadHandles()
+        val handles = com.example.HandleManager.getHandles(prefs)
+        for (handle in handles) {
+            if (handle.enabled) {
+                val view = TriggerHandleView(this, prefs, windowManager, handle.id) { handleId ->
+                    showSidebar()
+                }
+                view.attach()
+                triggerHandleViews.add(view)
+            }
+        }
     }
 
     override fun onCreate() {
