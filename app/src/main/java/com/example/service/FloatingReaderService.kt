@@ -73,6 +73,9 @@ class FloatingReaderService : Service() {
             triggerHandleViews.forEach { it.updatePosition() }
         }
         when (key) {
+            "handles_list" -> {
+                reloadHandles()
+            }
 
             "keep_screen_on" -> {
                 if (::windowContainer.isInitialized) {
@@ -206,6 +209,14 @@ class FloatingReaderService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+
+    private fun reloadHandles() {
+        triggerHandleViews.forEach { it.detach() }
+        triggerHandleViews.clear()
+
+        reloadHandles()
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -279,16 +290,7 @@ class FloatingReaderService : Service() {
         rebuildSidebarPages()
         appsManager.ensureLoaded()
 
-        val handles = com.example.HandleManager.getHandles(prefs)
-        for (handle in handles) {
-            if (handle.enabled) {
-                val view = TriggerHandleView(this, prefs, windowManager, handle.id) { handleId ->
-                    showSidebar()
-                }
-                view.attach()
-                triggerHandleViews.add(view)
-            }
-        }
+        reloadHandles()
 
         // readerHandleView = ReaderHandleView(this, prefs, windowManager) {
         //     android.util.Log.d("VianSide", "reader trigger tapped")
@@ -678,6 +680,7 @@ class FloatingReaderService : Service() {
         if (pageView != null) {
             tempPagesList.add(pageView)
             standaloneSidebarView = SidebarView(this, prefs, windowManager, tempPagesList, listOf(config), 0, onClose = { 
+                standaloneSidebarView?.detach()
                 standaloneSidebarView = null 
             }, onEditPageClicked = null)
             

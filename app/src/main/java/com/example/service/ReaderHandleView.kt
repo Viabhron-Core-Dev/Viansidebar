@@ -176,7 +176,7 @@ class ReaderHandleView(
         
         val w = width.toFloat()
         val h = height.toFloat()
-        val isRight = prefs.getString("sidebar_position", "right") == "right"
+        val isRight = prefs.getString("${prefix}edge", "right") == "right"
         
         val colorHex = prefs.getString("${prefix}color", "#44102d42") ?: "#44102d42"
         try {
@@ -238,7 +238,7 @@ class ReaderHandleView(
         try {
             if (false) {
                 if (!isAddedToWindow) {
-                    val isRight = prefs.getString("sidebar_position", "right") == "right"
+                    val isRight = prefs.getString("${prefix}edge", "right") == "right"
                     layoutParams.gravity = (if (isRight) Gravity.END else Gravity.START) or Gravity.TOP
                     windowManager.addView(this, layoutParams)
                     isAddedToWindow = true
@@ -273,7 +273,7 @@ class ReaderHandleView(
         layoutParams.height = (h * density).toInt()
         layoutParams.y = prefs.getInt("${prefix}y", 400)
         
-        val isRight = prefs.getString("sidebar_position", "right") == "right"
+        val isRight = prefs.getString("${prefix}edge", "right") == "right"
         layoutParams.gravity = (if (isRight) Gravity.END else Gravity.START) or Gravity.TOP
         
         if (isAddedToWindow) {

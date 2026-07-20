@@ -111,17 +111,19 @@ class SidebarView(
         }
         background = drawable
 
-        val headerHeight = (24 * density).toInt()
+        val headerHeight = (36 * density).toInt()
+        val edgeMargin = (16 * density).toInt() // Push icons away from screen edge to avoid handle overlap
         val header = FrameLayout(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, headerHeight)
             
             val closeText = TextView(context).apply {
                 text = "✕"
-                textSize = 16f
+                textSize = 18f
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
                 layoutParams = LayoutParams(headerHeight, headerHeight).apply {
                     gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                    marginEnd = edgeMargin
                 }
                 setOnClickListener { close() }
             }
@@ -130,10 +132,10 @@ class SidebarView(
             val settingsIcon = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_preferences)
                 setColorFilter(Color.WHITE)
-                setPadding((4*density).toInt(), (4*density).toInt(), (4*density).toInt(), (4*density).toInt())
+                setPadding((8*density).toInt(), (8*density).toInt(), (8*density).toInt(), (8*density).toInt())
                 layoutParams = LayoutParams(headerHeight, headerHeight).apply {
                     gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                    marginEnd = headerHeight // Position it before the close button
+                    marginEnd = edgeMargin + headerHeight // Position it before the close button
                 }
                 setOnClickListener {
                     val intent = android.content.Intent(context, com.example.SettingsActivity::class.java).apply {
@@ -148,10 +150,11 @@ class SidebarView(
             val addIcon = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_edit)
                 setColorFilter(Color.WHITE)
-                val pad = (6 * resources.displayMetrics.density).toInt()
+                val pad = (8 * resources.displayMetrics.density).toInt()
                 setPadding(pad, pad, pad, pad)
                 layoutParams = LayoutParams(headerHeight, headerHeight).apply {
                     gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                    marginStart = edgeMargin
                 }
                 setOnClickListener {
                     val currentActual = viewPager.currentItem % pages.size
@@ -387,9 +390,9 @@ class SidebarView(
 
     fun detach() {
         com.example.utils.AppWidgetHelper.stopListening()
-        if (windowToken != null) {
+        try {
             windowManager.removeView(this)
-        }
+        } catch(e: Exception) {}
     }
     
     fun goToPage(index: Int) {

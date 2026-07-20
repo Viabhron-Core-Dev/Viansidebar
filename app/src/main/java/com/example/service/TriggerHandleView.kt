@@ -176,7 +176,7 @@ class TriggerHandleView(
         
         val w = width.toFloat()
         val h = height.toFloat()
-        val isRight = prefs.getString("sidebar_position", "right") == "right"
+        val isRight = prefs.getString("${prefix}edge", "right") == "right"
         
         val colorHex = prefs.getString("${prefix}color", "#3318304A") ?: "#3318304A"
         try {
@@ -238,7 +238,7 @@ class TriggerHandleView(
         try {
             if (prefs.getBoolean("trigger_visible", true)) {
                 if (!isAddedToWindow) {
-                    val isRight = prefs.getString("sidebar_position", "right") == "right"
+                    val isRight = prefs.getString("${prefix}edge", "right") == "right"
                     layoutParams.gravity = (if (isRight) Gravity.END else Gravity.START) or Gravity.TOP
                     windowManager.addView(this, layoutParams)
                     isAddedToWindow = true
@@ -273,7 +273,7 @@ class TriggerHandleView(
         layoutParams.height = (h * density).toInt()
         layoutParams.y = prefs.getInt("${prefix}y", 500)
         
-        val isRight = prefs.getString("sidebar_position", "right") == "right"
+        val isRight = prefs.getString("${prefix}edge", "right") == "right"
         layoutParams.gravity = (if (isRight) Gravity.END else Gravity.START) or Gravity.TOP
         
         if (isAddedToWindow) {

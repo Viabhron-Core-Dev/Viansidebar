@@ -34,6 +34,7 @@ fun HandleEditScreen(handleId: String, onBack: () -> Unit) {
     var sizeHeight by remember { mutableFloatStateOf(prefs.getInt("${prefix}height", if (handleId == "reader") 60 else 120).toFloat()) }
     var colorHex by remember { mutableStateOf(prefs.getString("${prefix}color", if (handleId == "reader") "#44102d42" else "#3318304A") ?: "#3318304A") }
     var shape by remember { mutableStateOf(prefs.getString("${prefix}shape", if (handleId == "reader") "half_oval" else "triangle") ?: "triangle") }
+    var edge by remember { mutableStateOf(prefs.getString("${prefix}edge", "right") ?: "right") }
     
     
 
@@ -51,6 +52,21 @@ fun HandleEditScreen(handleId: String, onBack: () -> Unit) {
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
             Text("Appearance (Applies Instantly)", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text("Edge Position:")
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("left", "right").forEach { s ->
+                    FilterChip(
+                        selected = edge == s,
+                        onClick = { 
+                            edge = s
+                            prefs.edit().putString("${prefix}edge", s).apply()
+                        },
+                        label = { Text(s.replaceFirstChar { it.uppercase() }) }
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             
             Text("Y Position: ${yPos.toInt()}")
