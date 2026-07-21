@@ -25,8 +25,8 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE) }
     
-    var pages by remember { mutableStateOf(PageManager.getPages(prefs)) }
-    var defaultIndex by remember { mutableStateOf(PageManager.getDefaultPageIndex(prefs)) }
+    var pages by remember { mutableStateOf(PageManager.getPages(prefs, "sidebar")) }
+    var defaultIndex by remember { mutableStateOf(PageManager.getDefaultPageIndex(prefs, "sidebar")) }
     
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -41,7 +41,7 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                         val page = SidebarPage.createDefault(id = "widget:$widgetId", type = "widget", title = title)
                         newPages.add(page)
                         pages = newPages
-                        PageManager.savePages(prefs, pages)
+                        PageManager.savePages(prefs, "sidebar", pages)
                     }
                 }
             }
@@ -57,8 +57,8 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
     }
     
     fun savePages() {
-        PageManager.savePages(prefs, pages)
-        PageManager.saveDefaultPageIndex(prefs, defaultIndex)
+        PageManager.savePages(prefs, "sidebar", pages)
+        PageManager.saveDefaultPageIndex(prefs, "sidebar", defaultIndex)
         // Notify service to reload pages if needed? We can just send a broadcast or let service reload on next show.
     }
     

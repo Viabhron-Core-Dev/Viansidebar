@@ -64,8 +64,8 @@ data class SidebarPage(
 }
 
 object PageManager {
-    fun getPages(prefs: SharedPreferences): List<SidebarPage> {
-        val pagesJson = prefs.getString("sidebar_pages", null)
+    fun getPages(prefs: SharedPreferences, handleId: String): List<SidebarPage> {
+        val pagesJson = prefs.getString("handle_${handleId}_pages", prefs.getString("sidebar_pages", null))
         val defaultAppsPage = SidebarPage(id = "default_apps", type = "apps", title = "Apps Grid")
         if (pagesJson == null) {
             // Default setup
@@ -93,17 +93,17 @@ object PageManager {
         return list
     }
 
-    fun savePages(prefs: SharedPreferences, pages: List<SidebarPage>) {
+    fun savePages(prefs: SharedPreferences, handleId: String, pages: List<SidebarPage>) {
         val arr = JSONArray()
         pages.forEach { arr.put(it.toJson()) }
-        prefs.edit().putString("sidebar_pages", arr.toString()).apply()
+        prefs.edit().putString("handle_${handleId}_pages", arr.toString()).apply()
     }
 
-    fun getDefaultPageIndex(prefs: SharedPreferences): Int {
-        return prefs.getInt("sidebar_default_page_index", 0)
+    fun getDefaultPageIndex(prefs: SharedPreferences, handleId: String): Int {
+        return prefs.getInt("handle_${handleId}_default_page_index", prefs.getInt("sidebar_default_page_index", 0))
     }
 
-    fun saveDefaultPageIndex(prefs: SharedPreferences, index: Int) {
-        prefs.edit().putInt("sidebar_default_page_index", index).apply()
+    fun saveDefaultPageIndex(prefs: SharedPreferences, handleId: String, index: Int) {
+        prefs.edit().putInt("handle_${handleId}_default_page_index", index).apply()
     }
 }

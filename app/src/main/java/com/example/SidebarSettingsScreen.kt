@@ -23,7 +23,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun SidebarSettingsScreen(onBack: () -> Unit) {
+fun SidebarSettingsScreen(handleId: String, onBack: () -> Unit) {
     val configuration = LocalConfiguration.current
     val maxScreenWidth = configuration.screenWidthDp.toFloat()
     val maxScreenHeight = configuration.screenHeightDp.toFloat()
@@ -33,17 +33,17 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
     var selectedActionPage by remember { mutableStateOf<SidebarPage?>(null) }
     var pageActionIndex by remember { mutableStateOf(-1) }
     // Pages
-    var pages by remember { mutableStateOf(PageManager.getPages(prefs)) }
-    var defaultIndex by remember { mutableStateOf(PageManager.getDefaultPageIndex(prefs)) }
+    var pages by remember { mutableStateOf(PageManager.getPages(prefs, handleId)) }
+    var defaultIndex by remember { mutableStateOf(PageManager.getDefaultPageIndex(prefs, handleId)) }
     if (customisingPage != null) {
         PageCustomizeScreen(
             page = customisingPage!!,
             onSave = { updated ->
-                val newPages = PageManager.getPages(prefs).toMutableList()
+                val newPages = PageManager.getPages(prefs, handleId).toMutableList()
                 val idx = newPages.indexOfFirst { it.id == updated.id }
                 if (idx != -1) {
                     newPages[idx] = updated
-                    PageManager.savePages(prefs, newPages)
+                    PageManager.savePages(prefs, handleId, newPages)
                     pages = newPages
                 }
             },
@@ -63,8 +63,8 @@ fun SidebarSettingsScreen(onBack: () -> Unit) {
     var sidebarPositionLeft by remember { mutableStateOf(prefs.getBoolean("sidebar_position_left", false)) }
     var showAddDialog by remember { mutableStateOf(false) }
     fun savePages() {
-        PageManager.savePages(prefs, pages)
-        PageManager.saveDefaultPageIndex(prefs, defaultIndex)
+        PageManager.savePages(prefs, handleId, pages)
+        PageManager.saveDefaultPageIndex(prefs, handleId, defaultIndex)
     }
     Scaffold(
         topBar = {

@@ -87,16 +87,16 @@ class ReaderHandleView(
         if (action == "toggle_reader") {
             onTriggerTapped()
         } else if (action == "toggle_sidebar") {
-            FloatingReaderService.instance?.openSidebarPage("apps") // Just show sidebar
+            FloatingReaderService.instance?.openSidebarPage("sidebar", "apps") // Just show sidebar
         } else if (action.startsWith("open_page:")) {
             val pageType = action.removePrefix("open_page:")
-            FloatingReaderService.instance?.openSidebarPage(pageType)
+            FloatingReaderService.instance?.openSidebarPage("sidebar", pageType)
         } else if (action.startsWith("open_element:")) {
             val elementId = action.removePrefix("open_element:")
             FloatingReaderService.instance?.executeElementAction(elementId)
         } else if (action.startsWith("open_")) {
             val pageType = action.removePrefix("open_")
-            FloatingReaderService.instance?.openSidebarPage(pageType)
+            FloatingReaderService.instance?.openSidebarPage("sidebar", pageType)
         } else if (action.startsWith("action_")) {
             val sysAction = action.removePrefix("action_")
             VianSideAccessibilityService.instance?.performAction(sysAction)

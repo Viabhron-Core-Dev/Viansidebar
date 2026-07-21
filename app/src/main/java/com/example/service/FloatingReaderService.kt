@@ -108,7 +108,7 @@ class FloatingReaderService : Service() {
             "sidebar_wrap_content", "sidebar_transparency", "sidebar_position_left" -> {
                 val wasAttached = sidebarView?.windowToken != null
                 if (wasAttached) {
-                    showSidebar()
+                    showSidebar(currentHandleId)
                 }
             }
             "reader_handle_enabled" -> {
@@ -176,7 +176,8 @@ class FloatingReaderService : Service() {
     private var widgetPickerReceiver: android.content.BroadcastReceiver? = null
     private var wasSidebarEditOpen = false
     private var wasWidgetsGridEditOpen = false
-    private var lastWidgetsGridPageId = "" 
+    private var lastWidgetsGridPageId = ""
+    private var currentHandleId: String = "sidebar" 
     private var screenStateReceiver: android.content.BroadcastReceiver? = null
     private var netSpeedEnabled = false
     private var mobileMb: Long = 0
@@ -218,7 +219,7 @@ class FloatingReaderService : Service() {
         for (handle in handles) {
             if (handle.enabled) {
                 val view = TriggerHandleView(this, prefs, windowManager, handle.id) { handleId ->
-                    showSidebar()
+                    showSidebar(handleId)
                 }
                 view.attach()
                 triggerHandleViews.add(view)
@@ -296,7 +297,7 @@ class FloatingReaderService : Service() {
         callRecorderManager = CallRecorderManager(this, prefs)
         callRecorderManager?.startListening()
         
-        rebuildSidebarPages()
+        rebuildSidebarPages("sidebar")
         appsManager.ensureLoaded()
 
         reloadHandles()
@@ -363,11 +364,11 @@ class FloatingReaderService : Service() {
                     if (actionType == "ADD_TO_WIDGETS_GRID" || wasWidgetsGridEditOpen) {
                         val pageId = intent.getStringExtra("PAGE_ID") ?: lastWidgetsGridPageId
                         if (pageId.isNotEmpty()) {
-                            showSidebar()
+                            showSidebar(currentHandleId)
                             showWidgetsGridEditOverlay(pageId)
                         }
                     } else if (actionType == "ADD_ELEMENT" || wasSidebarEditOpen) {
-                        showSidebar()
+                        showSidebar(currentHandleId)
                         
                     }
                     wasSidebarEditOpen = false
@@ -534,9 +535,9 @@ class FloatingReaderService : Service() {
     
     private val appsPageViews = mutableListOf<AppsPageView>()
 
-    private fun rebuildSidebarPages() {
-        val pageConfigs = PageManager.getPages(prefs)
-        sidebarDefaultIndex = PageManager.getDefaultPageIndex(prefs)
+    private fun rebuildSidebarPages(handleId: String) {
+        val pageConfigs = PageManager.getPages(prefs, handleId)
+        sidebarDefaultIndex = PageManager.getDefaultPageIndex(prefs, handleId)
         sidebarPagesList.clear()
         appsPageViews.clear()
         
@@ -613,10 +614,11 @@ class FloatingReaderService : Service() {
         standaloneSidebarView = null
     }
 
-    private fun showSidebar() {
+    private fun showSidebar(handleId: String) {
+        currentHandleId = handleId
         if (sidebarView == null) {
-            rebuildSidebarPages()
-            sidebarView = SidebarView(this, prefs, windowManager, sidebarPagesList, PageManager.getPages(prefs), sidebarDefaultIndex, onClose = { closeSidebar() },
+            rebuildSidebarPages(handleId)
+            sidebarView = SidebarView(this, prefs, windowManager, sidebarPagesList, PageManager.getPages(prefs, handleId), sidebarDefaultIndex, onClose = { closeSidebar() },
                 onEditPageClicked = { page, config ->
                     if (page is AppsPageView) {
                         showSidebarEditOverlay(config.id)
@@ -631,7 +633,7 @@ class FloatingReaderService : Service() {
                 sidebarView?.setViewTreeSavedStateRegistryOwner(it)
             }
             val defaultPage = sidebarPagesList.getOrNull(sidebarDefaultIndex)
-            val defaultPageConfig = PageManager.getPages(prefs).getOrNull(sidebarDefaultIndex)
+            val defaultPageConfig = PageManager.getPages(prefs, handleId).getOrNull(sidebarDefaultIndex)
             if (defaultPage is AppsPageView) {
                 sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).getCurrentHeightPx())
             } else if (defaultPage is NotificationPageView) {
@@ -646,11 +648,11 @@ class FloatingReaderService : Service() {
     }
 
     
-    fun openSidebarPage(type: String) {
-        val pageConfigs = PageManager.getPages(prefs)
+    fun openSidebarPage(handleId: String, type: String) {
+        val pageConfigs = PageManager.getPages(prefs, handleId)
         val index = pageConfigs.indexOfFirst { it.type == type }
         if (index != -1) {
-            showSidebar()
+            showSidebar(handleId)
             sidebarView?.goToPage(index)
         } else {
             showStandalonePage(type)

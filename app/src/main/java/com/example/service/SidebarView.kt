@@ -337,7 +337,7 @@ class SidebarView(
         if (!wrapContent) {
             layoutParams.height = (prefHeight * density).toInt()
         } else {
-            var targetHeight = pageHeightPx + (24 * density)
+            var targetHeight = pageHeightPx + (36 * density)
             val maxHeight = (prefHeight * density).toInt()
             
             targetHeight = Math.max((80 * density), targetHeight)

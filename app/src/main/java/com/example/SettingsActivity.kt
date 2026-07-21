@@ -72,6 +72,7 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                     onBack = { if (startRoute == "reader") onFinish() else currentRoute = "main" }
                 )
                 "general" -> SidebarSettingsScreen(
+                    handleId = "sidebar",
                     onBack = { currentRoute = "main" }
                 )
                 "netspeed" -> NetSpeedSettingsScreen(
@@ -81,11 +82,12 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                     onBack = { currentRoute = "main" }
                 )
                 "pages" -> SidebarSettingsScreen(
+                    handleId = "sidebar",
                     onBack = { currentRoute = "main" }
                 )
                 "handles" -> HandlesListSettingsScreen(
                     onNavigateToHandle = { currentRoute = "handle_$it" },
-                    onNavigateToSidebarSettings = { currentRoute = "pages" },
+                    onNavigateToSidebarSettings = { currentRoute = "pages_$it" },
                     onBack = { currentRoute = "main" }
                 )
                 "call_recorder" -> CallRecorderSettingsScreen(
@@ -95,7 +97,13 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                     onBack = { currentRoute = "main" }
                 )
             }
-            if (currentRoute.startsWith("handle_")) {
+            if (currentRoute.startsWith("pages_")) {
+                val handleId = currentRoute.removePrefix("pages_")
+                SidebarSettingsScreen(
+                    handleId = handleId,
+                    onBack = { currentRoute = "handles" }
+                )
+            } else if (currentRoute.startsWith("handle_")) {
                 val handleId = currentRoute.removePrefix("handle_")
                 HandleEditScreen(
                     handleId = handleId,

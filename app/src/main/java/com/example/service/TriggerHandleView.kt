@@ -91,13 +91,13 @@ class TriggerHandleView(
             FloatingReaderService.instance?.toggleReader()
         } else if (action.startsWith("open_page:")) {
             val pageType = action.removePrefix("open_page:")
-            FloatingReaderService.instance?.openSidebarPage(pageType)
+            FloatingReaderService.instance?.openSidebarPage(handleId, pageType)
         } else if (action.startsWith("open_element:")) {
             val elementId = action.removePrefix("open_element:")
             FloatingReaderService.instance?.executeElementAction(elementId)
         } else if (action.startsWith("open_")) {
             val pageType = action.removePrefix("open_")
-            FloatingReaderService.instance?.openSidebarPage(pageType)
+            FloatingReaderService.instance?.openSidebarPage(handleId, pageType)
         } else if (action.startsWith("action_")) {
             val sysAction = action.removePrefix("action_")
             VianSideAccessibilityService.instance?.performAction(sysAction)

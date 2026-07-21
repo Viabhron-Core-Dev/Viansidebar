@@ -21,7 +21,7 @@ import java.util.UUID
 @Composable
 fun HandlesListSettingsScreen(
     onNavigateToHandle: (String) -> Unit,
-    onNavigateToSidebarSettings: () -> Unit,
+    onNavigateToSidebarSettings: (String) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -68,7 +68,7 @@ fun HandlesListSettingsScreen(
                         expandedHandleId = if (expandedHandleId == handle.id) null else handle.id
                     },
                     onNavigateToHandle = { onNavigateToHandle(handle.id) },
-                    onNavigateToSidebarSettings = onNavigateToSidebarSettings,
+                    onNavigateToSidebarSettings = { onNavigateToSidebarSettings(handle.id) },
                     onUpdate = { updated ->
                         handles = handles.map { if (it.id == updated.id) updated else it }
                         save()
@@ -262,7 +262,7 @@ fun HandleItem(
                     
                     if (showAddGestureDialog) {
                         val context = LocalContext.current
-                        val pageConfigs = com.example.utils.PageManager.getPages(prefs)
+                        val pageConfigs = com.example.utils.PageManager.getPages(prefs, handle.id)
                         var selectedGesture by remember { mutableStateOf(gestureKeys.first { !gesturesMap.containsKey(it) } ?: gestureKeys.first()) }
                         
                         val categoryOptions = listOf(
