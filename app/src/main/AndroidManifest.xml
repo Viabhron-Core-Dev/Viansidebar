@@ -144,6 +144,21 @@
         <service android:name=".service.ScreenRecordService" android:exported="false" android:foregroundServiceType="mediaProjection" />
         <activity android:name=".service.QRCropActivity" android:exported="false" android:theme="@style/Theme.LiteReader" />
         <activity android:name=".IconPickerActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:excludeFromRecents="true" android:exported="false" />
+        <activity android:name=".PwaImportActivity" android:theme="@style/Theme.LiteReader" />
+
+        <activity android:name=".DictionaryImportActivity" android:exported="false" android:theme="@style/Theme.LiteReader" />
+        <activity android:name=".service.DictionaryPopupActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

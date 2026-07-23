@@ -326,7 +326,10 @@ fun SidebarSettingsScreen(handleId: String, onBack: () -> Unit) {
                             "calculator" to "Calculator",
                             "compass" to "Compass",
                             "notifications" to "Notifications",
-                            "widgets_grid" to "Widgets Grid"
+                            "widgets_grid" to "Widgets Grid",
+                            "app_tracker" to "App Tracker",
+                            "dictionary" to "Dictionary",
+                            "pwa_loader" to "PWA Loader"
                         )
                         types.forEach { (type, title) ->
                             TextButton(onClick = {

@@ -3,6 +3,7 @@ package com.example
 import android.content.BroadcastReceiver
 import android.appwidget.AppWidgetManager
 import android.content.Context
+import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -15,6 +16,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -34,6 +37,7 @@ class WidgetsGridEditActivity : ComponentActivity() {
     
     val localItems = mutableListOf<GridWidgetItem>()
     private lateinit var appWidgetManager: AppWidgetManager
+    private lateinit var manager: com.example.service.SidebarAppsManager
     
     private lateinit var previewContainer: FrameLayout
     private lateinit var tvTotalCols: TextView
@@ -41,6 +45,8 @@ class WidgetsGridEditActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        manager = com.example.service.SidebarAppsManager(this, getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE), CoroutineScope(Dispatchers.IO), "temp") {}
+        manager.ensureLoaded()
         
         pageId = intent.getStringExtra("PAGE_ID") ?: run {
             finish()
@@ -111,17 +117,14 @@ class WidgetsGridEditActivity : ComponentActivity() {
 
         // Add Widget Button
         val btnAdd = Button(this).apply {
-            text = "Add Widget"
+            text = "Add Element"
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 topMargin = 16
             }
             setOnClickListener {
                 saveItems() 
-                val intent = Intent(this@WidgetsGridEditActivity, WidgetPickerActivity::class.java).apply {
-                    putExtra("ACTION_TYPE", "ADD_TO_WIDGETS_GRID")
-                    putExtra("PAGE_ID", pageId)
-                }
-                startActivity(intent)
+                val intent = Intent(this@WidgetsGridEditActivity, AddElementActivity::class.java)
+                startActivityForResult(intent, 201)
             }
         }
         mainLayout.addView(btnAdd)
@@ -130,6 +133,26 @@ class WidgetsGridEditActivity : ComponentActivity() {
         setupItemTouchHelper()
         
         registerReceiver(receiver, android.content.IntentFilter("WIDGET_ADDED_TO_GRID"), Context.RECEIVER_NOT_EXPORTED)
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 201 && resultCode == Activity.RESULT_OK && data != null) {
+            val elementId = data.getStringExtra("ELEMENT_ID")
+            if (elementId != null) {
+                // Broadcast that we added to grid so PageView picks it up, or just add it here and reload.
+                val intent = Intent("WIDGET_ADDED_TO_GRID")
+                intent.putExtra("PAGE_ID", pageId)
+                intent.putExtra("ELEMENT_ID", elementId)
+                intent.setPackage(packageName)
+                sendBroadcast(intent)
+                
+                // Also update local list immediately
+                localItems.add(com.example.service.GridWidgetItem(elementId, 1, 1))
+                adapter.notifyItemInserted(localItems.size - 1)
+                saveItems()
+            }
+        }
     }
     
     override fun onResume() {
@@ -157,15 +180,22 @@ class WidgetsGridEditActivity : ComponentActivity() {
         for (i in 0 until arr.length()) {
             val obj = arr.optJSONObject(i)
             if (obj != null) {
-                localItems.add(GridWidgetItem(
-                    obj.getInt("id"),
-                    obj.optInt("cols", 2),
-                    obj.optInt("rows", 2)
-                ))
+                val idStr = if (obj.has("elementId")) obj.getString("elementId") 
+                            else if (obj.has("id")) {
+                                val rawId = obj.get("id")
+                                if (rawId is Int) "widget:$rawId" else rawId.toString()
+                            } else ""
+                if (idStr.isNotEmpty()) {
+                    localItems.add(GridWidgetItem(
+                        idStr,
+                        obj.optInt("cols", 2),
+                        obj.optInt("rows", 2)
+                    ))
+                }
             } else {
                 val id = arr.optInt(i, -1)
                 if (id != -1) {
-                    localItems.add(GridWidgetItem(id, 2, 2))
+                    localItems.add(GridWidgetItem("widget:$id", 2, 2))
                 }
             }
         }
@@ -333,9 +363,14 @@ class WidgetsGridEditActivity : ComponentActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = localItems[position]
-            val info = appWidgetManager.getAppWidgetInfo(item.id)
-            
-            holder.tvName.text = info?.loadLabel(packageManager) ?: "Widget ${item.id} (Unknown)"
+            if (item.id.startsWith("widget:")) {
+                val wId = item.id.removePrefix("widget:").toIntOrNull() ?: -1
+                val info = appWidgetManager.getAppWidgetInfo(wId)
+                holder.tvName.text = info?.loadLabel(packageManager) ?: "Widget ${wId} (Unknown)"
+            } else {
+                val parsed = manager.parseId(item.id)
+                holder.tvName.text = parsed?.label ?: item.id
+            }
             
             holder.tvCols.text = item.cols.toString()
             holder.tvRows.text = item.rows.toString()
@@ -374,7 +409,10 @@ class WidgetsGridEditActivity : ComponentActivity() {
                     saveItems()
                     
                     try {
-                        AppWidgetHelper.getHost(this@WidgetsGridEditActivity).deleteAppWidgetId(removed.id)
+                        if (removed.id.startsWith("widget:")) {
+                            val wId = removed.id.removePrefix("widget:").toIntOrNull() ?: -1
+                            AppWidgetHelper.getHost(this@WidgetsGridEditActivity).deleteAppWidgetId(wId)
+                        }
                     } catch (e: Exception) {}
                 }
             }

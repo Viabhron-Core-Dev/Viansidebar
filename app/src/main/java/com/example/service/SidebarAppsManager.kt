@@ -216,6 +216,7 @@ class SidebarAppsManager(
     private val context: Context,
     private val prefs: SharedPreferences,
     private val coroutineScope: CoroutineScope,
+    private val prefKey: String,
     private val onAppsUpdated: () -> Unit
 ) {
 
@@ -505,7 +506,15 @@ class SidebarAppsManager(
     }
 
     private suspend fun loadActiveApps() = withContext(Dispatchers.IO) {
-        var jsonStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
+        var jsonStr = prefs.getString(prefKey, null)
+        if (jsonStr == null) {
+            if (prefKey == "sidebar_apps_sidebar_default_apps") {
+                jsonStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""")
+            }
+            if (jsonStr == null) {
+                jsonStr = """["system:log_keeper", "system:ebook_reader"]"""
+            }
+        }
         if (jsonStr == "[]" || jsonStr == """["system:log_keeper"]""") {
             jsonStr = """["system:log_keeper", "system:ebook_reader"]"""
         }
@@ -683,7 +692,7 @@ class SidebarAppsManager(
 
     fun addItem(id: String) {
         coroutineScope.launch(Dispatchers.IO) {
-            val currentStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
+            val currentStr = prefs.getString(prefKey, """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
             val current = JSONArray(currentStr)
             for (i in 0 until current.length()) {
                 var item = current.getString(i)
@@ -691,7 +700,7 @@ class SidebarAppsManager(
                 if (item == id) return@launch
             }
             current.put(id)
-            prefs.edit().putString("sidebar_apps", current.toString()).apply()
+            prefs.edit().putString(prefKey, current.toString()).apply()
             loadActiveApps()
             withContext(Dispatchers.Main) {
                 onAppsUpdated()
@@ -701,7 +710,7 @@ class SidebarAppsManager(
 
     fun moveItem(id: String, moveUp: Boolean) {
         coroutineScope.launch(Dispatchers.IO) {
-            val currentStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: return@launch
+            val currentStr = prefs.getString(prefKey, """["system:log_keeper", "system:ebook_reader"]""") ?: return@launch
             val current = JSONArray(currentStr)
             val items = mutableListOf<String>()
             var targetIndex = -1
@@ -725,7 +734,7 @@ class SidebarAppsManager(
                 }
                 val newArray = JSONArray()
                 items.forEach { newArray.put(it) }
-                prefs.edit().putString("sidebar_apps", newArray.toString()).apply()
+                prefs.edit().putString(prefKey, newArray.toString()).apply()
                 loadActiveApps()
                 withContext(Dispatchers.Main) {
                     onAppsUpdated()
@@ -736,7 +745,7 @@ class SidebarAppsManager(
 
     fun removeItem(id: String) {
         coroutineScope.launch(Dispatchers.IO) {
-            val currentStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
+            val currentStr = prefs.getString(prefKey, """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
             val current = JSONArray(currentStr)
             val newArray = JSONArray()
             for (i in 0 until current.length()) {
@@ -761,7 +770,7 @@ class SidebarAppsManager(
                     newArray.put(item)
                 }
             }
-            prefs.edit().putString("sidebar_apps", newArray.toString()).apply()
+            prefs.edit().putString(prefKey, newArray.toString()).apply()
             loadActiveApps()
             withContext(Dispatchers.Main) {
                 onAppsUpdated()
@@ -772,7 +781,7 @@ class SidebarAppsManager(
     fun addItemToFolder(folderUuid: String, itemId: String) {
         
         coroutineScope.launch(Dispatchers.IO) {
-            val currentStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: return@launch
+            val currentStr = prefs.getString(prefKey, """["system:log_keeper", "system:ebook_reader"]""") ?: return@launch
             val current = JSONArray(currentStr)
             val newArray = JSONArray()
             for (i in 0 until current.length()) {
@@ -790,7 +799,7 @@ class SidebarAppsManager(
                 }
                 newArray.put(item)
             }
-            prefs.edit().putString("sidebar_apps", newArray.toString()).apply()
+            prefs.edit().putString(prefKey, newArray.toString()).apply()
             loadActiveApps()
             withContext(Dispatchers.Main) {
                 onAppsUpdated()

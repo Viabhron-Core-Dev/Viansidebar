@@ -168,7 +168,7 @@ class FloatingReaderService : Service() {
     private var standaloneSidebarView: SidebarView? = null
     private var sidebarPagesList = mutableListOf<View>()
     private var sidebarDefaultIndex = 0
-    private lateinit var appsManager: SidebarAppsManager
+    private val appsManagers = mutableMapOf<String, SidebarAppsManager>()
     private var callRecorderManager: CallRecorderManager? = null
     private var pendingElementCallback: ((String) -> Unit)? = null
     
@@ -290,15 +290,10 @@ class FloatingReaderService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         setupFloatingView()
 
-        appsManager = SidebarAppsManager(this, prefs, serviceScope) {
-            appsPageViews.forEach { it.updateData(appsManager.activeItems) }
-        }
-        
         callRecorderManager = CallRecorderManager(this, prefs)
         callRecorderManager?.startListening()
         
         rebuildSidebarPages("sidebar")
-        appsManager.ensureLoaded()
 
         reloadHandles()
 
@@ -312,6 +307,30 @@ class FloatingReaderService : Service() {
         updatePersistentNotification()
     }
     
+    private var dictWindowManager: DictionaryWindowManager? = null
+    private val pwaWindows = mutableMapOf<Int, PwaWindowManager>()
+
+    fun launchPwa(pwa: PwaEntry) {
+        if (!pwaWindows.containsKey(pwa.id)) {
+            val windowManager = PwaWindowManager(this, pwa)
+            pwaWindows[pwa.id] = windowManager
+            windowManager.show()
+        }
+    }
+
+    fun removePwaWindow(id: Int) {
+        pwaWindows.remove(id)
+    }
+
+    fun toggleDictionaryWindow() {
+        if (dictWindowManager == null) {
+            dictWindowManager = DictionaryWindowManager(this)
+        }
+        dictWindowManager?.show(false)
+        pwaWindows.values.forEach { }
+
+    }
+
     fun toggleReader() {
         if (isFolded) {
             val lastBook = prefs.getInt("last_book_id", -1)
@@ -545,16 +564,22 @@ class FloatingReaderService : Service() {
             val pageView = when (config.type) {
                 "apps" -> {
                     var p: AppsPageView? = null
-                    p = AppsPageView(this, config, appsManager, serviceScope,
+                    val prefKey = "sidebar_apps_" + handleId + "_" + config.id
+                    val manager = appsManagers.getOrPut(prefKey) {
+                        SidebarAppsManager(this, prefs, serviceScope, prefKey) {
+                            appsPageViews.find { it.pageConfig?.id == config.id }?.updateData(appsManagers[prefKey]?.activeItems ?: emptyList())
+                        }
+                    }
+                    manager.ensureLoaded()
+                    p = AppsPageView(this, handleId, config, manager, serviceScope,
                         onCloseSidebar = { closeSidebar() },
                         onHeightChanged = { newHeight ->
-                            // Only update height if this is the currently selected page
                             if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
                                 sidebarView?.updatePageStyles(config, newHeight)
                             }
                         }
                     )
-                    p.updateData(appsManager.activeItems)
+                    p.updateData(manager.activeItems)
                     appsPageViews.add(p)
                     p
                 }
@@ -573,6 +598,33 @@ class FloatingReaderService : Service() {
                 "widgets_grid" -> {
                     var p: WidgetsGridPageView? = null
                     p = WidgetsGridPageView(this, config.id) { newHeight ->
+                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
+                            sidebarView?.updatePageStyles(config, newHeight)
+                        }
+                    }
+                    p
+                }
+                "pwa_loader" -> {
+                    var p: PwaPageView? = null
+                    p = PwaPageView(this, { closeSidebar() }) { newHeight ->
+                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
+                            sidebarView?.updatePageStyles(config, newHeight)
+                        }
+                    }
+                    p
+                }
+                "dictionary" -> {
+                    var p: DictionaryPageView? = null
+                    p = DictionaryPageView(this, { closeSidebar() }) { newHeight ->
+                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
+                            sidebarView?.updatePageStyles(config, newHeight)
+                        }
+                    }
+                    p
+                }
+                "app_tracker" -> {
+                    var p: AppTrackerPageView? = null
+                    p = AppTrackerPageView(this, { closeSidebar() }) { newHeight ->
                         if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
                             sidebarView?.updatePageStyles(config, newHeight)
                         }
@@ -669,11 +721,16 @@ class FloatingReaderService : Service() {
         val tempPagesList = mutableListOf<View>()
         val pageView = when (config.type) {
             "apps" -> {
-                val p = AppsPageView(this, config, appsManager, serviceScope,
+                val prefKey = "sidebar_apps_" + currentHandleId + "_" + config.id
+                val manager = appsManagers.getOrPut(prefKey) {
+                    SidebarAppsManager(this, prefs, serviceScope, prefKey) {}
+                }
+                manager.ensureLoaded()
+                val p = AppsPageView(this, currentHandleId, config, manager, serviceScope,
                     onCloseSidebar = { standaloneSidebarView?.close() },
                     onHeightChanged = { newHeight -> standaloneSidebarView?.updatePageStyles(config, newHeight) }
                 )
-                p.updateData(appsManager.activeItems)
+                p.updateData(manager.activeItems)
                 p
             }
             "scheduler" -> SchedulerPageView(this, serviceScope)
@@ -683,6 +740,15 @@ class FloatingReaderService : Service() {
                 standaloneSidebarView?.updatePageStyles(config, newHeight)
             }
             "widgets_grid" -> WidgetsGridPageView(this, config.id) { newHeight ->
+                standaloneSidebarView?.updatePageStyles(config, newHeight)
+            }
+            "pwa_loader" -> PwaPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
+                standaloneSidebarView?.updatePageStyles(config, newHeight)
+            }
+            "dictionary" -> DictionaryPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
+                standaloneSidebarView?.updatePageStyles(config, newHeight)
+            }
+            "app_tracker" -> AppTrackerPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
                 standaloneSidebarView?.updatePageStyles(config, newHeight)
             }
             else -> null
@@ -751,6 +817,10 @@ class FloatingReaderService : Service() {
                 val intent = Intent(this, com.example.LogKeeperActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
+            } else if (action == "dictionary_floating") {
+                dictWindowManager?.show(false)
+            } else if (action == "dictionary_full") {
+                dictWindowManager?.show(true)
             } else if (action == "ebook_reader") {
                 val intent = Intent(this, FloatingReaderService::class.java)
                 intent.putExtra("UNFOLD", true)
@@ -808,7 +878,7 @@ class FloatingReaderService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "UPDATE_CONFIG") {
-            appsManager.reloadActiveApps()
+            appsManagers.values.forEach { it.reloadActiveApps() }
             return START_NOT_STICKY
         }
         if (intent?.action == "ADD_ELEMENT") {
@@ -818,10 +888,16 @@ class FloatingReaderService : Service() {
             if (isElementCallback) {
                 pendingElementCallback?.invoke(elementId)
                 pendingElementCallback = null
-            } else if (folderUuid != null) {
-                appsManager.addItemToFolder(folderUuid, elementId)
             } else {
-                appsManager.addItem(elementId)
+                val prefKey = "sidebar_apps_" + currentHandleId + "_default_apps" // Defaulting to default_apps for now
+                val manager = appsManagers.getOrPut(prefKey) {
+                    SidebarAppsManager(this, prefs, serviceScope, prefKey) {}
+                }
+                if (folderUuid != null) {
+                    manager.addItemToFolder(folderUuid, elementId)
+                } else {
+                    manager.addItem(elementId)
+                }
             }
             return START_NOT_STICKY
         }
@@ -2579,9 +2655,9 @@ class FloatingReaderService : Service() {
                 .putInt("win_y", savedWindowY)
                 .apply()
 
-            bubbleIcon.visibility = View.GONE
+            bubbleIcon.visibility = View.VISIBLE
             windowContainer.visibility = View.GONE
-            floatingView.visibility = View.GONE
+            floatingView.visibility = View.VISIBLE
             layoutParams.width = WindowManager.LayoutParams.WRAP_CONTENT
             layoutParams.height = WindowManager.LayoutParams.WRAP_CONTENT
             layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
@@ -2648,9 +2724,8 @@ class FloatingReaderService : Service() {
         sidebarView = null
         sidebarPagesList.clear()
         appsPageViews.clear()
-        if (::appsManager.isInitialized) {
-            appsManager.destroy()
-        }
+        appsManagers.values.forEach { it.destroy() }
+        appsManagers.clear()
         triggerHandleViews.forEach { it.detach() }
         triggerHandleViews.clear()
 

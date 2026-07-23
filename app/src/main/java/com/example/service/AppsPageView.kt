@@ -19,7 +19,8 @@ import kotlinx.coroutines.withContext
 @SuppressLint("ViewConstructor")
 class AppsPageView(
     context: Context,
-    private val pageConfig: com.example.utils.SidebarPage?,
+    private val handleId: String,
+    val pageConfig: com.example.utils.SidebarPage?,
     private val manager: SidebarAppsManager,
     private val serviceScope: CoroutineScope,
     private val onCloseSidebar: () -> Unit,
@@ -29,6 +30,7 @@ class AppsPageView(
 
     private val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
 
+    private var columns: Int = 3
     private val recyclerView: RecyclerView
     private val adapter: AppsAdapter
 
@@ -47,7 +49,9 @@ class AppsPageView(
 
     init {
         val density = context.resources.displayMetrics.density
-        val columns = if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else prefs.getInt("sidebar_columns", 3)
+        val c = prefs.getInt("handle_${handleId}_page_${pageConfig?.id}_columns", -1)
+        val defaultCols = if (handleId == "sidebar" && pageConfig?.id == "default_apps") prefs.getInt("sidebar_columns", 3) else 3
+        columns = if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else (if (c != -1) c else defaultCols)
 
         adapter = AppsAdapter(displayedItems)
 
@@ -110,7 +114,7 @@ class AppsPageView(
                 gridHeightDp += item.heightDp
             } else {
                 currentSpan += 1
-                if (currentSpan == (if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else prefs.getInt("sidebar_columns", 3))) {
+                if (currentSpan == columns) {
                     gridHeightDp += 72 // 56dp per normal row
                     currentSpan = 0
                 }

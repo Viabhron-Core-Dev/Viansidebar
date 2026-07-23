@@ -32,6 +32,7 @@ class SidebarEditActivity : ComponentActivity() {
     private lateinit var prefs: android.content.SharedPreferences
     val localIds = mutableListOf<String>()
     private var folderUuid: String? = null
+    private var pageId: String = "default_apps"
     private var folderName: String = "Folder"
     private var folderColor: String = "#444444"
     private var folderStyle: Int = 0
@@ -46,20 +47,30 @@ class SidebarEditActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-        manager = SidebarAppsManager(this, prefs, serviceScope) {
+        folderUuid = intent.getStringExtra("FOLDER_UUID")
+        pageId = intent.getStringExtra("PAGE_ID") ?: "default_apps"
+        val handleId = intent.getStringExtra("HANDLE_ID") ?: "sidebar"
+        val prefKey = "sidebar_apps_" + handleId + "_" + pageId
+        
+        manager = SidebarAppsManager(this, prefs, serviceScope, prefKey) {
             runOnUiThread {
                 if (::adapter.isInitialized) {
                     adapter.notifyDataSetChanged()
                 }
             }
         }
-        
-        folderUuid = intent.getStringExtra("FOLDER_UUID")
         loadLocalIds()
 
         if (folderUuid == null) {
-            totalCols = prefs.getInt("sidebar_columns", 3)
-            totalRows = prefs.getInt("sidebar_rows", 3)
+            val handleId = intent.getStringExtra("HANDLE_ID") ?: "sidebar"
+            val c = prefs.getInt("handle_${handleId}_page_${pageId}_columns", -1)
+            if (c == -1) {
+                totalCols = if (handleId == "sidebar" && pageId == "default_apps") prefs.getInt("sidebar_columns", 3) else 3
+                totalRows = if (handleId == "sidebar" && pageId == "default_apps") prefs.getInt("sidebar_rows", 3) else 3
+            } else {
+                totalCols = c
+                totalRows = prefs.getInt("handle_${handleId}_page_${pageId}_rows", 3)
+            }
         }
 
         val mainLayout = LinearLayout(this).apply {
@@ -222,7 +233,7 @@ class SidebarEditActivity : ComponentActivity() {
                 }
             } catch (e: Exception) {}
         } else {
-            val jsonStr = prefs.getString("sidebar_apps", """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
+            val jsonStr = prefs.getString("sidebar_apps_${pageId}", """["system:log_keeper", "system:ebook_reader"]""") ?: """["system:log_keeper", "system:ebook_reader"]"""
             val arr = JSONArray(jsonStr)
             for (i in 0 until arr.length()) {
                 localIds.add(arr.getString(i))
@@ -251,7 +262,7 @@ class SidebarEditActivity : ComponentActivity() {
             setResult(RESULT_OK, resultIntent)
             // Removed direct save to prefs; parent grid will save
         } else {
-            prefs.edit().putString("sidebar_apps", arr.toString()).apply()
+            prefs.edit().putString("sidebar_apps_${pageId}", arr.toString()).apply()
             prefs.edit().putInt("sidebar_columns", totalCols).apply()
             prefs.edit().putInt("sidebar_rows", totalRows).apply()
             com.example.LogKeeper.writeLog("SidebarEdit", "Saved ${localIds.size} items to apps grid.")

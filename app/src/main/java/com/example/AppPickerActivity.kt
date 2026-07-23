@@ -52,7 +52,7 @@ class AppPickerActivity : ComponentActivity() {
         layout.addView(list)
         setContentView(layout)
         
-        manager = SidebarAppsManager(this, getSharedPreferences("prefs", Context.MODE_PRIVATE), CoroutineScope(Dispatchers.IO)) {
+        manager = SidebarAppsManager(this, getSharedPreferences("prefs", Context.MODE_PRIVATE), CoroutineScope(Dispatchers.IO), "dummy") {
 
             scope.launch {
 

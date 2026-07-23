@@ -37,8 +37,8 @@ data class SidebarPage(
 
     companion object {
         fun createDefault(id: String, type: String, title: String): SidebarPage {
-            val wrap = when(type) { "calculator", "compass", "notification", "scheduler", "widget", "widgets_grid" -> false else -> true }
-            val h = when(type) { "calculator" -> 450; "compass" -> 500; "notification", "scheduler", "widget", "widgets_grid" -> 500; else -> 450 }
+            val wrap = when(type) { "calculator", "compass", "notification", "scheduler", "widget", "widgets_grid", "app_tracker", "dictionary", "pwa_loader" -> false else -> true }
+            val h = when(type) { "calculator" -> 450; "compass" -> 500; "notification", "scheduler", "widget", "widgets_grid" -> 500; "app_tracker" -> 600; "dictionary" -> 500; else -> 450 }
             return SidebarPage(
                 id = id, type = type, title = title,
                 wrapContentHeight = wrap, height = h, width = 320
@@ -65,7 +65,8 @@ data class SidebarPage(
 
 object PageManager {
     fun getPages(prefs: SharedPreferences, handleId: String): List<SidebarPage> {
-        val pagesJson = prefs.getString("handle_${handleId}_pages", prefs.getString("sidebar_pages", null))
+        val legacy = if (handleId == "sidebar") prefs.getString("sidebar_pages", null) else null
+        val pagesJson = prefs.getString("handle_${handleId}_pages", legacy)
         val defaultAppsPage = SidebarPage(id = "default_apps", type = "apps", title = "Apps Grid")
         if (pagesJson == null) {
             // Default setup

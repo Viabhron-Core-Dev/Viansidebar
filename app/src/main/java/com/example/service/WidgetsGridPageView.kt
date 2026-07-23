@@ -12,11 +12,14 @@ import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ScrollView
 import com.example.utils.AppWidgetHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
 data class GridWidgetItem(
-    val id: Int,
+    val id: String,
     var cols: Int = 2,
     var rows: Int = 2
 )
@@ -42,6 +45,10 @@ class WidgetsGridPageView(
                     if (widgetId != -1) {
                         addWidgetIdToPrefs(widgetId)
                     }
+                    val elementId = intent.getStringExtra("ELEMENT_ID")
+                    if (elementId != null) {
+                        addElementIdToPrefs(elementId)
+                    }
                     loadWidgets()
                 }
             }
@@ -49,6 +56,7 @@ class WidgetsGridPageView(
     }
 
     init {
+        com.example.LogKeeper.writeLog("WidgetsGrid", "Opened widgets grid page")
         val scrollView = ScrollView(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
             addView(gridLayout)
@@ -76,15 +84,21 @@ class WidgetsGridPageView(
         for (i in 0 until arr.length()) {
             val obj = arr.optJSONObject(i)
             if (obj != null) {
-                list.add(GridWidgetItem(
-                    obj.getInt("id"),
-                    obj.optInt("cols", 2),
-                    obj.optInt("rows", 2)
-                ))
+                val idStr = if (obj.has("id")) {
+                    val rawId = obj.get("id")
+                    if (rawId is Int) "widget:$rawId" else rawId.toString()
+                } else ""
+                if (idStr.isNotEmpty()) {
+                    list.add(GridWidgetItem(
+                        idStr,
+                        obj.optInt("cols", 2),
+                        obj.optInt("rows", 2)
+                    ))
+                }
             } else {
                 val id = arr.optInt(i, -1)
                 if (id != -1) {
-                    list.add(GridWidgetItem(id, 2, 2))
+                    list.add(GridWidgetItem("widget:$id", 2, 2))
                 }
             }
         }
@@ -106,7 +120,14 @@ class WidgetsGridPageView(
     private fun addWidgetIdToPrefs(widgetId: Int) {
         val items = getWidgetItems().toMutableList()
         // Default size 2x2
-        items.add(GridWidgetItem(widgetId, 2, 2))
+        items.add(GridWidgetItem("widget:$widgetId", 2, 2))
+        saveWidgetItems(items)
+    }
+    
+    private fun addElementIdToPrefs(elementId: String) {
+        val items = getWidgetItems().toMutableList()
+        // Default size 1x1 for elements
+        items.add(GridWidgetItem(elementId, 1, 1))
         saveWidgetItems(items)
     }
 
@@ -144,22 +165,63 @@ class WidgetsGridPageView(
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val host = AppWidgetHelper.getHost(context)
             
+            val appsManager = SidebarAppsManager(context, prefs, CoroutineScope(Dispatchers.IO), "wg_${pageId}") {}
+            appsManager.ensureLoaded()
+            
             for (item in items) {
                 try {
-                    val info = appWidgetManager.getAppWidgetInfo(item.id)
-                    if (info != null) {
-                        val hostView = host.createView(context, item.id, info)
-                        
-                        val wCols = minOf(item.cols, totalCols)
-                        val wRows = item.rows
-                        
-                        val params = GridLayout.LayoutParams().apply {
-                            width = cellWidth * wCols
-                            height = cellHeight * wRows
-                            columnSpec = GridLayout.spec(GridLayout.UNDEFINED, wCols)
-                            rowSpec = GridLayout.spec(GridLayout.UNDEFINED, wRows)
+                    if (item.id.startsWith("widget:")) {
+                        val wId = item.id.removePrefix("widget:").toIntOrNull() ?: continue
+                        val info = appWidgetManager.getAppWidgetInfo(wId)
+                        if (info != null) {
+                            val hostView = host.createView(context, wId, info)
+                            
+                            val wCols = minOf(item.cols, totalCols)
+                            val wRows = item.rows
+                            
+                            val params = GridLayout.LayoutParams().apply {
+                                width = cellWidth * wCols
+                                height = cellHeight * wRows
+                                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, wCols)
+                                rowSpec = GridLayout.spec(GridLayout.UNDEFINED, wRows)
+                            }
+                            gridLayout.addView(hostView, params)
                         }
-                        gridLayout.addView(hostView, params)
+                    } else {
+                        val parsed = appsManager.parseId(item.id)
+                        if (parsed != null) {
+                            val elementView = android.view.LayoutInflater.from(context).inflate(com.example.R.layout.item_sidebar_app, null, false)
+                            val icon = elementView.findViewById<android.widget.ImageView>(com.example.R.id.app_icon)
+                            val label = elementView.findViewById<android.widget.TextView>(com.example.R.id.app_label)
+                            
+                            label.text = parsed.label
+                            
+                            CoroutineScope(Dispatchers.Main).launch {
+                                val bmp = appsManager.getIconBitmap(item.id)
+                                if (bmp != null) {
+                                    icon.setImageBitmap(bmp)
+                                }
+                            }
+                            
+                            elementView.setOnClickListener {
+                                val i = Intent(context, FloatingReaderService::class.java).apply {
+                                    action = "LAUNCH_APP"
+                                    putExtra("APP_PACKAGE", item.id)
+                                }
+                                context.startService(i)
+                            }
+                            
+                            val wCols = minOf(item.cols, totalCols)
+                            val wRows = item.rows
+                            
+                            val params = GridLayout.LayoutParams().apply {
+                                width = cellWidth * wCols
+                                height = cellHeight * wRows
+                                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, wCols)
+                                rowSpec = GridLayout.spec(GridLayout.UNDEFINED, wRows)
+                            }
+                            gridLayout.addView(elementView, params)
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()

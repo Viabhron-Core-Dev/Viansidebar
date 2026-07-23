@@ -203,6 +203,8 @@ class AddElementActivity : ComponentActivity() {
         addHeader("App Custom")
         addItem(com.example.R.drawable.ic_library_books, "eBook Reader") { finishWithId("system:ebook_reader") }
         addItem(android.R.drawable.ic_menu_agenda, "Log Keeper") { finishWithId("system:log_keeper") }
+        addItem(android.R.drawable.ic_menu_sort_alphabetically, "Dictionary (Floating)") { finishWithId("system:dictionary_floating") }
+        addItem(android.R.drawable.ic_menu_sort_alphabetically, "Dictionary (Full Screen)") { finishWithId("system:dictionary_full") }
         
         scrollView.addView(contentLayout)
         mainLayout.addView(scrollView)
