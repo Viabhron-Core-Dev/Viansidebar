@@ -25,6 +25,9 @@ interface PwaDao {
     @Query("SELECT * FROM pwa_entries ORDER BY addedAt DESC")
     fun getAllPwas(): Flow<List<PwaEntry>>
 
+    @Query("SELECT * FROM pwa_entries ORDER BY addedAt DESC")
+    fun getAllPwasSync(): List<PwaEntry>
+
     @Insert
     suspend fun insertPwa(pwa: PwaEntry)
 

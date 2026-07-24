@@ -162,22 +162,16 @@ fun AppTrackerScreen(
 
     // Tab 1 Data (Recent)
     var recentApps by remember { mutableStateOf<List<TrackedAppInfo>>(emptyList()) }
+    val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
+    val whitelistCurrent = remember { prefs.getStringSet("app_tracker_whitelist_current", emptySet()) ?: emptySet() }
+    val whitelistCache = remember { prefs.getStringSet("app_tracker_whitelist_cache", emptySet()) ?: emptySet() }
     var isLoadingRecent by remember { mutableStateOf(false) }
 
     // Tab 2 Data (Cache Size)
     var cacheApps by remember { mutableStateOf<List<TrackedAppInfo>>(emptyList()) }
     var isLoadingCache by remember { mutableStateOf(false) }
 
-    // Tab 3 Data (All Apps)
-    var allApps by remember { mutableStateOf<List<TrackedAppInfo>>(emptyList()) }
-    var isLoadingAllApps by remember { mutableStateOf(false) }
 
-    // Tab 3 Options
-    var showSystemApps by remember { mutableStateOf(false) }
-    var sortBy by remember { mutableStateOf("name") } // "name", "time", "size"
-    var searchQuery by remember { mutableStateOf("") }
-    var isSearchOpen by remember { mutableStateOf(false) }
-    var isGridView by remember { mutableStateOf(false) }
 
     // Periodically re-check permission
     DisposableEffect(Unit) {
@@ -185,7 +179,7 @@ fun AppTrackerScreen(
         onDispose {}
     }
 
-    // Load Tab 1: Recently Active Apps
+    // Load Tab 1: Current Apps
     LaunchedEffect(selectedTab, hasPermission) {
         if (selectedTab == 0 && hasPermission) {
             isLoadingRecent = true
@@ -209,7 +203,7 @@ fun AppTrackerScreen(
                     }
 
                     for ((pkgName, stat) in aggregated) {
-                        if (stat.lastTimeUsed <= 0) continue
+                        if (stat.lastTimeUsed <= 0 || whitelistCurrent.contains(pkgName)) continue
                         try {
                             val appInfo = pm.getApplicationInfo(pkgName, 0)
                             // Filter out inactive / launcher-less background services if desired, but keep installed apps
@@ -252,6 +246,7 @@ fun AppTrackerScreen(
 
                 for (pkg in packages) {
                     val appInfo = pkg.applicationInfo ?: continue
+                    if (whitelistCache.contains(pkg.packageName)) continue
                     var cacheSize = 0L
                     var appSize = 0L
 
@@ -296,117 +291,11 @@ fun AppTrackerScreen(
         }
     }
 
-    // Load Tab 3: All Apps List
-    LaunchedEffect(selectedTab) {
-        if (selectedTab == 2 && allApps.isEmpty()) {
-            isLoadingAllApps = true
-            withContext(Dispatchers.IO) {
-                val pm = context.packageManager
-                val storageStatsManager = context.getSystemService(Context.STORAGE_STATS_SERVICE) as? StorageStatsManager
-                val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
-                val packages = pm.getInstalledPackages(0)
-                val list = mutableListOf<TrackedAppInfo>()
-
-                for (pkg in packages) {
-                    val appInfo = pkg.applicationInfo ?: continue
-                    var cacheSize = 0L
-                    var appSize = 0L
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && storageStatsManager != null && storageManager != null) {
-                        try {
-                            val uuid = appInfo.storageUuid
-                            val stats = storageStatsManager.queryStatsForPackage(uuid, pkg.packageName, Process.myUserHandle())
-                            cacheSize = stats.cacheBytes
-                            appSize = stats.appBytes + stats.dataBytes
-                        } catch (e: Exception) {
-                            // Ignore error
-                        }
-                    }
-
-                    val label = appInfo.loadLabel(pm).toString()
-                    val icon = try { appInfo.loadIcon(pm) } catch (e: Exception) { null }
-                    val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-
-                    list.add(
-                        TrackedAppInfo(
-                            packageName = pkg.packageName,
-                            appName = label,
-                            icon = icon,
-                            isSystem = isSystem,
-                            cacheSize = cacheSize,
-                            appSize = appSize,
-                            installTime = pkg.firstInstallTime
-                        )
-                    )
-                }
-                allApps = list
-            }
-            isLoadingAllApps = false
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(12.dp)
     ) {
-        // Header Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Analytics,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "App Tracker",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-            IconButton(onClick = onCloseSidebar, modifier = Modifier.size(28.dp)) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Close",
-                    tint = Color.LightGray
-                )
-            }
-        }
-
-        // Tab Selector Row (Three Tabs Only)
-        TabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = Color(0xFF2A2A3C),
-            contentColor = Color.White
-        ) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = { Text("Recent", fontSize = 13.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) }
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = { Text("Cache Size", fontSize = 13.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) }
-            )
-            Tab(
-                selected = selectedTab == 2,
-                onClick = { selectedTab = 2 },
-                text = { Text("All Apps", fontSize = 13.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
         // Permission Banner if required & missing (for Tab 0 and Tab 1)
         if ((selectedTab == 0 || selectedTab == 1) && !hasPermission) {
             PermissionBanner(
@@ -426,8 +315,10 @@ fun AppTrackerScreen(
 
         // Tab Contents
         Box(modifier = Modifier.weight(1f)) {
+            val currentList = if (selectedTab == 0) recentApps else cacheApps
+            Box(modifier = Modifier.fillMaxSize()) {
             when (selectedTab) {
-                0 -> RecentAppsTab(
+                0 -> CurrentAppsTab(
                     context = context,
                     apps = recentApps,
                     isLoading = isLoadingRecent
@@ -437,21 +328,49 @@ fun AppTrackerScreen(
                     apps = cacheApps,
                     isLoading = isLoadingCache
                 )
-                2 -> AllAppsTab(
-                    context = context,
-                    apps = allApps,
-                    isLoading = isLoadingAllApps,
-                    showSystemApps = showSystemApps,
-                    onToggleSystemApps = { showSystemApps = it },
-                    sortBy = sortBy,
-                    onSortByChange = { sortBy = it },
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    isSearchOpen = isSearchOpen,
-                    onToggleSearch = { isSearchOpen = !isSearchOpen },
-                    isGridView = isGridView,
-                    onToggleGridView = { isGridView = !isGridView }
-                )
+
+            }
+            FloatingActionButton(
+                onClick = {
+                    val intent = Intent(context, com.example.AppTrackerOpenerActivity::class.java).apply {
+                        putStringArrayListExtra("packages", ArrayList(currentList.map { it.packageName }))
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = "Open App Info Sequential")
+            }
+            }
+        }
+
+        // Pills at the bottom
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val tabs = listOf("Current", "Cache Size")
+            tabs.forEachIndexed { index, title ->
+                val isSelected = selectedTab == index
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .clip(CircleShape)
+                        .background(if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF2A2A3C))
+                        .clickable { selectedTab = index }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = title,
+                        color = if (isSelected) Color.Black else Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
             }
         }
     }
@@ -498,7 +417,7 @@ fun PermissionBanner(onGrantClick: () -> Unit) {
 }
 
 @Composable
-fun RecentAppsTab(
+fun CurrentAppsTab(
     context: Context,
     apps: List<TrackedAppInfo>,
     isLoading: Boolean
@@ -509,7 +428,7 @@ fun RecentAppsTab(
         }
     } else if (apps.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No recent active apps found", color = Color.Gray, fontSize = 13.sp)
+            Text("No current apps found", color = Color.Gray, fontSize = 13.sp)
         }
     } else {
         LazyColumn(
@@ -557,7 +476,6 @@ fun CacheAppsTab(
                 AppRowItem(
                     app = app,
                     subtitle = if (app.cacheSize > 0) "Cache: ${Formatter.formatShortFileSize(context, app.cacheSize)}" else "Cache: Minimal",
-                    extraInfo = if (app.appSize > 0) "App: ${Formatter.formatShortFileSize(context, app.appSize)}" else null,
                     onClick = { openAppInfo(context, app.packageName) }
                 )
             }

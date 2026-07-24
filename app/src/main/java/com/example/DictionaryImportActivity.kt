@@ -34,15 +34,16 @@ class DictionaryImportActivity : ComponentActivity() {
     private var isImporting by mutableStateOf(false)
     private var importProgress by mutableStateOf(0f)
     private var importStatus by mutableStateOf("Ready to import.")
+    private var dictName by mutableStateOf("English")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        db = Room.databaseBuilder(applicationContext, DictionaryDatabase::class.java, "dictionary.db").build()
+        db = Room.databaseBuilder(applicationContext, DictionaryDatabase::class.java, "dictionary.db").fallbackToDestructiveMigration().build()
 
         val pickZipLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
-                importStarDictZip(uri)
+                importStarDictZip(uri, dictName)
             }
         }
 
@@ -58,6 +59,14 @@ class DictionaryImportActivity : ComponentActivity() {
                     ) {
                         Text("StarDict Importer", style = MaterialTheme.typography.headlineMedium)
                         Spacer(modifier = Modifier.height(24.dp))
+                        
+                        OutlinedTextField(
+                            value = dictName,
+                            onValueChange = { dictName = it },
+                            label = { Text("Dictionary Name (e.g. English)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         
                         Text(importStatus, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(16.dp))
@@ -78,7 +87,7 @@ class DictionaryImportActivity : ComponentActivity() {
         }
     }
 
-    private fun importStarDictZip(uri: Uri) {
+    private fun importStarDictZip(uri: Uri, dictName: String) {
         isImporting = true
         importProgress = 0f
         importStatus = "Extracting..."
@@ -86,7 +95,7 @@ class DictionaryImportActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 // Clear existing DB
-                db.dictionaryDao().clearAll()
+                db.dictionaryDao().clearDictionary(dictName)
 
                 val resolver = contentResolver
                 
@@ -184,7 +193,7 @@ class DictionaryImportActivity : ComponentActivity() {
                         currentOffset += read
 
                         val definition = String(defBytes, Charsets.UTF_8)
-                        dbEntries.add(DictionaryEntry(word = entry.word, definition = definition))
+                        dbEntries.add(DictionaryEntry(word = entry.word, definition = definition, dictName = dictName))
                         count++
 
                         if (dbEntries.size >= batchSize) {

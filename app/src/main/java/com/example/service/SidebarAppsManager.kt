@@ -20,6 +20,8 @@ import org.json.JSONArray
 sealed class SidebarItem {
     abstract var id: String
     abstract val label: String
+    
+    data class PopupWidget(val widgetId: Int, override val label: String, override var id: String = "popup_widget:$widgetId") : SidebarItem()
 
     data class App(
         val packageName: String,

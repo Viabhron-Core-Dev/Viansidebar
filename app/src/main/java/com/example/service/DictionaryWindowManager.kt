@@ -23,6 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.VolumeUp
+import android.speech.tts.TextToSpeech
+import java.util.Locale
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -63,7 +66,7 @@ class DictionaryWindowManager(private val context: Context) {
     private var layoutParams: WindowManager.LayoutParams? = null
     private var foldedLayoutParams: WindowManager.LayoutParams? = null
 
-    private val db = Room.databaseBuilder(context, DictionaryDatabase::class.java, "dictionary.db").build()
+    private val db = Room.databaseBuilder(context, DictionaryDatabase::class.java, "dictionary.db").fallbackToDestructiveMigration().build()
     private var isFullScreen = false
     private val isFullScreenState = androidx.compose.runtime.mutableStateOf(false)
 
@@ -78,8 +81,8 @@ class DictionaryWindowManager(private val context: Context) {
                     layoutParams?.x = 0
                     layoutParams?.y = 0
                 } else {
-                    layoutParams?.width = prefs.getInt("dict_window_width", 800)
-                    layoutParams?.height = prefs.getInt("dict_window_height", 1000)
+                    layoutParams?.width = prefs.getInt("dict_window_width", 600)
+                    layoutParams?.height = prefs.getInt("dict_window_height", 800)
                     layoutParams?.x = prefs.getInt("dict_window_x", 100)
                     layoutParams?.y = prefs.getInt("dict_window_y", 100)
                 }
@@ -93,8 +96,8 @@ class DictionaryWindowManager(private val context: Context) {
         isFullScreen = fullScreen
         isFullScreenState.value = fullScreen
 
-        val width = prefs.getInt("dict_window_width", 800)
-        val height = prefs.getInt("dict_window_height", 1000)
+        val width = prefs.getInt("dict_window_width", 600)
+        val height = prefs.getInt("dict_window_height", 800)
         val x = prefs.getInt("dict_window_x", 100)
         val y = prefs.getInt("dict_window_y", 100)
 
@@ -144,8 +147,8 @@ class DictionaryWindowManager(private val context: Context) {
                                     this@DictionaryWindowManager.layoutParams?.x = 0
                                     this@DictionaryWindowManager.layoutParams?.y = 0
                                 } else {
-                                    this@DictionaryWindowManager.layoutParams?.width = prefs.getInt("dict_window_width", 800)
-                                    this@DictionaryWindowManager.layoutParams?.height = prefs.getInt("dict_window_height", 1000)
+                                    this@DictionaryWindowManager.layoutParams?.width = prefs.getInt("dict_window_width", 600)
+                                    this@DictionaryWindowManager.layoutParams?.height = prefs.getInt("dict_window_height", 800)
                                     this@DictionaryWindowManager.layoutParams?.x = prefs.getInt("dict_window_x", 100)
                                     this@DictionaryWindowManager.layoutParams?.y = prefs.getInt("dict_window_y", 100)
                                 }
@@ -251,6 +254,23 @@ class DictionaryWindowManager(private val context: Context) {
         onToggleFullscreen: () -> Unit,
         isFullScreen: Boolean
     ) {
+        val tts = remember {
+            var ttsInstance: TextToSpeech? = null
+            ttsInstance = TextToSpeech(context) { status ->
+                if (status == TextToSpeech.SUCCESS) {
+                    ttsInstance?.language = Locale.US
+                }
+            }
+            ttsInstance
+        }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                tts?.stop()
+                tts?.shutdown()
+            }
+        }
+
         var searchQuery by remember { mutableStateOf("") }
         var searchResults by remember { mutableStateOf<List<DictionaryEntry>>(emptyList()) }
         var selectedEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
@@ -259,7 +279,7 @@ class DictionaryWindowManager(private val context: Context) {
         LaunchedEffect(searchQuery) {
             if (searchQuery.isNotBlank()) {
                 withContext(Dispatchers.IO) {
-                    searchResults = db.dictionaryDao().searchWords("$searchQuery%")
+                    searchResults = db.dictionaryDao().searchWords("$searchQuery%", context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE).getString("active_dict", "English") ?: "English")
                 }
             } else {
                 searchResults = emptyList()
@@ -342,18 +362,36 @@ class DictionaryWindowManager(private val context: Context) {
                     Button(onClick = { selectedEntry = null }, modifier = Modifier.padding(8.dp)) {
                         Text("Back")
                     }
-                    Text(
-                        text = selectedEntry!!.word,
-                        fontSize = 20.sp,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    rememberScrollState().let { scrollState ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
                         Text(
-                            text = selectedEntry!!.definition,
-                            color = Color.LightGray,
-                            modifier = Modifier.weight(1f).padding(8.dp).verticalScroll(scrollState)
+                            text = selectedEntry!!.word,
+                            fontSize = 20.sp,
+                            color = Color.White,
+                            modifier = Modifier.weight(1f)
                         )
+                        IconButton(onClick = {
+                            tts?.speak(selectedEntry!!.word, TextToSpeech.QUEUE_FLUSH, null, null)
+                        }) {
+                            Icon(Icons.Default.VolumeUp, contentDescription = "Speak Word", tint = Color.White)
+                        }
+                    }
+                    rememberScrollState().let { scrollState ->
+                        Box(modifier = Modifier.weight(1f).padding(8.dp)) {
+                            Text(
+                                text = selectedEntry!!.definition,
+                                color = Color.LightGray,
+                                modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
+                            )
+                            FloatingActionButton(
+                                onClick = {
+                                    tts?.speak(selectedEntry!!.definition, TextToSpeech.QUEUE_FLUSH, null, null)
+                                },
+                                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Icon(Icons.Default.VolumeUp, contentDescription = "Speak Definition", tint = Color.White)
+                            }
+                        }
                     }
                 }
 

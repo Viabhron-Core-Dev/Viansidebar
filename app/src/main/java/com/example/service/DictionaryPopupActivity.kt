@@ -2,6 +2,7 @@ package com.example.service
 
 import android.content.Intent
 import android.os.Bundle
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -36,7 +37,7 @@ class DictionaryPopupActivity : ComponentActivity() {
         
         query = query.trim().split(Regex("\\s+")).firstOrNull()?.replace(Regex("[^a-zA-Z]"), "") ?: ""
 
-        val db = Room.databaseBuilder(applicationContext, DictionaryDatabase::class.java, "dictionary.db").build()
+        val db = Room.databaseBuilder(applicationContext, DictionaryDatabase::class.java, "dictionary.db").fallbackToDestructiveMigration().build()
 
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
@@ -45,7 +46,7 @@ class DictionaryPopupActivity : ComponentActivity() {
                 LaunchedEffect(query) {
                     if (query.isNotEmpty()) {
                         withContext(Dispatchers.IO) {
-                            val res = db.dictionaryDao().getDefinition(query)
+                            val res = db.dictionaryDao().getDefinition(query, getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE).getString("active_dict", "English") ?: "English")
                             definition = res?.definition ?: "No definition found for '$query'"
                         }
                     } else {

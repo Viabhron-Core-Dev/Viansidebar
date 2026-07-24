@@ -604,24 +604,8 @@ class FloatingReaderService : Service() {
                     }
                     p
                 }
-                "pwa_loader" -> {
-                    var p: PwaPageView? = null
-                    p = PwaPageView(this, { closeSidebar() }) { newHeight ->
-                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
-                            sidebarView?.updatePageStyles(config, newHeight)
-                        }
-                    }
-                    p
-                }
-                "dictionary" -> {
-                    var p: DictionaryPageView? = null
-                    p = DictionaryPageView(this, { closeSidebar() }) { newHeight ->
-                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
-                            sidebarView?.updatePageStyles(config, newHeight)
-                        }
-                    }
-                    p
-                }
+                "pwa_loader" -> { null }
+                "dictionary" -> { null }
                 "app_tracker" -> {
                     var p: AppTrackerPageView? = null
                     p = AppTrackerPageView(this, { closeSidebar() }) { newHeight ->
@@ -649,7 +633,7 @@ class FloatingReaderService : Service() {
                     }
                 }
             }
-            sidebarPagesList.add(pageView)
+            if (pageView != null) { sidebarPagesList.add(pageView) }
         }
         
         // Ensure index is valid
@@ -676,6 +660,12 @@ class FloatingReaderService : Service() {
                         showSidebarEditOverlay(config.id)
                     } else if (page is WidgetsGridPageView) {
                         showWidgetsGridEditOverlay(config.id)
+                    } else if (page is HybridGridPageView) {
+                        showHybridGridEditOverlay(config.id)
+                    } else if (page is AppTrackerPageView) {
+                        val intent = android.content.Intent(this@FloatingReaderService, com.example.AppTrackerSettingsActivity::class.java)
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
                     }
                 },
             )
@@ -742,12 +732,11 @@ class FloatingReaderService : Service() {
             "widgets_grid" -> WidgetsGridPageView(this, config.id) { newHeight ->
                 standaloneSidebarView?.updatePageStyles(config, newHeight)
             }
-            "pwa_loader" -> PwaPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
+            "hybrid_grid" -> HybridGridPageView(this, config.id) { newHeight ->
                 standaloneSidebarView?.updatePageStyles(config, newHeight)
             }
-            "dictionary" -> DictionaryPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
-                standaloneSidebarView?.updatePageStyles(config, newHeight)
-            }
+            "pwa_loader" -> null
+            "dictionary" -> null // Removed from sidebar
             "app_tracker" -> AppTrackerPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
                 standaloneSidebarView?.updatePageStyles(config, newHeight)
             }
@@ -759,7 +748,13 @@ class FloatingReaderService : Service() {
             standaloneSidebarView = SidebarView(this, prefs, windowManager, tempPagesList, listOf(config), 0, onClose = { 
                 standaloneSidebarView?.detach()
                 standaloneSidebarView = null 
-            }, onEditPageClicked = null)
+            }, onEditPageClicked = { page, _ ->
+                if (page is AppTrackerPageView) {
+                    val intent = android.content.Intent(this@FloatingReaderService, com.example.AppTrackerSettingsActivity::class.java)
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                }
+            })
             
             serviceLifecycleOwner?.let {
                 standaloneSidebarView?.setViewTreeLifecycleOwner(it)
@@ -787,6 +782,14 @@ class FloatingReaderService : Service() {
         startActivity(intent)
     }
 
+    fun showHybridGridEditOverlay(pageId: String) {
+        val intent = android.content.Intent(this, com.example.HybridGridEditActivity::class.java).apply {
+            putExtra("PAGE_ID", pageId)
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
+    }
+
     fun showSidebarEditOverlay(pageId: String = "default_apps") {
         val intent = android.content.Intent(this, com.example.SidebarEditActivity::class.java).apply {
             putExtra("PAGE_ID", pageId)
@@ -807,6 +810,21 @@ class FloatingReaderService : Service() {
             if (launchIntent != null) {
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 try { startActivity(launchIntent) } catch (e: Exception) {}
+            }
+        } else if (id.startsWith("pwa:")) {
+            val pwaIdStr = id.removePrefix("pwa:")
+            val pwaId = pwaIdStr.toIntOrNull()
+            if (pwaId != null) {
+                serviceScope.launch(Dispatchers.IO) {
+                    val db = androidx.room.Room.databaseBuilder(applicationContext, PwaDatabase::class.java, "pwa.db").build()
+                    val pwas = db.pwaDao().getAllPwasSync()
+                    val pwa = pwas.find { it.id == pwaId }
+                    if (pwa != null) {
+                        withContext(Dispatchers.Main) {
+                            launchPwa(pwa)
+                        }
+                    }
+                }
             }
         } else if (id.startsWith("quicktile:")) {
             val action = id.removePrefix("quicktile:")
@@ -1745,7 +1763,8 @@ class FloatingReaderService : Service() {
         floatingView.findViewById<View>(R.id.btn_exit_bottom)?.setOnClickListener {
             saveCurrentPosition()
             com.example.LogKeeper.writeLog("eBookReader", "Closing reader")
-            setFolded(true)
+            closeSidebar()
+            stopSelf()
         }
 
         // Tap content to toggle Moonreader toolbar handled in touch listener now
@@ -1790,7 +1809,8 @@ class FloatingReaderService : Service() {
         floatingView.findViewById<View>(R.id.btn_exit_bottom)?.setOnClickListener {
             saveCurrentPosition()
             com.example.LogKeeper.writeLog("eBookReader", "Closing reader window")
-            setFolded(true)
+            closeSidebar()
+            stopSelf()
         }
 
         floatingView.findViewById<View>(R.id.btn_copy_text)?.setOnClickListener {

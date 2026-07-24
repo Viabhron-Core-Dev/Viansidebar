@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,10 +38,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.roundToInt
 
-class WidgetsGridEditActivity : ComponentActivity() {
+class HybridGridEditActivity : ComponentActivity() {
     private lateinit var prefs: android.content.SharedPreferences
     private lateinit var pageId: String
     private lateinit var appWidgetManager: AppWidgetManager
+    private lateinit var appsManager: com.example.service.SidebarAppsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,19 +52,20 @@ class WidgetsGridEditActivity : ComponentActivity() {
         }
         prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
         appWidgetManager = AppWidgetManager.getInstance(this)
+        appsManager = com.example.service.SidebarAppsManager(this, prefs, kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO), "hg_${pageId}") {}
+        appsManager.ensureLoaded()
 
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF121212)) {
-                    WidgetGridEditor(
+                    HybridGridEditor(
                         pageId = pageId,
                         prefs = prefs,
                         appWidgetManager = appWidgetManager,
+                        appsManager = appsManager,
                         onClose = { finish() },
                         onAddWidget = {
-                            val intent = Intent(this@WidgetsGridEditActivity, WidgetPickerActivity::class.java).apply {
-                                putExtra("ACTION_TYPE", "RETURN_ID")
-                            }
+                            val intent = Intent(this@HybridGridEditActivity, AddElementActivity::class.java)
                             startActivityForResult(intent, 201)
                         }
                     )
@@ -70,16 +73,58 @@ class WidgetsGridEditActivity : ComponentActivity() {
             }
         }
         
-        registerReceiver(receiver, IntentFilter("WIDGET_ADDED_TO_GRID"), Context.RECEIVER_NOT_EXPORTED)
+        registerReceiver(receiver, IntentFilter("ELEMENT_ADDED_TO_HYBRID"), Context.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 201 && resultCode == Activity.RESULT_OK && data != null) {
+        if (requestCode == 200 && resultCode == Activity.RESULT_OK && data != null) {
+            val updatedFolder = data.getStringExtra("UPDATED_FOLDER")
+            val uuid = data.getStringExtra("FOLDER_UUID")
+            if (updatedFolder != null && uuid != null) {
+                // Update items in prefs directly
+                val prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
+                val itemsJson = prefs.getString("sidebar_hybrid_$pageId", "[]")
+                val arr = org.json.JSONArray(itemsJson)
+                val parsedItems = mutableListOf<com.example.service.GridWidgetItem>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    parsedItems.add(com.example.service.GridWidgetItem(
+                        id = obj.getString("id"),
+                        cols = obj.getInt("cols"),
+                        rows = obj.getInt("rows"),
+                        x = obj.getInt("x"),
+                        y = obj.getInt("y")
+                    ))
+                }
+                
+                val index = parsedItems.indexOfFirst { it.id.startsWith("folder:$uuid:") }
+                if (index != -1) {
+                    parsedItems[index] = parsedItems[index].copy(id = updatedFolder)
+                    
+                    val newArr = org.json.JSONArray()
+                    parsedItems.forEach {
+                        val obj = org.json.JSONObject()
+                        obj.put("id", it.id)
+                        obj.put("cols", it.cols)
+                        obj.put("rows", it.rows)
+                        obj.put("x", it.x)
+                        obj.put("y", it.y)
+                        newArr.put(obj)
+                    }
+                    prefs.edit().putString("sidebar_hybrid_$pageId", newArr.toString()).apply()
+                    
+                    val bIntent = Intent("ELEMENT_ADDED_TO_HYBRID")
+                    bIntent.putExtra("PAGE_ID", pageId)
+                    bIntent.setPackage(packageName)
+                    sendBroadcast(bIntent)
+                }
+            }
+        } else if (requestCode == 201 && resultCode == Activity.RESULT_OK && data != null) {
             val elementId = data.getStringExtra("ELEMENT_ID")
             if (elementId != null) {
                 // Add widget to prefs by sending broadcast
-                val intent = Intent("WIDGET_ADDED_TO_GRID")
+                val intent = Intent("ELEMENT_ADDED_TO_HYBRID")
                 intent.putExtra("PAGE_ID", pageId)
                 intent.putExtra("ELEMENT_ID", elementId)
                 intent.setPackage(packageName)
@@ -101,24 +146,25 @@ class WidgetsGridEditActivity : ComponentActivity() {
     }
 }
 @Composable
-fun WidgetGridEditor(
+fun HybridGridEditor(
     pageId: String,
     prefs: android.content.SharedPreferences,
     appWidgetManager: AppWidgetManager,
+    appsManager: com.example.service.SidebarAppsManager,
     onClose: () -> Unit,
     onAddWidget: () -> Unit
 ) {
-    var cols by remember { mutableStateOf(prefs.getInt("widgets_grid_cols_$pageId", 4)) }
-    var items by remember { mutableStateOf(loadLocalItems(prefs, pageId)) }
+    var cols by remember { mutableStateOf(prefs.getInt("hybrid_grid_cols_$pageId", 4)) }
+    var items by remember { mutableStateOf(loadHybridLocalItems(prefs, pageId)) }
     
     // Auto-save when items or cols change
     LaunchedEffect(cols) {
-        prefs.edit().putInt("widgets_grid_cols_$pageId", cols).apply()
-        saveItems(prefs, pageId, items)
+        prefs.edit().putInt("hybrid_grid_cols_$pageId", cols).apply()
+        saveHybridItems(prefs, pageId, items)
     }
     
     LaunchedEffect(items) {
-        saveItems(prefs, pageId, items)
+        saveHybridItems(prefs, pageId, items)
     }
 
     // Force reload when broadcast is received (we can do a simple poll or just rely on state)
@@ -130,7 +176,7 @@ fun WidgetGridEditor(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Edit Widgets Grid", fontSize = 20.sp, color = Color.White)
+            Text("Edit Hybrid Grid", fontSize = 20.sp, color = Color.White)
             Button(onClick = onClose) {
                 Text("Done")
             }
@@ -153,9 +199,9 @@ fun WidgetGridEditor(
         }
         
         Button(onClick = onAddWidget, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-            Icon(Icons.Default.Add, contentDescription = "Add Widget")
+            Icon(Icons.Default.Add, contentDescription = "Add Element")
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Add Widget")
+            Text("Add Element")
         }
 
         Box(
@@ -165,10 +211,11 @@ fun WidgetGridEditor(
                 .border(1.dp, Color.DarkGray)
                 .verticalScroll(rememberScrollState())
         ) {
-            GridEditorCanvas(
+            HybridGridEditorCanvas(
                 items = items,
                 cols = cols,
                 appWidgetManager = appWidgetManager,
+                        appsManager = appsManager,
                 onUpdateItems = { newItems -> items = newItems }
             )
         }
@@ -176,12 +223,14 @@ fun WidgetGridEditor(
 }
 
 @Composable
-fun GridEditorCanvas(
+fun HybridGridEditorCanvas(
     items: List<GridWidgetItem>,
     cols: Int,
+    appsManager: com.example.service.SidebarAppsManager,
     appWidgetManager: AppWidgetManager,
     onUpdateItems: (List<GridWidgetItem>) -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(2000.dp)) {
         val cellWidth = maxWidth / cols
         val cellHeight = cellWidth // Square cells
@@ -270,13 +319,31 @@ fun GridEditorCanvas(
 
                 // Label
                 Text(
-                    text = getWidgetName(androidx.compose.ui.platform.LocalContext.current, item.id, appWidgetManager),
+                    text = getHybridWidgetName(androidx.compose.ui.platform.LocalContext.current, item.id, appWidgetManager, appsManager),
                     color = Color.White,
                     modifier = Modifier.align(Alignment.Center).padding(8.dp)
                 )
 
                 // Resize handle (bottom right)
-                Box(
+                if (item.id.startsWith("folder:")) {
+                    IconButton(
+                        onClick = {
+                            val uuid = item.id.split(":")[1]
+                            val intent = android.content.Intent(context, com.example.SidebarEditActivity::class.java).apply {
+                                putExtra("FOLDER_UUID", uuid)
+                                putExtra("FOLDER_FULL_ID", item.id)
+                            }
+                            val activity = context as? androidx.activity.ComponentActivity
+                            activity?.startActivityForResult(intent, 200)
+                        },
+                        modifier = Modifier.align(Alignment.BottomStart).size(24.dp).padding(4.dp).background(Color.Blue, shape = androidx.compose.foundation.shape.CircleShape)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
+                }
+                
+                if (item.id.startsWith("widget:")) {
+                    Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .size(24.dp)
@@ -304,26 +371,27 @@ fun GridEditorCanvas(
                                 }
                             )
                         }
-                ) {
-                    Icon(painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_crop), contentDescription = "Resize", tint = Color.White)
+                    ) {
+                        Icon(painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_crop), contentDescription = "Resize", tint = Color.White)
+                    }
                 }
             }
         }
     }
 }
 
-fun getWidgetName(context: Context, id: String, appWidgetManager: AppWidgetManager): String {
+fun getHybridWidgetName(context: Context, id: String, appWidgetManager: AppWidgetManager, appsManager: com.example.service.SidebarAppsManager): String {
     if (id.startsWith("widget:")) {
         val wId = id.removePrefix("widget:").toIntOrNull() ?: return "Unknown Widget"
         val info = appWidgetManager.getAppWidgetInfo(wId)
         return info?.loadLabel(context.packageManager) ?: "Widget $wId"
     } else {
-        return id
+        return appsManager.parseId(id)?.label ?: id
     }
 }
 
-fun loadLocalItems(prefs: android.content.SharedPreferences, pageId: String): List<GridWidgetItem> {
-    val jsonStr = prefs.getString("widgets_grid_$pageId", "[]") ?: "[]"
+fun loadHybridLocalItems(prefs: android.content.SharedPreferences, pageId: String): List<GridWidgetItem> {
+    val jsonStr = prefs.getString("hybrid_grid_$pageId", "[]") ?: "[]"
     val arr = JSONArray(jsonStr)
     val list = mutableListOf<GridWidgetItem>()
     for (i in 0 until arr.length()) {
@@ -353,7 +421,7 @@ fun loadLocalItems(prefs: android.content.SharedPreferences, pageId: String): Li
     return list
 }
 
-fun saveItems(prefs: android.content.SharedPreferences, pageId: String, items: List<GridWidgetItem>) {
+fun saveHybridItems(prefs: android.content.SharedPreferences, pageId: String, items: List<GridWidgetItem>) {
     val arr = JSONArray()
     items.forEach { 
         val obj = JSONObject()
@@ -364,5 +432,5 @@ fun saveItems(prefs: android.content.SharedPreferences, pageId: String, items: L
         obj.put("y", it.y)
         arr.put(obj)
     }
-    prefs.edit().putString("widgets_grid_$pageId", arr.toString()).apply()
+    prefs.edit().putString("hybrid_grid_$pageId", arr.toString()).apply()
 }

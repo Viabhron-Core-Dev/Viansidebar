@@ -36,7 +36,7 @@ class PwaImportActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        db = Room.databaseBuilder(applicationContext, PwaDatabase::class.java, "pwa.db").build()
+        db = Room.databaseBuilder(applicationContext, PwaDatabase::class.java, "pwa.db").enableMultiInstanceInvalidation().build()
 
         val pickZipLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {

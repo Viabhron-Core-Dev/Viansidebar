@@ -58,6 +58,7 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
         Box(modifier = Modifier.padding(padding)) {
             when (currentRoute) {
                 "main" -> MainSettingsScreen(
+                    onNavigateToDict = { currentRoute = "dict" },
                     onNavigateToReader = { currentRoute = "reader" },
                     onNavigateToGeneral = { currentRoute = "general" },
                     onNavigateToNetSpeed = { currentRoute = "netspeed" },
@@ -116,7 +117,7 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -> Unit, onNavigateToNetSpeed: () -> Unit, onNavigateToData: () -> Unit, onNavigateToPages: () -> Unit, onNavigateToHandles: () -> Unit, onNavigateToCallRecorder: () -> Unit, onNavigateToScreenCap: () -> Unit, onBack: () -> Unit) {
+fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -> Unit, onNavigateToNetSpeed: () -> Unit, onNavigateToData: () -> Unit, onNavigateToPages: () -> Unit, onNavigateToHandles: () -> Unit, onNavigateToCallRecorder: () -> Unit, onNavigateToScreenCap: () -> Unit, onNavigateToDict: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -164,6 +165,17 @@ fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -
                     supportingContent = { Text("View system logs") },
                     modifier = Modifier.clickable { 
                         val intent = Intent(context, com.example.LogKeeperActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+                Divider()
+                ListItem(
+                    headlineContent = { Text("PWA Loader") },
+                    supportingContent = { Text("Import and manage PWAs") },
+                    modifier = Modifier.clickable { 
+                        val intent = Intent(context, com.example.PwaImportActivity::class.java).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         context.startActivity(intent)

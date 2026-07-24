@@ -81,6 +81,7 @@
         <activity android:name=".WidgetPickerActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="false" />
         <activity android:name=".SidebarEditActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
         <activity android:name=".WidgetsGridEditActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
+        <activity android:name=".HybridGridEditActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
         <activity android:name=".AddElementActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
         <activity android:name=".AppPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
         <activity android:name=".IntentPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
@@ -144,6 +145,8 @@
         <service android:name=".service.ScreenRecordService" android:exported="false" android:foregroundServiceType="mediaProjection" />
         <activity android:name=".service.QRCropActivity" android:exported="false" android:theme="@style/Theme.LiteReader" />
         <activity android:name=".IconPickerActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:excludeFromRecents="true" android:exported="false" />
+                <activity android:name=".AppTrackerSettingsActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
+        <activity android:name=".AppTrackerOpenerActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="false" />
         <activity android:name=".PwaImportActivity" android:theme="@style/Theme.LiteReader" />
 
         <activity android:name=".DictionaryImportActivity" android:exported="false" android:theme="@style/Theme.LiteReader" />

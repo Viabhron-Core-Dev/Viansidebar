@@ -16,6 +16,13 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
 import org.json.JSONObject
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.room.Room
+import com.example.service.PwaDatabase
+
 
 class AddElementActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,6 +143,13 @@ class AddElementActivity : ComponentActivity() {
             startActivityForResult(intent, 400)
         }
         
+        addItem(android.R.drawable.ic_menu_gallery, "Popup Widget") {
+            val intent = Intent(this, WidgetPickerActivity::class.java).apply {
+                putExtra("ACTION_TYPE", "RETURN_ID")
+            }
+            startActivityForResult(intent, 500)
+        }
+
         addHeader("Special items")
         addItem(android.R.drawable.ic_menu_more, "Folder") {
             val options = arrayOf("Grid", "Stack")
@@ -206,6 +220,27 @@ class AddElementActivity : ComponentActivity() {
         addItem(android.R.drawable.ic_menu_sort_alphabetically, "Dictionary (Floating)") { finishWithId("system:dictionary_floating") }
         addItem(android.R.drawable.ic_menu_sort_alphabetically, "Dictionary (Full Screen)") { finishWithId("system:dictionary_full") }
         
+        addItem(android.R.drawable.ic_menu_add, "PWA Loader") {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val db = Room.databaseBuilder(applicationContext, PwaDatabase::class.java, "pwa.db").build()
+                val pwas = db.pwaDao().getAllPwasSync()
+                withContext(Dispatchers.Main) {
+                    if (pwas.isEmpty()) {
+                        android.widget.Toast.makeText(this@AddElementActivity, "No PWAs imported.", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        val options = pwas.map { it.name }.toTypedArray()
+                        android.app.AlertDialog.Builder(this@AddElementActivity)
+                            .setTitle("Select PWA")
+                            .setItems(options) { _, which ->
+                                val selectedPwa = pwas[which]
+                                finishWithId("pwa:${selectedPwa.id}")
+                            }
+                            .show()
+                    }
+                }
+            }
+        }
+
         scrollView.addView(contentLayout)
         mainLayout.addView(scrollView)
         
@@ -237,7 +272,11 @@ class AddElementActivity : ComponentActivity() {
         if (resultCode == Activity.RESULT_OK && data != null) {
             val id = data.getStringExtra("ELEMENT_ID")
             if (id != null) {
-                finishWithId(id)
+                if (requestCode == 500 && id.startsWith("widget:")) {
+                    finishWithId("popup_widget:" + id.removePrefix("widget:"))
+                } else {
+                    finishWithId(id)
+                }
             } else {
                 com.example.LogKeeper.writeLog("AddElementActivity", "ELEMENT_ID was null in data!")
             }

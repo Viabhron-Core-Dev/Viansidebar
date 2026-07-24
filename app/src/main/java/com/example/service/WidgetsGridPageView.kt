@@ -10,7 +10,12 @@ import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.GridLayout
+import kotlin.math.max
 import android.widget.ScrollView
+import android.widget.PopupWindow
+import android.widget.TextView
+import android.widget.LinearLayout
+
 import com.example.utils.AppWidgetHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +26,9 @@ import org.json.JSONObject
 data class GridWidgetItem(
     val id: String,
     var cols: Int = 2,
-    var rows: Int = 2
+    var rows: Int = 2,
+    var x: Int = 0,
+    var y: Int = 0
 )
 
 class WidgetsGridPageView(
@@ -32,7 +39,7 @@ class WidgetsGridPageView(
 
     private val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
     
-    private val gridLayout = GridLayout(context).apply {
+    private val gridLayout = FrameLayout(context).apply {
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
     }
 
@@ -92,13 +99,15 @@ class WidgetsGridPageView(
                     list.add(GridWidgetItem(
                         idStr,
                         obj.optInt("cols", 2),
-                        obj.optInt("rows", 2)
+                        obj.optInt("rows", 2),
+                        obj.optInt("x", 0),
+                        obj.optInt("y", 0)
                     ))
                 }
             } else {
                 val id = arr.optInt(i, -1)
                 if (id != -1) {
-                    list.add(GridWidgetItem("widget:$id", 2, 2))
+                    list.add(GridWidgetItem("widget:$id", 2, 2, 0, 0))
                 }
             }
         }
@@ -112,6 +121,8 @@ class WidgetsGridPageView(
             obj.put("id", it.id)
             obj.put("cols", it.cols)
             obj.put("rows", it.rows)
+            obj.put("x", it.x)
+            obj.put("y", it.y)
             arr.put(obj)
         }
         prefs.edit().putString("widgets_grid_$pageId", arr.toString()).apply()
@@ -120,14 +131,14 @@ class WidgetsGridPageView(
     private fun addWidgetIdToPrefs(widgetId: Int) {
         val items = getWidgetItems().toMutableList()
         // Default size 2x2
-        items.add(GridWidgetItem("widget:$widgetId", 2, 2))
+        items.add(GridWidgetItem("widget:$widgetId", 2, 2, 0, 0))
         saveWidgetItems(items)
     }
     
     private fun addElementIdToPrefs(elementId: String) {
         val items = getWidgetItems().toMutableList()
         // Default size 1x1 for elements
-        items.add(GridWidgetItem(elementId, 1, 1))
+        items.add(GridWidgetItem(elementId, 1, 1, 0, 0))
         saveWidgetItems(items)
     }
 
@@ -146,7 +157,7 @@ class WidgetsGridPageView(
     private fun loadWidgets() {
         gridLayout.removeAllViews()
         val totalCols = prefs.getInt("widgets_grid_cols_$pageId", 4)
-        gridLayout.columnCount = totalCols
+        // FrameLayout, no columnCount needed
         
         // Wait until grid layout has a width to calculate cell sizes
         post {
@@ -168,6 +179,7 @@ class WidgetsGridPageView(
             val appsManager = SidebarAppsManager(context, prefs, CoroutineScope(Dispatchers.IO), "wg_${pageId}") {}
             appsManager.ensureLoaded()
             
+            var maxHeight = 0
             for (item in items) {
                 try {
                     if (item.id.startsWith("widget:")) {
@@ -179,13 +191,90 @@ class WidgetsGridPageView(
                             val wCols = minOf(item.cols, totalCols)
                             val wRows = item.rows
                             
-                            val params = GridLayout.LayoutParams().apply {
-                                width = cellWidth * wCols
-                                height = cellHeight * wRows
-                                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, wCols)
-                                rowSpec = GridLayout.spec(GridLayout.UNDEFINED, wRows)
+                            val params = FrameLayout.LayoutParams(cellWidth * wCols, cellHeight * wRows).apply {
+                                leftMargin = item.x * cellWidth
+                                topMargin = item.y * cellHeight
                             }
                             gridLayout.addView(hostView, params)
+                            maxHeight = max(maxHeight, item.y * cellHeight + cellHeight * wRows)
+                            
+                            hostView.setOnLongClickListener {
+                                val actionList = mutableListOf("App Info", "Remove")
+
+                                var popupWindow: PopupWindow? = null
+                                val popupLayout = LinearLayout(context).apply {
+                                    orientation = LinearLayout.VERTICAL
+                                    val pad = (8 * context.resources.displayMetrics.density).toInt()
+                                    setPadding(pad, pad, pad, pad)
+                                }
+
+                                actionList.forEach { action ->
+                                    val actionView = TextView(context).apply {
+                                        text = action
+                                        setTextColor(Color.WHITE)
+                                        setPadding(0, (12 * context.resources.displayMetrics.density).toInt(), 0, (12 * context.resources.displayMetrics.density).toInt())
+                                        gravity = Gravity.CENTER
+                                        
+                                        val shape = android.graphics.drawable.GradientDrawable()
+                                        shape.cornerRadius = 8 * context.resources.displayMetrics.density
+                                        shape.setColor(Color.parseColor("#333333"))
+                                        shape.setStroke(1, Color.LTGRAY)
+                                        background = shape
+                                        
+                                        layoutParams = LinearLayout.LayoutParams(
+                                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                                            LinearLayout.LayoutParams.WRAP_CONTENT
+                                        ).apply {
+                                            setMargins(0, 0, 0, (8 * context.resources.displayMetrics.density).toInt())
+                                        }
+                                        
+                                        setOnClickListener {
+                                            popupWindow?.dismiss()
+                                            when (action) {
+                                                "Remove" -> {
+                                                    val newItems = items.toMutableList()
+                                                    newItems.removeAll { it.id == item.id }
+                                                    saveWidgetItems(newItems)
+                                                    context.sendBroadcast(Intent("WIDGET_ADDED_TO_GRID").apply { putExtra("PAGE_ID", pageId) })
+                                                }
+                                                "App Info" -> {
+                                                    try {
+                                                        val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                                        intent.data = android.net.Uri.parse("package:${info.provider.packageName}")
+                                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                        context.startActivity(intent)
+                                                    } catch (e: Exception) {}
+                                                }
+                                            }
+                                        }
+                                    }
+                                    popupLayout.addView(actionView)
+                                }
+                                
+                                popupLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+                                popupWindow = PopupWindow(
+                                    popupLayout,
+                                    (150 * context.resources.displayMetrics.density).toInt(),
+                                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                                    true
+                                ).apply {
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                        windowLayoutType = android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        windowLayoutType = android.view.WindowManager.LayoutParams.TYPE_PHONE
+                                    }
+                                    setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+                                    isOutsideTouchable = true
+                                }
+                                val location = IntArray(2)
+                                hostView.getLocationOnScreen(location)
+                                val x = location[0]
+                                var y = location[1] - popupLayout.measuredHeight
+                                if (y < 0) y = location[1] + hostView.height
+                                popupWindow?.showAtLocation(hostView, Gravity.NO_GRAVITY, x, y)
+                                true
+                            }
                         }
                     } else {
                         val parsed = appsManager.parseId(item.id)
@@ -214,19 +303,19 @@ class WidgetsGridPageView(
                             val wCols = minOf(item.cols, totalCols)
                             val wRows = item.rows
                             
-                            val params = GridLayout.LayoutParams().apply {
-                                width = cellWidth * wCols
-                                height = cellHeight * wRows
-                                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, wCols)
-                                rowSpec = GridLayout.spec(GridLayout.UNDEFINED, wRows)
+                            val params = FrameLayout.LayoutParams(cellWidth * wCols, cellHeight * wRows).apply {
+                                leftMargin = item.x * cellWidth
+                                topMargin = item.y * cellHeight
                             }
                             gridLayout.addView(elementView, params)
+                            maxHeight = max(maxHeight, item.y * cellHeight + cellHeight * wRows)
                         }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
             }
+            gridLayout.layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, maxHeight)
             onHeightChanged(getCurrentHeightPx())
         }
     }
