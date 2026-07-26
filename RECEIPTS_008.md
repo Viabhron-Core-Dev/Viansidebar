@@ -1,0 +1,7 @@
+- 2026-07-26T12:54:00-07:00
+- Fix handles settings so that Sidebar gesture option is restricted only to the default first handle, and new handles start without default gestures
+- Modified app/src/main/java/com/example/HandlesListSettingsScreen.kt
+- Removed the `toggle_sidebar` default tap assignment for newly created handles so they start empty. In the "Add Gesture" dialog, conditionally rendered the `categoryOptions` so that the "Sidebar" category only appears if `handle.id == "sidebar"`. For all other handles, only "Page" and "Action/Element" are allowed.
+- Verified by local build (gradle :app:compileDebugKotlin successful)
+- No deviation from requested.
+- None

@@ -38,6 +38,7 @@ fun AppTrackerSettingsScreen(onBack: () -> Unit) {
     val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
     
     var showSystemApps by remember { mutableStateOf(prefs.getBoolean("app_tracker_show_system", false)) }
+    var autoForceStop by remember { mutableStateOf(prefs.getBoolean("app_tracker_auto_force_stop", false)) }
     var whitelistCurrent by remember { mutableStateOf(prefs.getStringSet("app_tracker_whitelist_current", emptySet()) ?: emptySet()) }
     var whitelistCache by remember { mutableStateOf(prefs.getStringSet("app_tracker_whitelist_cache", emptySet()) ?: emptySet()) }
     
@@ -112,6 +113,21 @@ fun AppTrackerSettingsScreen(onBack: () -> Unit) {
                     onCheckedChange = { 
                         showSystemApps = it
                         prefs.edit().putBoolean("app_tracker_show_system", it).apply()
+                    }
+                )
+            }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Auto Force Stop (Accessibility)")
+                Switch(
+                    checked = autoForceStop,
+                    onCheckedChange = { 
+                        autoForceStop = it
+                        prefs.edit().putBoolean("app_tracker_auto_force_stop", it).apply()
                     }
                 )
             }

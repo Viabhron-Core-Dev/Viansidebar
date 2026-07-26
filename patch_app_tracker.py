@@ -1,4 +1,10 @@
-package com.example.service
+import re
+
+with open("app/src/main/java/com/example/service/AppTrackerPageView.kt", "r") as f:
+    content = f.read()
+
+# We will completely overwrite AppTrackerPageView.kt
+new_content = """package com.example.service
 
 import android.annotation.SuppressLint
 import android.app.usage.UsageStats
@@ -352,3 +358,7 @@ fun PermissionBanner(onGrantClick: () -> Unit) {
         }
     }
 }
+"""
+
+with open("app/src/main/java/com/example/service/AppTrackerPageView.kt", "w") as f:
+    f.write(new_content)

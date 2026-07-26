@@ -50,7 +50,6 @@ fun HandlesListSettingsScreen(
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 val newId = UUID.randomUUID().toString()
-                prefs.edit().putString("handle_${newId}_tap", "toggle_sidebar").apply()
                 handles = handles + HandleConfig(id = newId, name = "Handle ${handles.size + 1}", enabled = true)
                 save()
             }) {
@@ -265,12 +264,19 @@ fun HandleItem(
                         val pageConfigs = com.example.utils.PageManager.getPages(prefs, handle.id)
                         var selectedGesture by remember { mutableStateOf(gestureKeys.first { !gesturesMap.containsKey(it) } ?: gestureKeys.first()) }
                         
-                        val categoryOptions = listOf(
-                            "sidebar" to "Sidebar",
-                            "page" to "Page",
-                            "element" to "Action/Element"
-                        )
-                        var selectedCategory by remember { mutableStateOf("sidebar") }
+                        val categoryOptions = if (handle.id == "sidebar") {
+                            listOf(
+                                "sidebar" to "Sidebar",
+                                "page" to "Page",
+                                "element" to "Action/Element"
+                            )
+                        } else {
+                            listOf(
+                                "page" to "Page",
+                                "element" to "Action/Element"
+                            )
+                        }
+                        var selectedCategory by remember { mutableStateOf(categoryOptions.first().first) }
                         var selectedPageType by remember { mutableStateOf(if (pageConfigs.isNotEmpty()) pageConfigs.first().type else "") }
                         
                         AlertDialog(

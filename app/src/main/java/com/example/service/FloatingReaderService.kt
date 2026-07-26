@@ -604,6 +604,15 @@ class FloatingReaderService : Service() {
                     }
                     p
                 }
+                "hybrid_grid" -> {
+                    var p: HybridGridPageView? = null
+                    p = HybridGridPageView(this, config.id) { newHeight ->
+                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
+                            sidebarView?.updatePageStyles(config, newHeight)
+                        }
+                    }
+                    p
+                }
                 "pwa_loader" -> { null }
                 "dictionary" -> { null }
                 "app_tracker" -> {

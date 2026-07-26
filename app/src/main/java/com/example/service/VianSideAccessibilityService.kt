@@ -253,5 +253,6 @@ class VianSideAccessibilityService : AccessibilityService() {
     companion object {
         var instance: VianSideAccessibilityService? = null
             private set
+        var isForceStopping = false
     }
 }

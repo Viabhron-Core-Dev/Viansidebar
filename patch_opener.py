@@ -1,4 +1,9 @@
-package com.example
+import re
+
+with open("app/src/main/java/com/example/AppTrackerOpenerActivity.kt", "r") as f:
+    content = f.read()
+
+new_content = """package com.example
 
 import android.app.Activity
 import android.content.Context
@@ -63,3 +68,7 @@ class AppTrackerOpenerActivity : Activity() {
         com.example.service.VianSideAccessibilityService.isForceStopping = false
     }
 }
+"""
+
+with open("app/src/main/java/com/example/AppTrackerOpenerActivity.kt", "w") as f:
+    f.write(new_content)
