@@ -1755,7 +1755,11 @@ class FloatingReaderService : Service() {
 
         // Click listener for top notes button in reader
         floatingView.findViewById<View>(R.id.btn_top_notes)?.setOnClickListener {
-            openNotesView()
+            val intent = android.content.Intent(this, com.example.FloatingTrackerEditActivity::class.java).apply {
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra("book_title", currentBook?.title ?: "")
+            }
+            startActivity(intent)
         }
 
         bubbleIcon.setOnClickListener { setFolded(false) }

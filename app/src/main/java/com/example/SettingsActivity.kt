@@ -44,6 +44,7 @@ class SettingsActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
+    var navigateToPermissions by remember { mutableStateOf(false) }
     var currentRoute by remember { mutableStateOf(startRoute) }
     
     androidx.activity.compose.BackHandler {
@@ -67,6 +68,7 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                     onNavigateToHandles = { currentRoute = "handles" },
                     onNavigateToCallRecorder = { currentRoute = "call_recorder" },
                     onNavigateToScreenCap = { currentRoute = "screencap" },
+                    onNavigateToPermissions = { currentRoute = "permissions" },
                     onBack = onFinish
                 )
                 "reader" -> ReaderSettingsScreen(
@@ -117,7 +119,7 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -> Unit, onNavigateToNetSpeed: () -> Unit, onNavigateToData: () -> Unit, onNavigateToPages: () -> Unit, onNavigateToHandles: () -> Unit, onNavigateToCallRecorder: () -> Unit, onNavigateToScreenCap: () -> Unit, onNavigateToDict: () -> Unit, onBack: () -> Unit) {
+fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -> Unit, onNavigateToNetSpeed: () -> Unit, onNavigateToData: () -> Unit, onNavigateToPages: () -> Unit, onNavigateToHandles: () -> Unit, onNavigateToCallRecorder: () -> Unit, onNavigateToScreenCap: () -> Unit, onNavigateToDict: () -> Unit, onNavigateToPermissions: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -130,6 +132,12 @@ fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -
         )
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {
+                ListItem(
+                    headlineContent = { Text("Vian Permissions Manager") },
+                    supportingContent = { Text("Manage and grant necessary permissions") },
+                    modifier = Modifier.clickable { onNavigateToPermissions() }
+                )
+                Divider()
                 ListItem(
                     headlineContent = { Text("eBook Reader Settings") },
                     supportingContent = { Text("Theme, font size, gestures, backups, logs") },

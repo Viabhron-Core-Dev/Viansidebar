@@ -162,6 +162,7 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+        <activity android:name=".FloatingTrackerEditActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="false" />
     </application>
 
 </manifest>

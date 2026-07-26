@@ -1,0 +1,7 @@
+- 2026-07-25T15:37:00-07:00
+- Add Vian Permissions Manager in Settings
+- Modified app/src/main/java/com/example/SettingsActivity.kt, created app/src/main/java/com/example/PermissionManagerScreen.kt
+- Created a new permissions manager screen that consolidates all permissions needed by the app with toggles to grant them, following the style of the welcome screen but expanded to list the features that use each permission. Added navigation to it in the main settings menu.
+- Verified by local build (gradle :app:compileDebugKotlin and gradle :app:assembleDebug successful)
+- No deviation from requested.
+- None

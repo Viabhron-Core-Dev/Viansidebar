@@ -1,6 +1,8 @@
 package com.example
 import android.content.Context
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -319,7 +321,7 @@ fun SidebarSettingsScreen(handleId: String, onBack: () -> Unit) {
                 onDismissRequest = { showAddDialog = false },
                 title = { Text("Add Sidebar Page") },
                 text = {
-                    Column {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         val types = listOf(
                             "apps" to "Apps Grid",
                             "scheduler" to "Scheduler",
