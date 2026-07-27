@@ -1,0 +1,8 @@
+- 2026-07-26T14:05:00-07:00
+- Updated App Tracker UI to revert the sidebar to 2 tabs (Running and Cache) and moved the advanced editing controls into the full screen settings/edit mode.
+- Modified app/src/main/java/com/example/service/AppTrackerPageView.kt
+- Modified app/src/main/java/com/example/AppTrackerSettingsActivity.kt
+- `AppTrackerPageView` now displays a larger 3-column grid for the "Running" tab and a scrollable list view for the "Cache" tab (icon, name, cache size). It includes small pill tabs at the bottom. `AppTrackerSettingsActivity` now features 4 tabs (Running, Cache, Execute, All Apps). The "Running" and "Cache" tabs manage their respective whitelists and include top-row action buttons (SYSTEM/USER, SELECT ALL, DESELECT ALL, INVERT), allowing apps to be selected/whitelisted by tapping their grid item. The "Execute" tab houses the Automation/Permissions configuration.
+- Verified by local build (gradle :app:compileDebugKotlin)
+- No deviation from requested.
+- None

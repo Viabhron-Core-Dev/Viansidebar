@@ -26,6 +26,13 @@ object DisplayHandler {
         try {
             LogKeeper.writeLog("DisplayHandler", "Handling action: $action")
             when (action) {
+                "blue_light_filter" -> {
+                    BlueLightFilterManager.toggle(context)
+                    context.sendBroadcast(Intent("com.example.UPDATE_SIDEBAR_ICONS").apply {
+                        putExtra("item_id", "display:blue_light_filter")
+                        setPackage(context.packageName)
+                    })
+                }
                 "torch_toggle" -> toggleTorch(context)
                 "timeout_cycle" -> cycleScreenTimeout(context)
                 "orientation_toggle" -> toggleOrientationLock(context)

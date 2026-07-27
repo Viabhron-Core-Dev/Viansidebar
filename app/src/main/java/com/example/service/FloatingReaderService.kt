@@ -1776,8 +1776,8 @@ class FloatingReaderService : Service() {
         floatingView.findViewById<View>(R.id.btn_exit_bottom)?.setOnClickListener {
             saveCurrentPosition()
             com.example.LogKeeper.writeLog("eBookReader", "Closing reader")
-            closeSidebar()
-            stopSelf()
+            floatingView.visibility = View.GONE
+            
         }
 
         // Tap content to toggle Moonreader toolbar handled in touch listener now
@@ -1822,8 +1822,8 @@ class FloatingReaderService : Service() {
         floatingView.findViewById<View>(R.id.btn_exit_bottom)?.setOnClickListener {
             saveCurrentPosition()
             com.example.LogKeeper.writeLog("eBookReader", "Closing reader window")
-            closeSidebar()
-            stopSelf()
+            floatingView.visibility = View.GONE
+            
         }
 
         floatingView.findViewById<View>(R.id.btn_copy_text)?.setOnClickListener {

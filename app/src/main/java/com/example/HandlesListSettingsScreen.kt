@@ -264,18 +264,10 @@ fun HandleItem(
                         val pageConfigs = com.example.utils.PageManager.getPages(prefs, handle.id)
                         var selectedGesture by remember { mutableStateOf(gestureKeys.first { !gesturesMap.containsKey(it) } ?: gestureKeys.first()) }
                         
-                        val categoryOptions = if (handle.id == "sidebar") {
-                            listOf(
-                                "sidebar" to "Sidebar",
-                                "page" to "Page",
-                                "element" to "Action/Element"
-                            )
-                        } else {
-                            listOf(
-                                "page" to "Page",
-                                "element" to "Action/Element"
-                            )
-                        }
+                        val categoryOptions = listOf(
+                            "page" to "Page",
+                            "element" to "Action/Element"
+                        )
                         var selectedCategory by remember { mutableStateOf(categoryOptions.first().first) }
                         var selectedPageType by remember { mutableStateOf(if (pageConfigs.isNotEmpty()) pageConfigs.first().type else "") }
                         

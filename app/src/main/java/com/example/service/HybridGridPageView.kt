@@ -192,6 +192,12 @@ class HybridGridPageView(
                                 topMargin = item.y * cellHeight
                             }
                             gridLayout.addView(hostView, params)
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+                                val density = context.resources.displayMetrics.density
+                                val minW = ((cellWidth * wCols) / density).toInt()
+                                val minH = ((cellHeight * wRows) / density).toInt()
+                                hostView.updateAppWidgetSize(null, minW, minH, minW, minH)
+                            }
                             maxHeight = max(maxHeight, item.y * cellHeight + cellHeight * wRows)
                             
                             hostView.setOnLongClickListener {
@@ -278,6 +284,12 @@ class HybridGridPageView(
                             val elementView = android.view.LayoutInflater.from(context).inflate(com.example.R.layout.item_sidebar_app, null, false)
                             val icon = elementView.findViewById<android.widget.ImageView>(com.example.R.id.app_icon)
                             val label = elementView.findViewById<android.widget.TextView>(com.example.R.id.app_label)
+                            icon.maxWidth = Int.MAX_VALUE
+                            icon.maxHeight = Int.MAX_VALUE
+                            val lp = icon.layoutParams as android.widget.LinearLayout.LayoutParams
+                            lp.height = 0
+                            lp.weight = 1f
+                            icon.layoutParams = lp
                             
                             label.text = parsed.label
                             

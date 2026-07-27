@@ -1,24 +1,33 @@
 package com.example.service
 
 import android.annotation.SuppressLint
+import android.app.AppOpsManager
+import android.app.usage.StorageStatsManager
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
+import android.os.Build
+import android.os.Process
+import android.os.storage.StorageManager
 import android.provider.Settings
+import android.text.format.Formatter
 import android.widget.FrameLayout
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,6 +39,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
@@ -55,7 +65,6 @@ class AppTrackerPageView(
     private val onHeightChanged: (Int) -> Unit
 ) : FrameLayout(context) {
     private var currentHeightPx: Int = 0
-
     init {
         addView(ComposeView(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
@@ -70,7 +79,7 @@ class AppTrackerPageView(
                                     onHeightChanged(size.height)
                                 }
                             },
-                        color = Color.Black
+                        color = Color(0xFF1E1E2C)
                     ) {
                         AppTrackerScreen(context = context, onCloseSidebar = onCloseSidebar)
                     }
@@ -81,42 +90,44 @@ class AppTrackerPageView(
 }
 
 private fun checkUsageStatsPermission(context: Context): Boolean {
-    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
     val mode = appOps.unsafeCheckOpNoThrow(
-        android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-        android.os.Process.myUid(),
+        AppOpsManager.OPSTR_GET_USAGE_STATS,
+        Process.myUid(),
         context.packageName
     )
-    return mode == android.app.AppOpsManager.MODE_ALLOWED
+    return mode == AppOpsManager.MODE_ALLOWED
 }
 
 @Composable
 fun AppTrackerScreen(context: Context, onCloseSidebar: () -> Unit) {
+    var selectedTab by remember { mutableStateOf(0) }
     var hasPermission by remember { mutableStateOf(checkUsageStatsPermission(context)) }
-    var apps by remember { mutableStateOf<List<TrackedAppInfo>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
+    
+    var recentApps by remember { mutableStateOf<List<TrackedAppInfo>>(emptyList()) }
+    var cacheApps by remember { mutableStateOf<List<TrackedAppInfo>>(emptyList()) }
+    var isLoadingRecent by remember { mutableStateOf(false) }
+    var isLoadingCache by remember { mutableStateOf(false) }
     
     val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
     val whitelistCurrent = remember { prefs.getStringSet("app_tracker_whitelist_current", emptySet()) ?: emptySet() }
-    
-    var showSystemApps by remember { mutableStateOf(false) }
-    var selectedPackages by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val whitelistCache = remember { prefs.getStringSet("app_tracker_whitelist_cache", emptySet()) ?: emptySet() }
     
     DisposableEffect(Unit) {
         hasPermission = checkUsageStatsPermission(context)
         onDispose {}
     }
 
-    LaunchedEffect(hasPermission) {
-        if (hasPermission) {
-            isLoading = true
+    LaunchedEffect(selectedTab, hasPermission) {
+        if (selectedTab == 0 && hasPermission) {
+            isLoadingRecent = true
             withContext(Dispatchers.IO) {
                 val pm = context.packageManager
                 val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
                 val list = mutableListOf<TrackedAppInfo>()
                 if (usm != null) {
                     val endTime = System.currentTimeMillis()
-                    val startTime = endTime - (1000L * 60 * 60 * 24) // Last 24 hours
+                    val startTime = endTime - (1000L * 60 * 60 * 24 * 7)
                     val usageStats = usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, startTime, endTime)
                     val aggregated = mutableMapOf<String, UsageStats>()
                     for (stat in usageStats) {
@@ -145,22 +156,55 @@ fun AppTrackerScreen(context: Context, onCloseSidebar: () -> Unit) {
                     }
                     list.sortByDescending { it.lastTimeUsed }
                 }
-                apps = list
-                selectedPackages = list.map { it.packageName }.toSet()
+                recentApps = list
             }
-            isLoading = false
+            isLoadingRecent = false
         }
     }
 
-    val filteredApps = remember(apps, showSystemApps) {
-        apps.filter { !it.isSystem || showSystemApps }
-    }
-    
-    LaunchedEffect(filteredApps) {
-        selectedPackages = filteredApps.map { it.packageName }.toSet()
+    LaunchedEffect(selectedTab, hasPermission) {
+        if (selectedTab == 1) {
+            isLoadingCache = true
+            withContext(Dispatchers.IO) {
+                val pm = context.packageManager
+                val storageStatsManager = context.getSystemService(Context.STORAGE_STATS_SERVICE) as? StorageStatsManager
+                val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+                val packages = pm.getInstalledPackages(0)
+                val list = mutableListOf<TrackedAppInfo>()
+                for (pkg in packages) {
+                    val appInfo = pkg.applicationInfo ?: continue
+                    if (whitelistCache.contains(pkg.packageName)) continue
+                    var cacheSize = 0L
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && storageStatsManager != null && storageManager != null) {
+                        try {
+                            val uuid = appInfo.storageUuid
+                            val stats = storageStatsManager.queryStatsForPackage(uuid, pkg.packageName, Process.myUserHandle())
+                            cacheSize = stats.cacheBytes
+                        } catch (e: Exception) {}
+                    }
+                    if (cacheSize > 0) {
+                        val label = appInfo.loadLabel(pm).toString()
+                        val icon = try { appInfo.loadIcon(pm) } catch (e: Exception) { null }
+                        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        list.add(
+                            TrackedAppInfo(
+                                packageName = pkg.packageName,
+                                appName = label,
+                                icon = icon,
+                                isSystem = isSystem,
+                                cacheSize = cacheSize
+                            )
+                        )
+                    }
+                }
+                list.sortByDescending { it.cacheSize }
+                cacheApps = list
+            }
+            isLoadingCache = false
+        }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
         if (!hasPermission) {
             PermissionBanner(
                 onGrantClick = {
@@ -175,118 +219,111 @@ fun AppTrackerScreen(context: Context, onCloseSidebar: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Top Buttons Row 1
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Button(
-                onClick = { showSystemApps = !showSystemApps },
-                modifier = Modifier.weight(1f).height(36.dp),
-                contentPadding = PaddingValues(0.dp),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
-            ) {
-                Text(if (showSystemApps) "SYSTEM / USER" else "USER ONLY", fontSize = 11.sp)
-            }
-            Button(
-                onClick = {
-                    val intent = Intent(context, com.example.AppTrackerSettingsActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
-                    onCloseSidebar()
-                },
-                modifier = Modifier.weight(1f).height(36.dp),
-                contentPadding = PaddingValues(0.dp),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
-            ) {
-                Text("PREFERENCES", fontSize = 11.sp)
-            }
-        }
-        
-        // Top Buttons Row 2
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Button(
-                onClick = { selectedPackages = emptySet() },
-                modifier = Modifier.weight(1f).height(36.dp),
-                contentPadding = PaddingValues(0.dp),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
-            ) {
-                Text("DESELECT ALL", fontSize = 11.sp)
-            }
-            Button(
-                onClick = { selectedPackages = filteredApps.map { it.packageName }.toSet() },
-                modifier = Modifier.weight(1f).height(36.dp),
-                contentPadding = PaddingValues(0.dp),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
-            ) {
-                Text("SELECT ALL", fontSize = 11.sp)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "${filteredApps.size} ${if (showSystemApps) "System & User" else "User"} App(s) open in background.",
-            color = Color.White,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp)
-        )
-
         Box(modifier = Modifier.weight(1f)) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    items(filteredApps, key = { it.packageName }) { app ->
-                        val isSelected = selectedPackages.contains(app.packageName)
-                        AppGridBlock(
-                            app = app,
-                            isSelected = isSelected,
-                            onClick = {
-                                val newSet = selectedPackages.toMutableSet()
-                                if (isSelected) newSet.remove(app.packageName) else newSet.add(app.packageName)
-                                selectedPackages = newSet
+            when (selectedTab) {
+                0 -> {
+                    if (isLoadingRecent) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(bottom = 80.dp)
+                        ) {
+                            items(recentApps, key = { it.packageName }) { app ->
+                                AppGridIconItem(app = app, onClick = {
+                                    try {
+                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                            data = android.net.Uri.parse("package:${app.packageName}")
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(intent)
+                                        onCloseSidebar()
+                                    } catch (e: Exception) {}
+                                })
                             }
-                        )
+                        }
+                    }
+                }
+                1 -> {
+                    if (isLoadingCache) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            contentPadding = PaddingValues(bottom = 80.dp)
+                        ) {
+                            items(cacheApps, key = { it.packageName }) { app ->
+                                AppRowItem(
+                                    app = app,
+                                    subtitle = Formatter.formatShortFileSize(context, app.cacheSize),
+                                    onClick = {
+                                        try {
+                                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                data = android.net.Uri.parse("package:${app.packageName}")
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }
+                                            context.startActivity(intent)
+                                            onCloseSidebar()
+                                        } catch (e: Exception) {}
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
-            
-            SmallFloatingActionButton(
-                onClick = {
-                    if (selectedPackages.isNotEmpty()) {
+
+            if (selectedTab == 0 && recentApps.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = {
                         val intent = Intent(context, com.example.AppTrackerOpenerActivity::class.java).apply {
-                            putStringArrayListExtra("packages", ArrayList(selectedPackages.toList()))
+                            putStringArrayListExtra("packages", ArrayList(recentApps.map { it.packageName }))
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         context.startActivity(intent)
                         onCloseSidebar()
-                    }
-                },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "Close Selected")
+                    },
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = "Force Stop All")
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val tabs = listOf("Running", "Cache")
+            tabs.forEachIndexed { index, title ->
+                val isSelected = selectedTab == index
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .clip(CircleShape)
+                        .background(if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF2A2A3C))
+                        .clickable { selectedTab = index }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = title,
+                        color = if (isSelected) Color.Black else Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun AppGridBlock(app: TrackedAppInfo, isSelected: Boolean, onClick: () -> Unit) {
+fun AppGridIconItem(app: TrackedAppInfo, onClick: () -> Unit) {
     val bitmapState = remember(app.icon) {
         try {
             app.icon?.toBitmap(
@@ -295,32 +332,58 @@ fun AppGridBlock(app: TrackedAppInfo, isSelected: Boolean, onClick: () -> Unit) 
             )?.asImageBitmap()
         } catch (e: Exception) { null }
     }
-    
-    val bgColor = if (isSelected) Color.White else Color(0xFF1E1E1E)
-    val textColor = if (isSelected) Color.Black else Color.White
-    
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(bgColor)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF2B2B3D))
             .clickable { onClick() }
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
         if (bitmapState != null) {
-            Image(
-                bitmap = bitmapState,
-                contentDescription = app.appName,
-                modifier = Modifier.fillMaxSize()
-            )
+            Image(bitmap = bitmapState, contentDescription = app.appName, modifier = Modifier.fillMaxSize())
         } else {
-            Text(
-                text = app.appName.take(1).uppercase(),
-                color = textColor,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text(app.appName.take(1).uppercase(), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun AppRowItem(app: TrackedAppInfo, subtitle: String, onClick: () -> Unit) {
+    val bitmapState = remember(app.icon) {
+        try {
+            app.icon?.toBitmap(
+                width = if (app.icon.intrinsicWidth > 0) app.icon.intrinsicWidth else 72,
+                height = if (app.icon.intrinsicHeight > 0) app.icon.intrinsicHeight else 72
+            )?.asImageBitmap()
+        } catch (e: Exception) { null }
+    }
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2B3D)),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (bitmapState != null) {
+                Image(bitmap = bitmapState, contentDescription = app.appName, modifier = Modifier.size(32.dp).clip(CircleShape))
+            } else {
+                Box(
+                    modifier = Modifier.size(32.dp).background(Color.DarkGray, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(app.appName.take(1).uppercase(), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(app.appName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, fontSize = 12.sp, color = Color.LightGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -330,7 +393,7 @@ fun PermissionBanner(onGrantClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF3B2D26)),
-        modifier = Modifier.fillMaxWidth().padding(8.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(10.dp),
@@ -341,6 +404,7 @@ fun PermissionBanner(onGrantClick: () -> Unit) {
                 Text("Usage Stats Needed", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFFFFB74D))
                 Text("Grant Usage Access to track active apps.", fontSize = 11.sp, color = Color.LightGray)
             }
+            Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = onGrantClick,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),

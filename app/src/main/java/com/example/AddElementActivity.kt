@@ -214,6 +214,9 @@ class AddElementActivity : ComponentActivity() {
         addItem(android.R.drawable.ic_media_play, "Media") { openActionPicker("media", "Media Actions") }
         addItem(android.R.drawable.ic_menu_view, "Display") { openActionPicker("display", "Display Actions") }
         
+        addHeader("Utilities")
+        addItem(android.R.drawable.ic_menu_view, "Blue Light Filter") { finishWithId("display:blue_light_filter") }
+        
         addHeader("App Custom")
         addItem(com.example.R.drawable.ic_library_books, "eBook Reader") { finishWithId("system:ebook_reader") }
         addItem(android.R.drawable.ic_menu_agenda, "Log Keeper") { finishWithId("system:log_keeper") }

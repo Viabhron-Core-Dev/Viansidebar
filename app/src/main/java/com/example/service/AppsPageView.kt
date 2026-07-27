@@ -749,7 +749,11 @@ class AppsPageView(
             } else if (item is SidebarItem.DisplayAction) {
                 icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 icon.setImageResource(item.iconResId)
-                icon.setColorFilter(android.graphics.Color.WHITE)
+                if (item.action == "blue_light_filter" && com.example.service.BlueLightFilterManager.isEnabled) {
+                    icon.setColorFilter(android.graphics.Color.parseColor("#FF9900"))
+                } else {
+                    icon.setColorFilter(android.graphics.Color.WHITE)
+                }
             } else if (item is SidebarItem.Folder) {
                 icon.setImageDrawable(null)
                 icon.clearColorFilter()

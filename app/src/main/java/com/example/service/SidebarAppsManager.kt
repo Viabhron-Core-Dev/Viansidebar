@@ -204,6 +204,7 @@ val ALL_SETTINGS_SHORTCUTS = listOf(
 )
 
 val ALL_DISPLAY_ACTIONS = listOf(
+    SidebarItem.DisplayAction("blue_light_filter", "Blue Light Filter", android.R.drawable.ic_menu_view),
     SidebarItem.DisplayAction("torch_toggle", "Flashlight", android.R.drawable.ic_menu_camera),
     SidebarItem.DisplayAction("timeout_cycle", "Screen Timeout", android.R.drawable.ic_menu_recent_history),
     SidebarItem.DisplayAction("orientation_toggle", "Rotation Toggle", android.R.drawable.ic_menu_always_landscape_portrait)
