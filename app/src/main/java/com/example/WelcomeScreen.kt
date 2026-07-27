@@ -30,7 +30,7 @@ import android.app.AppOpsManager
 import android.os.Process
 
 @Composable
-fun WelcomeScreen(onContinue: () -> Unit) {
+fun WelcomeScreen(onContinue: () -> Unit, isFirstLaunch: Boolean = true) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -66,7 +66,7 @@ fun WelcomeScreen(onContinue: () -> Unit) {
         // Logo placeholder removed
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Welcome to LiteReader",
+            text = if (isFirstLaunch) "Welcome to LiteReader" else "Permissions Manager",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
@@ -152,7 +152,7 @@ fun WelcomeScreen(onContinue: () -> Unit) {
             },
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            Text("Continue to Settings", style = MaterialTheme.typography.titleMedium)
+            Text(if (isFirstLaunch) "Continue to Settings" else "Back", style = MaterialTheme.typography.titleMedium)
         }
         Spacer(modifier = Modifier.height(24.dp))
     }

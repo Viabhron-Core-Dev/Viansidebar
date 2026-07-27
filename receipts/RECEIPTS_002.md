@@ -1,0 +1,9 @@
+- 2026-07-27T12:20:00-07:00
+- Fix hybrid grid ignoring popup widgets and widget spanning calculations
+- app/src/main/java/com/example/service/SidebarAppsManager.kt, app/src/main/java/com/example/WidgetPickerActivity.kt
+- Updated `SidebarAppsManager.kt` to successfully parse `popup_widget:` IDs with their associated layout configurations. Updated `WidgetPickerActivity.kt` to gracefully fallback to calculating span size from `minWidth`/`minHeight` if the Android 12+ `targetCellWidth`/`targetCellHeight` returns 0.
+- 2026-07-27T12:32:00-07:00
+- Fix permissions page in Settings opening to a blank screen
+- app/src/main/java/com/example/SettingsActivity.kt, app/src/main/java/com/example/WelcomeScreen.kt
+- Updated `SettingsActivity.kt` to handle the `permissions` route in the `SettingsApp` composable block, routing it to `WelcomeScreen`. Modified `WelcomeScreen` to accept an `isFirstLaunch` parameter, which customizes the title and continue button text to act as a settings page rather than just an onboarding screen.
+- Verified by compilation.

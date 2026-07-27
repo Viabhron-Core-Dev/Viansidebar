@@ -101,10 +101,22 @@ class WidgetsGridEditActivity : ComponentActivity() {
                         }
                     }
                 }
+                var defaultCols = if (elementId.startsWith("widget:")) 2 else 1
+                var defaultRows = if (elementId.startsWith("widget:")) 2 else 1
+                if (elementId.startsWith("widget:")) {
+                    try {
+                        val parts = elementId.split(":", limit = 3)
+                        if (parts.size >= 3) {
+                            val json = org.json.JSONObject(parts[2])
+                            if (json.has("cols")) defaultCols = json.getInt("cols")
+                            if (json.has("rows")) defaultRows = json.getInt("rows")
+                        }
+                    } catch (e: Exception) {}
+                }
                 parsedItems.add(com.example.service.GridWidgetItem(
                     id = elementId,
-                    cols = if (elementId.startsWith("widget:")) 2 else 1,
-                    rows = if (elementId.startsWith("widget:")) 2 else 1,
+                    cols = defaultCols,
+                    rows = defaultRows,
                     x = 0,
                     y = 0
                 ))
@@ -363,7 +375,7 @@ fun GridEditorCanvas(
 
 fun getWidgetName(context: Context, id: String, appWidgetManager: AppWidgetManager): String {
     if (id.startsWith("widget:")) {
-        val wId = id.removePrefix("widget:").toIntOrNull() ?: return "Unknown Widget"
+        val wId = id.removePrefix("widget:").substringBefore(":").toIntOrNull() ?: return "Unknown Widget"
         val info = appWidgetManager.getAppWidgetInfo(wId)
         return info?.loadLabel(context.packageManager) ?: "Widget $wId"
     } else {

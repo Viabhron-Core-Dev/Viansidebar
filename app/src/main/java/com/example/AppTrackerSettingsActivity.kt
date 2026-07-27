@@ -139,6 +139,7 @@ fun WhitelistTab(context: Context, prefs: android.content.SharedPreferences, typ
                         if (stat.lastTimeUsed <= 0 || pkgName == context.packageName) continue
                         try {
                             val appInfo = pm.getApplicationInfo(pkgName, 0)
+                            if ((appInfo.flags and ApplicationInfo.FLAG_STOPPED) != 0) continue
                             val label = appInfo.loadLabel(pm).toString()
                             val icon = try { appInfo.loadIcon(pm) } catch (e: Exception) { null }
                             val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0

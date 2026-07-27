@@ -140,6 +140,7 @@ fun AppTrackerScreen(context: Context, onCloseSidebar: () -> Unit) {
                         if (stat.lastTimeUsed <= 0 || whitelistCurrent.contains(pkgName) || pkgName == context.packageName) continue
                         try {
                             val appInfo = pm.getApplicationInfo(pkgName, 0)
+                            if ((appInfo.flags and ApplicationInfo.FLAG_STOPPED) != 0) continue
                             val label = appInfo.loadLabel(pm).toString()
                             val icon = try { appInfo.loadIcon(pm) } catch (e: Exception) { null }
                             val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0

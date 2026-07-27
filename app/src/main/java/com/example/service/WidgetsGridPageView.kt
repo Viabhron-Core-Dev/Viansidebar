@@ -186,7 +186,7 @@ class WidgetsGridPageView(
             for (item in items) {
                 try {
                     if (item.id.startsWith("widget:")) {
-                        val wId = item.id.removePrefix("widget:").toIntOrNull() ?: continue
+                        val wId = item.id.removePrefix("widget:").substringBefore(":").toIntOrNull() ?: continue
                         val info = appWidgetManager.getAppWidgetInfo(wId)
                         if (info != null) {
                             val hostView = host.createView(context, wId, info)

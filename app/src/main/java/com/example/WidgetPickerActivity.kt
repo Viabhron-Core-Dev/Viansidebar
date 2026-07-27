@@ -182,9 +182,20 @@ class WidgetPickerActivity : ComponentActivity() {
             val info = appWidgetManager.getAppWidgetInfo(widgetId)
             val label = info?.loadLabel(packageManager) ?: "Widget"
             
+            val spanX = if (info != null) {
+                val cw = if (android.os.Build.VERSION.SDK_INT >= 31) info.targetCellWidth else 0
+                if (cw > 0) cw else Math.max(1, Math.round(info.minWidth / 70.0).toInt())
+            } else 2
+            val spanY = if (info != null) {
+                val ch = if (android.os.Build.VERSION.SDK_INT >= 31) info.targetCellHeight else 0
+                if (ch > 0) ch else Math.max(1, Math.round(info.minHeight / 70.0).toInt())
+            } else 2
+            
             val json = JSONObject()
             json.put("widgetId", widgetId)
             json.put("label", label)
+            json.put("cols", spanX)
+            json.put("rows", spanY)
             val id = "widget:${widgetId}:${json.toString()}"
             
             val resultIntent = Intent().apply { putExtra("ELEMENT_ID", id) }

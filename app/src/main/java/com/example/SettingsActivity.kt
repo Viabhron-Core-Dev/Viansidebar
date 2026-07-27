@@ -99,6 +99,10 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                 "screencap" -> ScreenCapSettingsScreen(
                     onBack = { currentRoute = "main" }
                 )
+                "permissions" -> WelcomeScreen(
+                    onContinue = { currentRoute = "main" },
+                    isFirstLaunch = false
+                )
             }
             if (currentRoute.startsWith("pages_")) {
                 val handleId = currentRoute.removePrefix("pages_")
