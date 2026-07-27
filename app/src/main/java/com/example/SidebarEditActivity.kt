@@ -41,6 +41,7 @@ class SidebarEditActivity : ComponentActivity() {
 
     
     private lateinit var manager: SidebarAppsManager
+    private lateinit var myPrefKey: String
     private val serviceScope = CoroutineScope(Dispatchers.IO)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,9 +51,9 @@ class SidebarEditActivity : ComponentActivity() {
         folderUuid = intent.getStringExtra("FOLDER_UUID")
         pageId = intent.getStringExtra("PAGE_ID") ?: "default_apps"
         val handleId = intent.getStringExtra("HANDLE_ID") ?: "sidebar"
-        val prefKey = "sidebar_apps_" + handleId + "_" + pageId
+        myPrefKey = "sidebar_apps_" + handleId + "_" + pageId
         
-        manager = SidebarAppsManager(this, prefs, serviceScope, prefKey) {
+        manager = SidebarAppsManager(this, prefs, serviceScope, myPrefKey) {
             runOnUiThread {
                 if (::adapter.isInitialized) {
                     adapter.notifyDataSetChanged()
@@ -262,7 +263,7 @@ class SidebarEditActivity : ComponentActivity() {
             setResult(RESULT_OK, resultIntent)
             // Removed direct save to prefs; parent grid will save
         } else {
-            prefs.edit().putString("sidebar_apps_${pageId}", arr.toString()).apply()
+            prefs.edit().putString(myPrefKey, arr.toString()).apply()
             prefs.edit().putInt("sidebar_columns", totalCols).apply()
             prefs.edit().putInt("sidebar_rows", totalRows).apply()
             com.example.LogKeeper.writeLog("SidebarEdit", "Saved ${localIds.size} items to apps grid.")

@@ -84,7 +84,7 @@ class HybridGridEditActivity : ComponentActivity() {
             if (updatedFolder != null && uuid != null) {
                 // Update items in prefs directly
                 val prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-                val itemsJson = prefs.getString("sidebar_hybrid_$pageId", "[]")
+                val itemsJson = prefs.getString("hybrid_grid_$pageId", "[]")
                 val arr = org.json.JSONArray(itemsJson)
                 val parsedItems = mutableListOf<com.example.service.GridWidgetItem>()
                 for (i in 0 until arr.length()) {
@@ -112,7 +112,7 @@ class HybridGridEditActivity : ComponentActivity() {
                         obj.put("y", it.y)
                         newArr.put(obj)
                     }
-                    prefs.edit().putString("sidebar_hybrid_$pageId", newArr.toString()).apply()
+                    prefs.edit().putString("hybrid_grid_$pageId", newArr.toString()).apply()
                     
                     val bIntent = Intent("ELEMENT_ADDED_TO_HYBRID")
                     bIntent.putExtra("PAGE_ID", pageId)
@@ -149,7 +149,7 @@ class HybridGridEditActivity : ComponentActivity() {
                 saveHybridItems(prefs, pageId, parsedItems)
                 val intent = Intent("ELEMENT_ADDED_TO_HYBRID")
                 intent.putExtra("PAGE_ID", pageId)
-                intent.putExtra("ELEMENT_ID", elementId)
+                // Do not pass ELEMENT_ID to avoid duplicate addition in the receiver
                 intent.setPackage(packageName)
                 sendBroadcast(intent)
                 recreate()
@@ -159,7 +159,13 @@ class HybridGridEditActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        try { unregisterReceiver(receiver) } catch (e: Exception) {}
+        try {
+            val updateIntent = Intent("UPDATE_GRID")
+            updateIntent.putExtra("PAGE_ID", pageId)
+            updateIntent.setPackage(packageName)
+            sendBroadcast(updateIntent)
+            unregisterReceiver(receiver)
+        } catch (e: Exception) {}
     }
 
     private val receiver = object : BroadcastReceiver() {

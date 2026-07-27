@@ -15,6 +15,7 @@ import com.example.utils.SidebarPage
 @Composable
 fun PageCustomizeScreen(
     page: SidebarPage,
+    handleId: String,
     onSave: (SidebarPage) -> Unit,
     onBack: () -> Unit
 ) {
@@ -67,15 +68,22 @@ fun PageCustomizeScreen(
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
 
             item {
-                if (page.type == "apps" || page.type == "widgets_grid") {
+                if (page.type == "apps" || page.type == "widgets_grid" || page.type == "hybrid_grid") {
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = {
                             val intent = if (page.type == "apps") {
-                                Intent(context, SidebarEditActivity::class.java)
+                                Intent(context, SidebarEditActivity::class.java).apply {
+                                    putExtra("PAGE_ID", page.id)
+                                    putExtra("HANDLE_ID", handleId)
+                                }
+                            } else if (page.type == "hybrid_grid") {
+                                Intent(context, HybridGridEditActivity::class.java).apply {
+                                    putExtra("PAGE_ID", page.id)
+                                }
                             } else {
                                 Intent(context, WidgetsGridEditActivity::class.java).apply {
-                                    putExtra("page_id", page.id)
+                                    putExtra("PAGE_ID", page.id)
                                 }
                             }
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -83,7 +91,7 @@ fun PageCustomizeScreen(
                         },
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                     ) {
-                        Text(if (page.type == "apps") "EDIT APPS" else "EDIT WIDGETS")
+                        Text(if (page.type == "apps") "EDIT APPS" else if (page.type == "hybrid_grid") "EDIT GRID" else "EDIT WIDGETS")
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }

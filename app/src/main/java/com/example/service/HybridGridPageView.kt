@@ -41,7 +41,7 @@ class HybridGridPageView(
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == "ELEMENT_ADDED_TO_HYBRID") {
+            if (intent?.action == "ELEMENT_ADDED_TO_HYBRID" || intent?.action == "UPDATE_GRID") {
                 val targetPageId = intent.getStringExtra("PAGE_ID")
                 if (targetPageId == pageId) {
                     val widgetId = intent.getIntExtra("WIDGET_ID", -1)
@@ -70,7 +70,10 @@ class HybridGridPageView(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        context.registerReceiver(receiver, IntentFilter("ELEMENT_ADDED_TO_HYBRID"), Context.RECEIVER_NOT_EXPORTED)
+        val filter = IntentFilter()
+        filter.addAction("ELEMENT_ADDED_TO_HYBRID")
+        filter.addAction("UPDATE_GRID")
+        context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onDetachedFromWindow() {

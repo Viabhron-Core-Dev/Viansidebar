@@ -40,6 +40,7 @@ fun SidebarSettingsScreen(handleId: String, onBack: () -> Unit) {
     if (customisingPage != null) {
         PageCustomizeScreen(
             page = customisingPage!!,
+            handleId = handleId,
             onSave = { updated ->
                 val newPages = PageManager.getPages(prefs, handleId).toMutableList()
                 val idx = newPages.indexOfFirst { it.id == updated.id }

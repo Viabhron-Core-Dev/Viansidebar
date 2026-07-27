@@ -78,19 +78,68 @@ class WidgetsGridEditActivity : ComponentActivity() {
         if (requestCode == 201 && resultCode == Activity.RESULT_OK && data != null) {
             val elementId = data.getStringExtra("ELEMENT_ID")
             if (elementId != null) {
-                // Add widget to prefs by sending broadcast
+                // Add widget to prefs directly and reload
+                val prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
+                val itemsJson = prefs.getString("widgets_grid_$pageId", "[]") ?: "[]"
+                val arr = org.json.JSONArray(itemsJson)
+                val parsedItems = mutableListOf<com.example.service.GridWidgetItem>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i)
+                    if (obj != null) {
+                        val idStr = if (obj.has("id")) {
+                            val rawId = obj.get("id")
+                            if (rawId is Int) "widget:$rawId" else rawId.toString()
+                        } else ""
+                        if (idStr.isNotEmpty()) {
+                            parsedItems.add(com.example.service.GridWidgetItem(
+                                id = idStr,
+                                cols = obj.optInt("cols", 1),
+                                rows = obj.optInt("rows", 1),
+                                x = obj.optInt("x", 0),
+                                y = obj.optInt("y", 0)
+                            ))
+                        }
+                    }
+                }
+                parsedItems.add(com.example.service.GridWidgetItem(
+                    id = elementId,
+                    cols = if (elementId.startsWith("widget:")) 2 else 1,
+                    rows = if (elementId.startsWith("widget:")) 2 else 1,
+                    x = 0,
+                    y = 0
+                ))
+                val newArr = org.json.JSONArray()
+                parsedItems.forEach {
+                    val obj = org.json.JSONObject()
+                    obj.put("id", it.id)
+                    obj.put("cols", it.cols)
+                    obj.put("rows", it.rows)
+                    obj.put("x", it.x)
+                    obj.put("y", it.y)
+                    newArr.put(obj)
+                }
+                prefs.edit().putString("widgets_grid_$pageId", newArr.toString()).apply()
+                
                 val intent = Intent("WIDGET_ADDED_TO_GRID")
                 intent.putExtra("PAGE_ID", pageId)
-                intent.putExtra("ELEMENT_ID", elementId)
                 intent.setPackage(packageName)
                 sendBroadcast(intent)
+                
+                // Refresh activity UI
+                recreate()
             }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        try { unregisterReceiver(receiver) } catch (e: Exception) {}
+        try {
+            val updateIntent = Intent("UPDATE_GRID")
+            updateIntent.putExtra("PAGE_ID", pageId)
+            updateIntent.setPackage(packageName)
+            sendBroadcast(updateIntent)
+            unregisterReceiver(receiver)
+        } catch (e: Exception) {}
     }
 
     private val receiver = object : BroadcastReceiver() {

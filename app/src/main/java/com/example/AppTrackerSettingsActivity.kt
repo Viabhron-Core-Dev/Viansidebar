@@ -163,7 +163,7 @@ fun WhitelistTab(context: Context, prefs: android.content.SharedPreferences, typ
     }
     
     val filteredApps = remember(apps, showSystemApps) {
-        apps.filter { !it.isSystem || showSystemApps }
+        apps.filter { it.isSystem == showSystemApps }
     }
     
     Column(modifier = Modifier.fillMaxSize()) {
@@ -178,7 +178,7 @@ fun WhitelistTab(context: Context, prefs: android.content.SharedPreferences, typ
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
             ) {
-                Text(if (showSystemApps) "SYSTEM / USER" else "USER ONLY", fontSize = 11.sp)
+                Text(if (showSystemApps) "SYSTEM ONLY" else "USER ONLY", fontSize = 11.sp)
             }
             Button(
                 onClick = { 
