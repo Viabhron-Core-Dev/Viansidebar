@@ -213,35 +213,11 @@ class AddElementActivity : ComponentActivity() {
         addItem(android.R.drawable.ic_lock_silent_mode, "Volume") { openActionPicker("volume", "Volume Actions") }
         addItem(android.R.drawable.ic_media_play, "Media") { openActionPicker("media", "Media Actions") }
         addItem(android.R.drawable.ic_menu_view, "Display") { openActionPicker("display", "Display Actions") }
-        
-        addHeader("Utilities")
-        addItem(android.R.drawable.ic_menu_view, "Blue Light Filter") { finishWithId("display:blue_light_filter") }
+        addItem(android.R.drawable.ic_menu_agenda, "Utilities") { openActionPicker("utilities", "Utilities") }
         
         addHeader("App Custom")
-        addItem(com.example.R.drawable.ic_library_books, "eBook Reader") { finishWithId("system:ebook_reader") }
-        addItem(android.R.drawable.ic_menu_agenda, "Log Keeper") { finishWithId("system:log_keeper") }
-        addItem(android.R.drawable.ic_menu_sort_alphabetically, "Dictionary (Floating)") { finishWithId("system:dictionary_floating") }
-        addItem(android.R.drawable.ic_menu_sort_alphabetically, "Dictionary (Full Screen)") { finishWithId("system:dictionary_full") }
-        
         addItem(android.R.drawable.ic_menu_add, "PWA Loader") {
-            lifecycleScope.launch(Dispatchers.IO) {
-                val db = Room.databaseBuilder(applicationContext, PwaDatabase::class.java, "pwa.db").build()
-                val pwas = db.pwaDao().getAllPwasSync()
-                withContext(Dispatchers.Main) {
-                    if (pwas.isEmpty()) {
-                        android.widget.Toast.makeText(this@AddElementActivity, "No PWAs imported.", android.widget.Toast.LENGTH_SHORT).show()
-                    } else {
-                        val options = pwas.map { it.name }.toTypedArray()
-                        android.app.AlertDialog.Builder(this@AddElementActivity)
-                            .setTitle("Select PWA")
-                            .setItems(options) { _, which ->
-                                val selectedPwa = pwas[which]
-                                finishWithId("pwa:${selectedPwa.id}")
-                            }
-                            .show()
-                    }
-                }
-            }
+            startActivityForResult(Intent(this, PwaPickerActivity::class.java), 600)
         }
 
         scrollView.addView(contentLayout)

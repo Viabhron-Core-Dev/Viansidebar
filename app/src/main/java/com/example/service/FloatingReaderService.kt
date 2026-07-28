@@ -663,7 +663,7 @@ class FloatingReaderService : Service() {
         currentHandleId = handleId
         if (sidebarView == null) {
             rebuildSidebarPages(handleId)
-            sidebarView = SidebarView(this, prefs, windowManager, sidebarPagesList, PageManager.getPages(prefs, handleId), sidebarDefaultIndex, onClose = { closeSidebar() },
+            sidebarView = SidebarView(this, prefs, windowManager, handleId, sidebarPagesList, PageManager.getPages(prefs, handleId), sidebarDefaultIndex, onClose = { closeSidebar() },
                 onEditPageClicked = { page, config ->
                     if (page is AppsPageView) {
                         showSidebarEditOverlay(config.id)
@@ -706,11 +706,11 @@ class FloatingReaderService : Service() {
             showSidebar(handleId)
             sidebarView?.goToPage(index)
         } else {
-            showStandalonePage(type)
+            showStandalonePage(handleId, type)
         }
     }
 
-    private fun showStandalonePage(type: String) {
+    private fun showStandalonePage(handleId: String, type: String) {
         if (standaloneSidebarView != null) {
             windowManager.removeView(standaloneSidebarView)
             standaloneSidebarView = null
@@ -754,7 +754,7 @@ class FloatingReaderService : Service() {
         
         if (pageView != null) {
             tempPagesList.add(pageView)
-            standaloneSidebarView = SidebarView(this, prefs, windowManager, tempPagesList, listOf(config), 0, onClose = { 
+            standaloneSidebarView = SidebarView(this, prefs, windowManager, handleId, tempPagesList, listOf(config), 0, onClose = { 
                 standaloneSidebarView?.detach()
                 standaloneSidebarView = null 
             }, onEditPageClicked = { page, _ ->
@@ -916,14 +916,41 @@ class FloatingReaderService : Service() {
                 pendingElementCallback?.invoke(elementId)
                 pendingElementCallback = null
             } else {
-                val prefKey = "sidebar_apps_" + currentHandleId + "_default_apps" // Defaulting to default_apps for now
-                val manager = appsManagers.getOrPut(prefKey) {
-                    SidebarAppsManager(this, prefs, serviceScope, prefKey) {}
-                }
-                if (folderUuid != null) {
-                    manager.addItemToFolder(folderUuid, elementId)
-                } else {
-                    manager.addItem(elementId)
+                val handlePages = PageManager.getPages(prefs, currentHandleId)
+                val targetPage = handlePages.firstOrNull()
+                
+                if (targetPage?.type == "hybrid_grid") {
+                    val pageId = targetPage.id
+                    val itemsJson = prefs.getString("hybrid_grid_$pageId", "[]") ?: "[]"
+                    val arr = org.json.JSONArray(itemsJson)
+                    val obj = org.json.JSONObject()
+                    obj.put("id", elementId)
+                    if (elementId.startsWith("widget:")) {
+                        obj.put("cols", 2)
+                        obj.put("rows", 2)
+                    } else {
+                        obj.put("cols", 1)
+                        obj.put("rows", 1)
+                    }
+                    obj.put("x", 0)
+                    obj.put("y", 0)
+                    arr.put(obj)
+                    prefs.edit().putString("hybrid_grid_$pageId", arr.toString()).apply()
+                    
+                    val bIntent = android.content.Intent("ELEMENT_ADDED_TO_HYBRID")
+                    bIntent.putExtra("PAGE_ID", pageId)
+                    bIntent.setPackage(packageName)
+                    sendBroadcast(bIntent)
+                } else if (targetPage != null) {
+                    val prefKey = "sidebar_apps_" + currentHandleId + "_" + targetPage.id
+                    val manager = appsManagers.getOrPut(prefKey) {
+                        SidebarAppsManager(this, prefs, serviceScope, prefKey) {}
+                    }
+                    if (folderUuid != null) {
+                        manager.addItemToFolder(folderUuid, elementId)
+                    } else {
+                        manager.addItem(elementId)
+                    }
                 }
             }
             return START_NOT_STICKY

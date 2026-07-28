@@ -42,6 +42,7 @@ class ActionPickerActivity : ComponentActivity() {
             "quick_tiles" -> ALL_QUICK_TILES
             "system" -> ALL_SYSTEM_ACTIONS
             "screen_capture" -> ALL_SCREEN_CAPTURE_ACTIONS
+            "utilities" -> ALL_UTILITIES_ACTIONS
             "volume" -> ALL_VOLUME_ACTIONS
             "media" -> ALL_MEDIA_ACTIONS
             "display" -> ALL_DISPLAY_ACTIONS

@@ -67,10 +67,10 @@ object PageManager {
     fun getPages(prefs: SharedPreferences, handleId: String): List<SidebarPage> {
         val legacy = if (handleId == "sidebar") prefs.getString("sidebar_pages", null) else null
         val pagesJson = prefs.getString("handle_${handleId}_pages", legacy)
-        val defaultAppsPage = SidebarPage(id = "default_apps", type = "apps", title = "Apps Grid")
+        val defaultPage = SidebarPage(id = "default_hybrid", type = "hybrid_grid", title = "Home Grid")
         if (pagesJson == null) {
             // Default setup
-            return listOf(defaultAppsPage)
+            return listOf(defaultPage)
         }
         val list = mutableListOf<SidebarPage>()
         try {
@@ -83,15 +83,15 @@ object PageManager {
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            return listOf(defaultAppsPage)
+            return listOf(defaultPage)
         }
         
-        // Ensure first page is always Apps Grid
+        // Ensure first page is always default_hybrid
         if (list.isEmpty()) {
-            list.add(defaultAppsPage)
-        } else if (list[0].id != "default_apps") {
-            list.removeAll { it.id == "default_apps" }
-            list.add(0, defaultAppsPage)
+            list.add(defaultPage)
+        } else if (list[0].id != "default_hybrid") {
+            list.removeAll { it.id == "default_hybrid" }
+            list.add(0, defaultPage)
         }
         
         return list

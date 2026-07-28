@@ -42,6 +42,10 @@ class TriggerHandleView(
     private val path = Path()
 
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onDown(e: MotionEvent): Boolean {
+            return true
+        }
+        
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             if (!isDragging) {
                 val tapAction = prefs.getString("${prefix}tap", "none") ?: "none"

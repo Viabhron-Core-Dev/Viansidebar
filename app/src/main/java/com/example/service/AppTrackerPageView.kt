@@ -147,13 +147,12 @@ fun AppTrackerScreen(context: Context, onCloseSidebar: () -> Unit) {
                             val appInfo = pm.getApplicationInfo(pkgName, 0)
                             if ((appInfo.flags and ApplicationInfo.FLAG_STOPPED) != 0) continue
                             val label = appInfo.loadLabel(pm).toString()
-                            val icon = try { appInfo.loadIcon(pm) } catch (e: Exception) { null }
                             val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
                             list.add(
                                 TrackedAppInfo(
                                     packageName = pkgName,
                                     appName = label,
-                                    icon = icon,
+                                    icon = null,
                                     isSystem = isSystem,
                                     lastTimeUsed = stat.lastTimeUsed
                                 )
@@ -190,13 +189,12 @@ fun AppTrackerScreen(context: Context, onCloseSidebar: () -> Unit) {
                     }
                     if (cacheSize > 0) {
                         val label = appInfo.loadLabel(pm).toString()
-                        val icon = try { appInfo.loadIcon(pm) } catch (e: Exception) { null }
                         val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
                         list.add(
                             TrackedAppInfo(
                                 packageName = pkg.packageName,
                                 appName = label,
-                                icon = icon,
+                                icon = null,
                                 isSystem = isSystem,
                                 cacheSize = cacheSize
                             )
@@ -330,14 +328,23 @@ fun AppTrackerScreen(context: Context, onCloseSidebar: () -> Unit) {
 
 @Composable
 fun AppGridIconItem(app: TrackedAppInfo, onClick: () -> Unit) {
-    val bitmapState = remember(app.icon) {
-        try {
-            app.icon?.toBitmap(
-                width = if (app.icon.intrinsicWidth > 0) app.icon.intrinsicWidth else 96,
-                height = if (app.icon.intrinsicHeight > 0) app.icon.intrinsicHeight else 96
-            )?.asImageBitmap()
-        } catch (e: Exception) { null }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var bitmapState by remember(app.packageName) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    
+    LaunchedEffect(app.packageName) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val pm = context.packageManager
+                val icon = pm.getApplicationIcon(app.packageName)
+                val bitmap = icon.toBitmap(
+                    width = if (icon.intrinsicWidth > 0) icon.intrinsicWidth else 96,
+                    height = if (icon.intrinsicHeight > 0) icon.intrinsicHeight else 96
+                ).asImageBitmap()
+                bitmapState = bitmap
+            } catch (e: Exception) {}
+        }
     }
+    
     Box(
         modifier = Modifier
             .aspectRatio(1f)
@@ -347,8 +354,9 @@ fun AppGridIconItem(app: TrackedAppInfo, onClick: () -> Unit) {
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
-        if (bitmapState != null) {
-            Image(bitmap = bitmapState, contentDescription = app.appName, modifier = Modifier.fillMaxSize())
+        val currentBitmap = bitmapState
+        if (currentBitmap != null) {
+            Image(bitmap = currentBitmap, contentDescription = app.appName, modifier = Modifier.fillMaxSize())
         } else {
             Text(app.appName.take(1).uppercase(), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
@@ -357,14 +365,23 @@ fun AppGridIconItem(app: TrackedAppInfo, onClick: () -> Unit) {
 
 @Composable
 fun AppRowItem(app: TrackedAppInfo, subtitle: String, onClick: () -> Unit) {
-    val bitmapState = remember(app.icon) {
-        try {
-            app.icon?.toBitmap(
-                width = if (app.icon.intrinsicWidth > 0) app.icon.intrinsicWidth else 72,
-                height = if (app.icon.intrinsicHeight > 0) app.icon.intrinsicHeight else 72
-            )?.asImageBitmap()
-        } catch (e: Exception) { null }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var bitmapState by remember(app.packageName) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    
+    LaunchedEffect(app.packageName) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val pm = context.packageManager
+                val icon = pm.getApplicationIcon(app.packageName)
+                val bitmap = icon.toBitmap(
+                    width = if (icon.intrinsicWidth > 0) icon.intrinsicWidth else 72,
+                    height = if (icon.intrinsicHeight > 0) icon.intrinsicHeight else 72
+                ).asImageBitmap()
+                bitmapState = bitmap
+            } catch (e: Exception) {}
+        }
     }
+    
     Card(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2B3D)),
@@ -374,8 +391,9 @@ fun AppRowItem(app: TrackedAppInfo, subtitle: String, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (bitmapState != null) {
-                Image(bitmap = bitmapState, contentDescription = app.appName, modifier = Modifier.size(32.dp).clip(CircleShape))
+            val currentBitmap = bitmapState
+            if (currentBitmap != null) {
+                Image(bitmap = currentBitmap, contentDescription = app.appName, modifier = Modifier.size(32.dp).clip(CircleShape))
             } else {
                 Box(
                     modifier = Modifier.size(32.dp).background(Color.DarkGray, CircleShape),

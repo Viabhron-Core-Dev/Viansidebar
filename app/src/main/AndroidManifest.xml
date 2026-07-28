@@ -87,6 +87,7 @@
         <activity android:name=".IntentPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
         <activity android:name=".ShortcutPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
         <activity android:name=".ActionPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
+        <activity android:name=".PwaPickerActivity" android:theme="@style/Theme.LiteReader" android:exported="false" />
 
         <service
             android:name=".service.FloatingReaderService"
@@ -150,7 +151,7 @@
         <activity android:name=".PwaImportActivity" android:theme="@style/Theme.LiteReader" />
 
         <activity android:name=".DictionaryImportActivity" android:exported="false" android:theme="@style/Theme.LiteReader" />
-        <activity android:name=".service.DictionaryPopupActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
+        <activity android:name=".service.DictionaryPopupActivity" android:label="Meaning" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />

@@ -144,8 +144,6 @@ val ALL_SYSTEM_ACTIONS = listOf(
     SidebarItem.SystemAction("quick_settings", "Quick settings", android.R.drawable.ic_menu_manage),
     SidebarItem.SystemAction("recents", "Recents", android.R.drawable.ic_menu_recent_history),
     SidebarItem.SystemAction("splitscreen", "Splitscreen", android.R.drawable.ic_menu_gallery),
-    SidebarItem.SystemAction("log_keeper", "Log Keeper", android.R.drawable.ic_menu_agenda),
-    SidebarItem.SystemAction("ebook_reader", "eBook Reader", com.example.R.drawable.ic_library_books),
     SidebarItem.SystemAction("settings", "Settings", android.R.drawable.ic_menu_preferences)
 )
 
@@ -204,10 +202,17 @@ val ALL_SETTINGS_SHORTCUTS = listOf(
 )
 
 val ALL_DISPLAY_ACTIONS = listOf(
-    SidebarItem.DisplayAction("blue_light_filter", "Blue Light Filter", android.R.drawable.ic_menu_view),
     SidebarItem.DisplayAction("torch_toggle", "Flashlight", android.R.drawable.ic_menu_camera),
     SidebarItem.DisplayAction("timeout_cycle", "Screen Timeout", android.R.drawable.ic_menu_recent_history),
     SidebarItem.DisplayAction("orientation_toggle", "Rotation Toggle", android.R.drawable.ic_menu_always_landscape_portrait)
+)
+
+val ALL_UTILITIES_ACTIONS = listOf(
+    SidebarItem.DisplayAction("blue_light_filter", "Blue Light Filter", android.R.drawable.ic_menu_view),
+    SidebarItem.SystemAction("log_keeper", "Log Keeper", android.R.drawable.ic_menu_agenda),
+    SidebarItem.SystemAction("ebook_reader", "eBook Reader", com.example.R.drawable.ic_library_books),
+    SidebarItem.SystemAction("dictionary_floating", "Dictionary (Floating)", android.R.drawable.ic_menu_sort_alphabetically),
+    SidebarItem.SystemAction("dictionary_full", "Dictionary (Full Screen)", android.R.drawable.ic_menu_sort_alphabetically)
 )
 
 data class AppInfo(
@@ -564,7 +569,7 @@ class SidebarAppsManager(
             }
         } else if (id.startsWith("system:")) {
             val action = id.substringAfter("system:")
-            val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action }
+            val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action } ?: ALL_UTILITIES_ACTIONS.filterIsInstance<SidebarItem.SystemAction>().find { it.action == action }
             if (sysAction != null) {
                 return SidebarItem.SystemAction(action, sysAction.label, sysAction.iconResId)
             }
@@ -582,7 +587,7 @@ class SidebarAppsManager(
             }
         } else if (id.startsWith("display:")) {
             val actionId = id.substringAfter("display:")
-            val displayAction = ALL_DISPLAY_ACTIONS.find { it.action == actionId }
+            val displayAction = ALL_DISPLAY_ACTIONS.find { it.action == actionId } ?: ALL_UTILITIES_ACTIONS.filterIsInstance<SidebarItem.DisplayAction>().find { it.action == actionId }
             if (displayAction != null) {
                 return SidebarItem.DisplayAction(actionId, displayAction.label, displayAction.iconResId)
             }
@@ -734,7 +739,7 @@ class SidebarAppsManager(
                 }
             } else if (id.startsWith("system:")) {
                 val action = id.substringAfter("system:")
-                val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action }
+                val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action } ?: ALL_UTILITIES_ACTIONS.filterIsInstance<SidebarItem.SystemAction>().find { it.action == action }
                 if (sysAction != null) {
                     result.add(SidebarItem.SystemAction(action, sysAction.label, sysAction.iconResId))
                 }
@@ -752,7 +757,7 @@ class SidebarAppsManager(
                 }
             } else if (id.startsWith("display:")) {
                 val actionId = id.substringAfter("display:")
-                val displayAction = ALL_DISPLAY_ACTIONS.find { it.action == actionId }
+                val displayAction = ALL_DISPLAY_ACTIONS.find { it.action == actionId } ?: ALL_UTILITIES_ACTIONS.filterIsInstance<SidebarItem.DisplayAction>().find { it.action == actionId }
                 if (displayAction != null) {
                     result.add(SidebarItem.DisplayAction(actionId, displayAction.label, displayAction.iconResId))
                 }

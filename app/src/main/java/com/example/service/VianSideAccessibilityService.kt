@@ -31,42 +31,23 @@ class VianSideAccessibilityService : AccessibilityService() {
         if (isForceStopping) {
             val rootNode = rootInActiveWindow ?: return
             
-            // Try to find and click "OK" in confirmation dialog first
-            val okNodes = rootNode.findAccessibilityNodeInfosByText("OK")
-            for (node in okNodes) {
-                if (node.isClickable && node.isEnabled) {
-                    node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
-                    // After OK is clicked, press back to return to opener and proceed to next app
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        performGlobalAction(GLOBAL_ACTION_BACK)
-                    }, 300)
-                    return
-                }
-            }
-
-            // If no OK button, try to find and click "Force stop" button
+            // We just watch for the "Force stop" button to be disabled.
+            // When it becomes disabled (meaning the user clicked it and confirmed it),
+            // or if it was already disabled, we perform the BACK action to go to the next app.
             val forceStopNodes = rootNode.findAccessibilityNodeInfosByText("Force stop")
-            var handledAlreadyStopped = false
+            var buttonIsDisabled = false
             for (node in forceStopNodes) {
-                if (node.isClickable) {
-                    if (node.isEnabled) {
-                        node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
-                        return
-                    } else {
-                        handledAlreadyStopped = true
-                    }
-                } else if (node.parent?.isClickable == true) {
-                    if (node.parent?.isEnabled == true) {
-                        node.parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
-                        return
-                    } else {
-                        handledAlreadyStopped = true
-                    }
+                if (node.isClickable && !node.isEnabled) {
+                    buttonIsDisabled = true
+                    break
+                } else if (node.parent?.isClickable == true && node.parent?.isEnabled == false) {
+                    buttonIsDisabled = true
+                    break
                 }
             }
             
-            if (handledAlreadyStopped) {
-                // If the app is already force stopped, go back to process next app
+            if (buttonIsDisabled) {
+                // If the app is already force stopped (or just got stopped), go back to process next app
                 performGlobalAction(GLOBAL_ACTION_BACK)
             }
         }

@@ -54,6 +54,8 @@ class HybridGridPageView(
                     }
                     loadWidgets()
                 }
+            } else if (intent?.action == "com.example.UPDATE_SIDEBAR_ICONS") {
+                loadWidgets()
             }
         }
     }
@@ -65,7 +67,13 @@ class HybridGridPageView(
             addView(gridLayout)
         }
         addView(scrollView)
-        loadWidgets()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w > 0 && oldw != w) {
+            loadWidgets()
+        }
     }
 
     override fun onAttachedToWindow() {
@@ -155,26 +163,19 @@ class HybridGridPageView(
     }
 
     private fun loadWidgets() {
+        if (width == 0) {
+            return
+        }
         gridLayout.removeAllViews()
         val totalCols = prefs.getInt("hybrid_grid_cols_$pageId", 4)
-        // FrameLayout, no columnCount needed
         
-        // Wait until grid layout has a width to calculate cell sizes
-        post {
-            val gridWidth = width
-            if (gridWidth == 0) {
-                // Try again if width is 0
-                loadWidgets()
-                return@post
-            }
-            
-            val cellWidth = gridWidth / totalCols
-            // Make cells square for simplicity, or use a fixed aspect ratio
-            val cellHeight = cellWidth 
-            
-            val items = getWidgetItems()
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val host = AppWidgetHelper.getHost(context)
+        val gridWidth = width
+        val cellWidth = gridWidth / totalCols
+        val cellHeight = cellWidth 
+        
+        val items = getWidgetItems()
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val host = AppWidgetHelper.getHost(context)
             
             val appsManager = SidebarAppsManager(context, prefs, CoroutineScope(Dispatchers.IO), "wg_${pageId}") {}
             appsManager.ensureLoaded()
@@ -187,6 +188,7 @@ class HybridGridPageView(
                         val info = appWidgetManager.getAppWidgetInfo(wId)
                         if (info != null) {
                             val hostView = host.createView(context, wId, info)
+                            hostView.setPadding(0, 0, 0, 0)
                             
                             val wCols = minOf(item.cols, totalCols)
                             val wRows = item.rows
@@ -512,7 +514,6 @@ class HybridGridPageView(
             }
             gridLayout.layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, maxHeight)
             onHeightChanged(getCurrentHeightPx())
-        }
     }
 
     private fun showFolderPopup(anchor: View, folder: SidebarItem.Folder, appsManager: SidebarAppsManager) {
@@ -819,11 +820,16 @@ class HybridGridPageView(
         var popupWindow: PopupWindow? = null
         if (info != null) {
             val hostView = host.createView(context, widget.widgetId, info)
+            hostView.setPadding(0, 0, 0, 0)
             
             val minW = info.minWidth
             val minH = info.minHeight
             val w = if (minW > 0) minW else (200 * density).toInt()
             val h = if (minH > 0) minH else (200 * density).toInt()
+            
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+                hostView.updateAppWidgetSize(null, (w / density).toInt(), (h / density).toInt(), (w / density).toInt(), (h / density).toInt())
+            }
             
             val params = FrameLayout.LayoutParams(w, h)
             popupView.addView(hostView, params)

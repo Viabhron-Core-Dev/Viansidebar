@@ -26,6 +26,7 @@ class WidgetPageView(
                 
                 if (appWidgetInfo != null) {
                     val hostView = AppWidgetHelper.getHost(context).createView(context, widgetId, appWidgetInfo)
+                    hostView.setPadding(0, 0, 0, 0)
                     // We might need to set layout params depending on the widget's default size or just WRAP_CONTENT
                     addView(hostView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                         gravity = Gravity.CENTER
@@ -33,6 +34,12 @@ class WidgetPageView(
                     
                     // Call onHeightChanged after layout
                     post {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+                            val density = context.resources.displayMetrics.density
+                            val wDp = (hostView.width / density).toInt()
+                            val hDp = (hostView.height / density).toInt()
+                            hostView.updateAppWidgetSize(null, wDp, hDp, wDp, hDp)
+                        }
                         onHeightChanged(height)
                     }
                 } else {

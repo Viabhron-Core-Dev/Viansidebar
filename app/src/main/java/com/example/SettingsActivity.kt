@@ -99,6 +99,9 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                 "screencap" -> ScreenCapSettingsScreen(
                     onBack = { currentRoute = "main" }
                 )
+                "dict" -> DictionarySettingsScreen(
+                    onBack = { currentRoute = "main" }
+                )
                 "permissions" -> WelcomeScreen(
                     onContinue = { currentRoute = "main" },
                     isFirstLaunch = false
@@ -170,6 +173,12 @@ fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -
                     headlineContent = { Text("Screen Cap") },
                     supportingContent = { Text("Screenshot and screen recording location") },
                     modifier = Modifier.clickable { onNavigateToScreenCap() }
+                )
+                Divider()
+                ListItem(
+                    headlineContent = { Text("Dictionary Settings") },
+                    supportingContent = { Text("Import and manage offline dictionaries") },
+                    modifier = Modifier.clickable { onNavigateToDict() }
                 )
                 Divider()
                 ListItem(

@@ -69,7 +69,13 @@ class WidgetsGridPageView(
             addView(gridLayout)
         }
         addView(scrollView)
-        loadWidgets()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w > 0 && oldw != w) {
+            loadWidgets()
+        }
     }
 
     override fun onAttachedToWindow() {
@@ -158,26 +164,19 @@ class WidgetsGridPageView(
     }
 
     private fun loadWidgets() {
+        if (width == 0) {
+            return
+        }
         gridLayout.removeAllViews()
         val totalCols = prefs.getInt("widgets_grid_cols_$pageId", 4)
-        // FrameLayout, no columnCount needed
         
-        // Wait until grid layout has a width to calculate cell sizes
-        post {
-            val gridWidth = width
-            if (gridWidth == 0) {
-                // Try again if width is 0
-                loadWidgets()
-                return@post
-            }
-            
-            val cellWidth = gridWidth / totalCols
-            // Make cells square for simplicity, or use a fixed aspect ratio
-            val cellHeight = cellWidth 
-            
-            val items = getWidgetItems()
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val host = AppWidgetHelper.getHost(context)
+        val gridWidth = width
+        val cellWidth = gridWidth / totalCols
+        val cellHeight = cellWidth 
+        
+        val items = getWidgetItems()
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val host = AppWidgetHelper.getHost(context)
             
             val appsManager = SidebarAppsManager(context, prefs, CoroutineScope(Dispatchers.IO), "wg_${pageId}") {}
             appsManager.ensureLoaded()
@@ -190,6 +189,7 @@ class WidgetsGridPageView(
                         val info = appWidgetManager.getAppWidgetInfo(wId)
                         if (info != null) {
                             val hostView = host.createView(context, wId, info)
+                            hostView.setPadding(0, 0, 0, 0)
                             
                             val wCols = minOf(item.cols, totalCols)
                             val wRows = item.rows
@@ -199,6 +199,12 @@ class WidgetsGridPageView(
                                 topMargin = item.y * cellHeight
                             }
                             gridLayout.addView(hostView, params)
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+                                val density = context.resources.displayMetrics.density
+                                val minW = ((cellWidth * wCols) / density).toInt()
+                                val minH = ((cellHeight * wRows) / density).toInt()
+                                hostView.updateAppWidgetSize(null, minW, minH, minW, minH)
+                            }
                             maxHeight = max(maxHeight, item.y * cellHeight + cellHeight * wRows)
                             
                             hostView.setOnLongClickListener {
@@ -320,6 +326,5 @@ class WidgetsGridPageView(
             }
             gridLayout.layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, maxHeight)
             onHeightChanged(getCurrentHeightPx())
-        }
     }
 }

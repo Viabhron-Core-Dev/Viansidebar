@@ -204,7 +204,7 @@ fun HandleItem(
                             Card(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                 onClick = {
-                                    if (action == "toggle_sidebar") {
+                                    if (action == "toggle_sidebar" || action.startsWith("open_page:")) {
                                         onNavigateToSidebarSettings()
                                     }
                                 }

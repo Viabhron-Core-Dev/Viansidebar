@@ -160,7 +160,6 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                             "widgets_grid" to "Widgets Grid",
                             "hybrid_grid" to "Hybrid Grid",
                             "app_tracker" to "App Tracker",
-                            "dictionary" to "Dictionary",
                             "pwa_loader" to "PWA Loader"
                         )
                         types.forEach { (type, title) ->

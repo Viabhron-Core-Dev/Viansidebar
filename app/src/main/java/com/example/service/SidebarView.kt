@@ -25,6 +25,7 @@ class SidebarView(
     context: Context,
     private val prefs: SharedPreferences,
     private val windowManager: WindowManager,
+    private val handleId: String,
     private val pagesList: List<View>,
     private val pageConfigs: List<com.example.utils.SidebarPage>,
     private val defaultPageIndex: Int,
@@ -55,7 +56,7 @@ class SidebarView(
         val wrapContent = prefs.getBoolean("sidebar_wrap_content", true)
         val heightPx = if (wrapContent) WindowManager.LayoutParams.WRAP_CONTENT else (prefs.getInt("sidebar_height", 360) * density).toInt()
 
-        val isRight = !prefs.getBoolean("sidebar_position_left", false)
+        val isRight = if (handleId == "sidebar") !prefs.getBoolean("sidebar_position_left", false) else prefs.getString("handle_${handleId}_edge", "right") == "right"
         val gravityEdge = if (isRight) Gravity.END else Gravity.START
 
         layoutParams = WindowManager.LayoutParams(
@@ -311,7 +312,7 @@ class SidebarView(
         
         val wrapContent = if (pageConfig?.useCustomSettings == true) pageConfig.wrapContentHeight else {
             when (pageConfig?.type) {
-                "calculator", "compass", "notifications", "scheduler", "reader" -> false
+                "calculator", "compass", "notifications", "scheduler", "reader", "app_tracker" -> false
                 else -> globalWrap
             }
         }
@@ -347,7 +348,7 @@ class SidebarView(
         }
         
         val alphaInt = (opacity * 255).toInt().coerceIn(0, 255)
-        val isRight = !prefs.getBoolean("sidebar_position_left", false)
+        val isRight = if (handleId == "sidebar") !prefs.getBoolean("sidebar_position_left", false) else prefs.getString("handle_${handleId}_edge", "right") == "right"
         val drawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             val colorHex = prefs.getString("sidebar_color", "#000000") ?: "#000000"
