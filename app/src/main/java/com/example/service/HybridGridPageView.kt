@@ -73,6 +73,7 @@ class HybridGridPageView(
         val filter = IntentFilter()
         filter.addAction("ELEMENT_ADDED_TO_HYBRID")
         filter.addAction("UPDATE_GRID")
+        filter.addAction("com.example.UPDATE_SIDEBAR_ICONS")
         context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
     }
 
@@ -296,11 +297,8 @@ class HybridGridPageView(
                             
                             label.text = parsed.label
                             
-                            CoroutineScope(Dispatchers.Main).launch {
-                                val bmp = appsManager.getIconBitmap(item.id)
-                                if (bmp != null) {
-                                    icon.setImageBitmap(bmp)
-                                }
+                            appsManager.bindIcon(item.id, icon, prefs, CoroutineScope(Dispatchers.Main)) {
+                                appsManager.bindIcon(item.id, icon, prefs, CoroutineScope(Dispatchers.Main)) {}
                             }
                             
                             elementView.setOnClickListener {
@@ -324,6 +322,69 @@ class HybridGridPageView(
                                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         context.startActivity(intent)
                                     } catch (e: Exception) {}
+                                } else if (parsed is SidebarItem.QuickTile) {
+                                    QuickTileHandler.handleQuickTileAction(context, parsed.action)
+                                } else if (parsed is SidebarItem.IntentAction) {
+                                    try {
+                                        val intent = Intent.parseUri(parsed.uri, Intent.URI_INTENT_SCHEME)
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {}
+                                } else if (parsed is SidebarItem.SystemAction) {
+                                    if (parsed.action == "log_keeper") {
+                                        val intent = Intent(context, com.example.LogKeeperActivity::class.java)
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                    } else if (parsed.action == "ebook_reader") {
+                                        val intent = Intent(context, FloatingReaderService::class.java)
+                                        intent.putExtra("UNFOLD", true)
+                                        context.startService(intent)
+                                    } else if (parsed.action == "screen_record") {
+                                        val intent = Intent(context, ScreenRecordActivity::class.java)
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                    } else if (parsed.action == "settings") {
+                                        val intent = Intent(context, com.example.SettingsActivity::class.java)
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                    } else {
+                                        val service = VianSideAccessibilityService.instance
+                                        if (service != null && service.performAction(parsed.action)) {
+                                            com.example.LogKeeper.writeLog("Sidebar", "System action trigger: ${parsed.action}")
+                                        } else {
+                                            android.widget.Toast.makeText(context, "Please enable VianSide Accessibility Service", android.widget.Toast.LENGTH_SHORT).show()
+                                            val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            try { context.startActivity(intent) } catch (e: Exception) {}
+                                        }
+                                    }
+                                } else if (parsed is SidebarItem.VolumeAction) {
+                                    try {
+                                        MediaVolumeHandler.handleVolumeAction(context, parsed.stream, parsed.action)
+                                    } catch (e: Exception) {}
+                                } else if (parsed is SidebarItem.MediaAction) {
+                                    try {
+                                        MediaVolumeHandler.handleMediaAction(context, parsed.action)
+                                    } catch (e: Exception) {}
+                                } else if (parsed is SidebarItem.DisplayAction) {
+                                    try {
+                                        DisplayHandler.handleDisplayAction(context, parsed.action)
+                                    } catch (e: Exception) {}
+                                } else if (parsed is SidebarItem.SettingsShortcut) {
+                                    val settingsIntent = when (parsed.action) {
+                                        "wifi" -> Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)
+                                        "bluetooth" -> Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
+                                        "display" -> Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS)
+                                        "sound" -> Intent(android.provider.Settings.ACTION_SOUND_SETTINGS)
+                                        "location" -> Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                        "apps" -> Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS)
+                                        "security" -> Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS)
+                                        "battery" -> Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS)
+                                        "date" -> Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
+                                        else -> Intent(android.provider.Settings.ACTION_SETTINGS)
+                                    }
+                                    settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    try { context.startActivity(settingsIntent) } catch (e: Exception) {}
                                 }
                             }
                             
@@ -456,15 +517,17 @@ class HybridGridPageView(
 
     private fun showFolderPopup(anchor: View, folder: SidebarItem.Folder, appsManager: SidebarAppsManager) {
         val density = context.resources.displayMetrics.density
-        val popupView = ScrollView(context)
-        val gridLayout = android.widget.GridLayout(context)
-        
-        val maxCols = if (folder.popupColumns > 0) folder.popupColumns else prefs.getInt("sidebar_columns", 3)
-        val validCols = if (maxCols > 0) maxCols else 1
-        gridLayout.columnCount = validCols
+        val popupView = FrameLayout(context)
+        val recyclerView = RecyclerView(context)
         val padding = (16 * density).toInt()
-        gridLayout.setPadding(padding, padding, padding, padding)
-        popupView.addView(gridLayout, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+        recyclerView.setPadding(padding, padding, padding, padding)
+        popupView.addView(recyclerView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+
+        val maxCols = if (folder.popupColumns > 0) folder.popupColumns else prefs.getInt("sidebar_columns", 3)
+        val columns = if (folder.items.size <= maxCols && folder.items.isNotEmpty()) folder.items.size else maxCols
+        val validCols = if (columns > 0) columns else 1
+        
+        recyclerView.layoutManager = GridLayoutManager(context, validCols)
 
         val popupOpacity = prefs.getFloat("sidebar_transparency", 0.9f)
         val popupBg = android.graphics.drawable.GradientDrawable()
@@ -473,49 +536,230 @@ class HybridGridPageView(
         popupBg.cornerRadius = 16 * density
         popupView.background = popupBg
 
-        var popupWindow: PopupWindow? = null
+        val itemWidthDp = 72
+        val itemHeightDp = 72
+        val autoRows = Math.ceil(folder.items.size.toDouble() / validCols).toInt()
+        val rows = if (folder.popupRows > 0) kotlin.math.min(folder.popupRows, autoRows) else autoRows
+        val displayRows = if (folder.popupRows > 0) folder.popupRows else rows
 
-        for (itemId in folder.items) {
-            val parsed = appsManager.parseId(itemId) ?: continue
-            val elementView = android.view.LayoutInflater.from(context).inflate(com.example.R.layout.item_sidebar_app, null, false)
-            val icon = elementView.findViewById<android.widget.ImageView>(com.example.R.id.app_icon)
-            val label = elementView.findViewById<android.widget.TextView>(com.example.R.id.app_label)
-            label.text = parsed.label
-            CoroutineScope(Dispatchers.Main).launch {
-                val bmp = appsManager.getIconBitmap(itemId)
-                if (bmp != null) icon.setImageBitmap(bmp)
+        val totalWidth = (validCols * itemWidthDp * density + padding * 2).toInt()
+        val totalHeight = (displayRows * itemHeightDp * density + padding * 2).toInt()
+        
+        popupView.layoutParams = ViewGroup.LayoutParams(totalWidth, totalHeight)
+
+        var popupWindow: PopupWindow? = null
+        
+        val adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+                val view = android.view.LayoutInflater.from(context).inflate(com.example.R.layout.item_sidebar_app, parent, false)
+                return object : RecyclerView.ViewHolder(view) {}
             }
-            elementView.setOnClickListener {
-                if (parsed is SidebarItem.App) {
-                    val intent = context.packageManager.getLaunchIntentForPackage(parsed.packageName)
-                    if (intent != null) {
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        try { context.startActivity(intent) } catch (e: Exception) {}
+            override fun getItemCount() = folder.items.size
+            override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+                val itemId = folder.items[position]
+                val parsed = appsManager.parseId(itemId) ?: return
+                val icon = holder.itemView.findViewById<android.widget.ImageView>(com.example.R.id.app_icon)
+                val label = holder.itemView.findViewById<android.widget.TextView>(com.example.R.id.app_label)
+                label.text = parsed.label
+                
+                appsManager.bindIcon(itemId, icon, prefs, CoroutineScope(Dispatchers.Main)) {}
+                
+                holder.itemView.setOnClickListener {
+                    if (parsed is SidebarItem.App) {
+                        val intent = context.packageManager.getLaunchIntentForPackage(parsed.packageName)
+                        if (intent != null) {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            try { context.startActivity(intent) } catch (e: Exception) {}
+                            popupWindow?.dismiss()
+                        }
+                    } else if (parsed is SidebarItem.Link) {
+                        try {
+                            val intent = if (parsed.url.startsWith("intent:")) {
+                                Intent.parseUri(parsed.url, Intent.URI_INTENT_SCHEME)
+                            } else {
+                                Intent(Intent.ACTION_VIEW, android.net.Uri.parse(parsed.url))
+                            }
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        } catch (e: Exception) {}
+                        popupWindow?.dismiss()
+                    } else if (parsed is SidebarItem.QuickTile) {
+                        QuickTileHandler.handleQuickTileAction(context, parsed.action)
+                        popupWindow?.dismiss()
+                    } else if (parsed is SidebarItem.IntentAction) {
+                        try {
+                            val intent = Intent.parseUri(parsed.uri, Intent.URI_INTENT_SCHEME)
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        } catch (e: Exception) {}
+                        popupWindow?.dismiss()
+                    } else if (parsed is SidebarItem.SystemAction) {
+                        if (parsed.action == "log_keeper") {
+                            val intent = Intent(context, com.example.LogKeeperActivity::class.java)
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        } else if (parsed.action == "ebook_reader") {
+                            val intent = Intent(context, FloatingReaderService::class.java)
+                            intent.putExtra("UNFOLD", true)
+                            context.startService(intent)
+                        } else if (parsed.action == "screen_record") {
+                            val intent = Intent(context, ScreenRecordActivity::class.java)
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        } else if (parsed.action == "settings") {
+                            val intent = Intent(context, com.example.SettingsActivity::class.java)
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        } else {
+                            val service = VianSideAccessibilityService.instance
+                            if (service != null && service.performAction(parsed.action)) {
+                                com.example.LogKeeper.writeLog("Sidebar", "System action trigger: ${parsed.action}")
+                            } else {
+                                android.widget.Toast.makeText(context, "Please enable VianSide Accessibility Service", android.widget.Toast.LENGTH_SHORT).show()
+                                val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                try { context.startActivity(intent) } catch (e: Exception) {}
+                            }
+                        }
+                        popupWindow?.dismiss()
+                    } else if (parsed is SidebarItem.VolumeAction) {
+                        try {
+                            MediaVolumeHandler.handleVolumeAction(context, parsed.stream, parsed.action)
+                        } catch (e: Exception) {}
+                        popupWindow?.dismiss()
+                    } else if (parsed is SidebarItem.MediaAction) {
+                        try {
+                            MediaVolumeHandler.handleMediaAction(context, parsed.action)
+                        } catch (e: Exception) {}
+                        popupWindow?.dismiss()
+                    } else if (parsed is SidebarItem.DisplayAction) {
+                        try {
+                            DisplayHandler.handleDisplayAction(context, parsed.action)
+                        } catch (e: Exception) {}
+                        popupWindow?.dismiss()
+                    } else if (parsed is SidebarItem.SettingsShortcut) {
+                        val settingsIntent = when (parsed.action) {
+                            "wifi" -> Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)
+                            "bluetooth" -> Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
+                            "display" -> Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS)
+                            "sound" -> Intent(android.provider.Settings.ACTION_SOUND_SETTINGS)
+                            "location" -> Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                            "apps" -> Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS)
+                            "security" -> Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS)
+                            "battery" -> Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS)
+                            "date" -> Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
+                            else -> Intent(android.provider.Settings.ACTION_SETTINGS)
+                        }
+                        settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try { context.startActivity(settingsIntent) } catch (e: Exception) {}
                         popupWindow?.dismiss()
                     }
-                } else if (parsed is SidebarItem.Link) {
-                    try {
-                        val intent = if (parsed.url.startsWith("intent:")) {
-                            Intent.parseUri(parsed.url, Intent.URI_INTENT_SCHEME)
-                        } else {
-                            Intent(Intent.ACTION_VIEW, android.net.Uri.parse(parsed.url))
+                }
+                
+                holder.itemView.setOnLongClickListener {
+                    val actionList = mutableListOf<String>()
+                    if (parsed is SidebarItem.App) {
+                        actionList.add("App Info")
+                    }
+                    actionList.add("Change Icon")
+                    val customIconFile = java.io.File(context.filesDir, "custom_icons/${itemId.replace(Regex("[^a-zA-Z0-9.-]"), "_")}.webp")
+                    if (customIconFile.exists()) {
+                        actionList.add("Reset Icon")
+                    }
+                    actionList.add("Remove")
+                    
+                    var actionMenuPopup: PopupWindow? = null
+                    val popupLayout = LinearLayout(context).apply {
+                        orientation = LinearLayout.VERTICAL
+                        val pad = (8 * density).toInt()
+                        setPadding(pad, pad, pad, pad)
+                    }
+                    
+                    actionList.forEach { action ->
+                        val actionView = TextView(context).apply {
+                            text = action
+                            setTextColor(Color.BLACK)
+                            val padV = (10 * density).toInt()
+                            val padH = (16 * density).toInt()
+                            setPadding(padH, padV, padH, padV)
+                            textSize = 14f
+                            
+                            val shape = android.graphics.drawable.GradientDrawable()
+                            shape.shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                            shape.cornerRadius = 24f * density
+                            shape.setColor(Color.WHITE)
+                            shape.setStroke(1, Color.LTGRAY)
+                            background = shape
+                            
+                            layoutParams = LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                            ).apply {
+                                setMargins(0, 0, 0, (8 * density).toInt())
+                            }
+                            
+                            setOnClickListener {
+                                actionMenuPopup?.dismiss()
+                                when (action) {
+                                    "Remove" -> {
+                                        appsManager.removeItem(itemId)
+                                        popupWindow?.dismiss()
+                                    }
+                                    "Change Icon" -> {
+                                        val intent = Intent(context, com.example.IconPickerActivity::class.java).apply {
+                                            putExtra("item_id", itemId)
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(intent)
+                                        popupWindow?.dismiss()
+                                    }
+                                    "Reset Icon" -> {
+                                        val file = java.io.File(context.filesDir, "custom_icons/${itemId.replace(Regex("[^a-zA-Z0-9.-]"), "_")}.webp")
+                                        if (file.exists()) file.delete()
+                                        appsManager.iconCache.remove("custom_${itemId}")
+                                        appsManager.iconCache.remove(itemId)
+                                        context.sendBroadcast(Intent("com.example.UPDATE_SIDEBAR_ICONS").apply {
+                                            putExtra("item_id", itemId)
+                                        })
+                                        popupWindow?.dismiss()
+                                    }
+                                    "App Info" -> {
+                                        if (parsed is SidebarItem.App) {
+                                            try {
+                                                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                                intent.data = android.net.Uri.parse("package:${parsed.packageName}")
+                                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                context.startActivity(intent)
+                                                popupWindow?.dismiss()
+                                            } catch (e: Exception) {}
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
-                        popupWindow?.dismiss()
-                    } catch (e: Exception) {}
+                        popupLayout.addView(actionView)
+                    }
+                    
+                    actionMenuPopup = PopupWindow(popupLayout, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            windowLayoutType = android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                        } else {
+                            @Suppress("DEPRECATION")
+                            windowLayoutType = android.view.WindowManager.LayoutParams.TYPE_PHONE
+                        }
+                        setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+                        elevation = 8f * density
+                    }
+                    
+                    val loc = IntArray(2)
+                    holder.itemView.getLocationOnScreen(loc)
+                    actionMenuPopup?.showAtLocation(holder.itemView, Gravity.NO_GRAVITY, loc[0] + holder.itemView.width / 4, loc[1] + holder.itemView.height / 2)
+                    
+                    true
                 }
             }
-            
-            val params = android.widget.GridLayout.LayoutParams()
-            params.width = (72 * density).toInt()
-            params.height = (72 * density).toInt()
-            gridLayout.addView(elementView, params)
         }
-
-        popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-        val totalWidth = popupView.measuredWidth
-        val totalHeight = popupView.measuredHeight
+        recyclerView.adapter = adapter
 
         popupWindow = PopupWindow(
             popupView,
@@ -532,21 +776,25 @@ class HybridGridPageView(
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
             isOutsideTouchable = true
         }
+
         val location = IntArray(2)
         anchor.getLocationOnScreen(location)
         val anchorX = location[0]
         val anchorY = location[1]
         val screenWidth = context.resources.displayMetrics.widthPixels
         val screenHeight = context.resources.displayMetrics.heightPixels
+
         var x = anchorX
         if (anchorX > screenWidth / 2) {
             x = anchorX - totalWidth
         } else {
             x = anchorX + anchor.width
         }
+
         var y = anchorY - (totalHeight / 2) + (anchor.height / 2)
         if (y < 0) y = 0
         if (y + totalHeight > screenHeight) y = screenHeight - totalHeight
+
         popupWindow.showAtLocation(anchor, Gravity.NO_GRAVITY, x, y)
     }
 

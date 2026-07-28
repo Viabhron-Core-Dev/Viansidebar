@@ -125,6 +125,11 @@ fun AppTrackerScreen(context: Context, onCloseSidebar: () -> Unit) {
                 val pm = context.packageManager
                 val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
                 val list = mutableListOf<TrackedAppInfo>()
+                
+                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                }
+                val launcherPkg = pm.resolveActivity(homeIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
                 if (usm != null) {
                     val endTime = System.currentTimeMillis()
                     val startTime = endTime - (1000L * 60 * 60 * 24 * 7)
@@ -137,7 +142,7 @@ fun AppTrackerScreen(context: Context, onCloseSidebar: () -> Unit) {
                         }
                     }
                     for ((pkgName, stat) in aggregated) {
-                        if (stat.lastTimeUsed <= 0 || whitelistCurrent.contains(pkgName) || pkgName == context.packageName) continue
+                        if (stat.lastTimeUsed <= 0 || whitelistCurrent.contains(pkgName) || pkgName == context.packageName || pkgName == launcherPkg) continue
                         try {
                             val appInfo = pm.getApplicationInfo(pkgName, 0)
                             if ((appInfo.flags and ApplicationInfo.FLAG_STOPPED) != 0) continue

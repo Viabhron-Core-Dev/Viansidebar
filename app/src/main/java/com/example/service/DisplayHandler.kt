@@ -13,7 +13,7 @@ object DisplayHandler {
     private var torchCallbackRegistered = false
 
     fun handleDisplayAction(context: Context, action: String) {
-        if (!Settings.System.canWrite(context) && action != "torch_toggle") {
+        if (!Settings.System.canWrite(context) && action != "torch_toggle" && action != "blue_light_filter") {
             val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
                 data = Uri.parse("package:${context.packageName}")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

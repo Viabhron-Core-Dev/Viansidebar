@@ -26,7 +26,50 @@ class VianSideAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Not used
+        if (event == null) return
+        
+        if (isForceStopping) {
+            val rootNode = rootInActiveWindow ?: return
+            
+            // Try to find and click "OK" in confirmation dialog first
+            val okNodes = rootNode.findAccessibilityNodeInfosByText("OK")
+            for (node in okNodes) {
+                if (node.isClickable && node.isEnabled) {
+                    node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                    // After OK is clicked, press back to return to opener and proceed to next app
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                    }, 300)
+                    return
+                }
+            }
+
+            // If no OK button, try to find and click "Force stop" button
+            val forceStopNodes = rootNode.findAccessibilityNodeInfosByText("Force stop")
+            var handledAlreadyStopped = false
+            for (node in forceStopNodes) {
+                if (node.isClickable) {
+                    if (node.isEnabled) {
+                        node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                        return
+                    } else {
+                        handledAlreadyStopped = true
+                    }
+                } else if (node.parent?.isClickable == true) {
+                    if (node.parent?.isEnabled == true) {
+                        node.parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                        return
+                    } else {
+                        handledAlreadyStopped = true
+                    }
+                }
+            }
+            
+            if (handledAlreadyStopped) {
+                // If the app is already force stopped, go back to process next app
+                performGlobalAction(GLOBAL_ACTION_BACK)
+            }
+        }
     }
 
     override fun onInterrupt() {
