@@ -25,7 +25,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun SidebarSettingsScreen(handleId: String, onBack: () -> Unit) {
+fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: () -> Unit) {
     val configuration = LocalConfiguration.current
     val maxScreenWidth = configuration.screenWidthDp.toFloat()
     val maxScreenHeight = configuration.screenHeightDp.toFloat()
@@ -37,6 +37,36 @@ fun SidebarSettingsScreen(handleId: String, onBack: () -> Unit) {
     // Pages
     var pages by remember { mutableStateOf(PageManager.getPages(prefs, handleId)) }
     var defaultIndex by remember { mutableStateOf(PageManager.getDefaultPageIndex(prefs, handleId)) }
+
+    LaunchedEffect(initAction) {
+        if (initAction != null && initAction.startsWith("open_page:")) {
+            val type = initAction.removePrefix("open_page:")
+            var index = pages.indexOfFirst { it.type == type }
+            if (index == -1) {
+                val title = when (type) {
+                    "apps" -> "Apps Grid"
+                    "scheduler" -> "Scheduler"
+                    "calculator" -> "Calculator"
+                    "compass" -> "Compass"
+                    "notifications" -> "Notifications"
+                    "widgets_grid" -> "Widgets Grid"
+                    "hybrid_grid" -> "Hybrid Grid"
+                    "app_tracker" -> "App Tracker"
+                    else -> type.replaceFirstChar { it.uppercase() }
+                }
+                val newPage = com.example.utils.SidebarPage.createDefault(id = UUID.randomUUID().toString(), type = type, title = title)
+                val newPages = pages.toMutableList()
+                newPages.add(newPage)
+                pages = newPages
+                PageManager.savePages(prefs, handleId, newPages)
+                index = newPages.size - 1
+            }
+            if (defaultIndex != index) {
+                defaultIndex = index
+                PageManager.saveDefaultPageIndex(prefs, handleId, index)
+            }
+        }
+    }
     if (customisingPage != null) {
         PageCustomizeScreen(
             page = customisingPage!!,
@@ -238,7 +268,10 @@ fun SidebarSettingsScreen(handleId: String, onBack: () -> Unit) {
                 Box {
                     ListItem(
                         modifier = Modifier.combinedClickable(
-                            onClick = { },
+                            onClick = {
+                                defaultIndex = index
+                                savePages()
+                            },
                             onLongClick = {
                                 if (index > 0 && pages.size > 1) { // don't allow editing/removing default Apps Grid
                                     selectedActionPage = page
@@ -246,6 +279,15 @@ fun SidebarSettingsScreen(handleId: String, onBack: () -> Unit) {
                                 }
                             }
                         ),
+                        leadingContent = {
+                            androidx.compose.material3.RadioButton(
+                                selected = defaultIndex == index,
+                                onClick = { 
+                                    defaultIndex = index
+                                    savePages()
+                                }
+                            )
+                        },
                         headlineContent = { Text(page.title) },
                         supportingContent = { Text(page.type.replace("_", " ").capitalize()) },
                         trailingContent = {

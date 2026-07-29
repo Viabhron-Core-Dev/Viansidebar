@@ -156,6 +156,9 @@ class WidgetsGridPageView(
             val density = context.resources.displayMetrics.density
             return (150 * density).toInt()
         }
+        val lpHeight = gridLayout.layoutParams?.height ?: 0
+        if (lpHeight > 0) return lpHeight
+        
         gridLayout.measure(
             View.MeasureSpec.makeMeasureSpec(context.resources.displayMetrics.widthPixels, View.MeasureSpec.AT_MOST),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)

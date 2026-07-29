@@ -108,9 +108,13 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                 )
             }
             if (currentRoute.startsWith("pages_")) {
-                val handleId = currentRoute.removePrefix("pages_")
+                val remainder = currentRoute.removePrefix("pages_")
+                val parts = remainder.split("|")
+                val handleId = parts[0]
+                val initAction = if (parts.size > 1) parts[1] else null
                 SidebarSettingsScreen(
                     handleId = handleId,
+                    initAction = initAction,
                     onBack = { currentRoute = "handles" }
                 )
             } else if (currentRoute.startsWith("handle_")) {

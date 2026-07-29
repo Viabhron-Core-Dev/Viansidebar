@@ -272,8 +272,8 @@ fun HybridGridEditorCanvas(
         }
 
         items.forEachIndexed { index, item ->
-            var offsetX by remember(item.id, item.x) { mutableStateOf(item.x * cellWidthPx) }
-            var offsetY by remember(item.id, item.y) { mutableStateOf(item.y * cellHeightPx) }
+            var offsetX by remember(item.id, item.x, cellWidthPx) { mutableStateOf(item.x * cellWidthPx) }
+            var offsetY by remember(item.id, item.y, cellHeightPx) { mutableStateOf(item.y * cellHeightPx) }
             var isDragging by remember { mutableStateOf(false) }
             
             var resizeDx by remember { mutableStateOf(0f) }

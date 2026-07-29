@@ -339,10 +339,10 @@ class SidebarView(
             layoutParams.height = (prefHeight * density).toInt()
         } else {
             var targetHeight = pageHeightPx + (36 * density)
-            val maxHeight = (prefHeight * density).toInt()
+            val maxScreenHeight = context.resources.displayMetrics.heightPixels * 0.9f
             
             targetHeight = Math.max((80 * density), targetHeight)
-            targetHeight = Math.min(maxHeight.toFloat(), targetHeight)
+            targetHeight = Math.min(maxScreenHeight, targetHeight)
             
             layoutParams.height = targetHeight.toInt()
         }
