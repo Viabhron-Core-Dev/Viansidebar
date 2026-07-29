@@ -48,12 +48,7 @@ class TriggerHandleView(
         
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             if (!isDragging) {
-                val tapAction = prefs.getString("${prefix}tap", "none") ?: "none"
-                if (tapAction != "none") {
-                    handleAction("tap")
-                } else {
-                    onTriggerTapped(handleId)
-                }
+                handleAction("tap")
             }
             return true
         }

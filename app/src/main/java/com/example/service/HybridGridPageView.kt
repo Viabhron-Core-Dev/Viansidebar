@@ -93,7 +93,15 @@ class HybridGridPageView(
     }
 
     private fun getWidgetItems(): List<GridWidgetItem> {
-        val jsonStr = prefs.getString("hybrid_grid_$pageId", "[]") ?: "[]"
+        var jsonStr = prefs.getString("hybrid_grid_$pageId", null)
+        if (jsonStr == null) {
+            if (pageId.startsWith("default_hybrid")) {
+                jsonStr = """[{"id": "system:ebook_reader", "cols": 1, "rows": 1, "x": 0, "y": 0}, {"id": "system:log_keeper", "cols": 1, "rows": 1, "x": 1, "y": 0}]"""
+            } else {
+                jsonStr = "[]"
+            }
+        }
+        
         val arr = JSONArray(jsonStr)
         val list = mutableListOf<GridWidgetItem>()
         for (i in 0 until arr.length()) {

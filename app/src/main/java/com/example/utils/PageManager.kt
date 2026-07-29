@@ -37,8 +37,8 @@ data class SidebarPage(
 
     companion object {
         fun createDefault(id: String, type: String, title: String): SidebarPage {
-            val wrap = when(type) { "calculator", "compass", "notification", "scheduler", "widget", "widgets_grid", "hybrid_grid", "app_tracker", "dictionary", "pwa_loader" -> false else -> true }
-            val h = when(type) { "calculator" -> 450; "compass" -> 500; "notification", "scheduler", "widget", "widgets_grid", "hybrid_grid" -> 500; "app_tracker" -> 600; "dictionary" -> 500; else -> 450 }
+            val wrap = when(type) { "calculator", "compass", "notification", "scheduler", "app_tracker" -> false else -> true }
+            val h = when(type) { "calculator" -> 450; "compass" -> 500; "notification", "scheduler", "widget", "widgets_grid", "hybrid_grid" -> 500; "app_tracker" -> 600; else -> 450 }
             return SidebarPage(
                 id = id, type = type, title = title,
                 wrapContentHeight = wrap, height = h, width = 320
@@ -67,7 +67,8 @@ object PageManager {
     fun getPages(prefs: SharedPreferences, handleId: String): List<SidebarPage> {
         val legacy = if (handleId == "sidebar") prefs.getString("sidebar_pages", null) else null
         val pagesJson = prefs.getString("handle_${handleId}_pages", legacy)
-        val defaultPage = SidebarPage(id = "default_hybrid", type = "hybrid_grid", title = "Home Grid")
+        val defaultPageId = if (handleId == "sidebar") "default_hybrid" else "default_hybrid_$handleId"
+        val defaultPage = SidebarPage(id = defaultPageId, type = "hybrid_grid", title = "Home Grid")
         if (pagesJson == null) {
             // Default setup
             return listOf(defaultPage)
@@ -77,21 +78,13 @@ object PageManager {
             val arr = JSONArray(pagesJson)
             for (i in 0 until arr.length()) {
                 val page = SidebarPage.fromJson(arr.getJSONObject(i))
-                if (page.type != "dictionary") {
+                if (page.type != "dictionary" && page.type != "pwa_loader") {
                     list.add(page)
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
             return listOf(defaultPage)
-        }
-        
-        // Ensure first page is always default_hybrid
-        if (list.isEmpty()) {
-            list.add(defaultPage)
-        } else if (list[0].id != "default_hybrid") {
-            list.removeAll { it.id == "default_hybrid" }
-            list.add(0, defaultPage)
         }
         
         return list

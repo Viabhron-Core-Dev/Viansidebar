@@ -55,3 +55,13 @@ Requested: Handle Management Screen Gestures (Expand Click Area)
 Files touched: app/src/main/java/com/example/HandlesListSettingsScreen.kt
 Action: Modified `onClick` condition for gestures in `HandlesListSettingsScreen.kt` to include `action.startsWith("open_page:")`, routing all page interactions directly to the Sidebar settings page instead of just the default `toggle_sidebar`.
 Verification: Local build
+2026-07-28T14:17:00-07:00
+Requested: Make ereader and log keeper elements default elements in Sidebar page home(or default or hybrid grid).
+Files touched: app/src/main/java/com/example/service/HybridGridPageView.kt
+Action: Added fallback logic in `HybridGridPageView` so that if `hybrid_grid_$pageId` is unset and the page is `default_hybrid` (the home grid), it initializes with the E-Reader and Log Keeper system tools instead of an empty array.
+Verification: Local build
+2026-07-28T14:47:00-07:00
+Requested: Fix hybrid grid edit mode not saving to sidebar page properly and prevent hybrid grid from being forced as a non-changeable default page.
+Files touched: app/src/main/java/com/example/service/HybridGridPageView.kt, app/src/main/java/com/example/HybridGridEditActivity.kt, app/src/main/java/com/example/utils/PageManager.kt
+Action: Made `default_hybrid` page unique to each handle (`default_hybrid_$handleId`) so they do not share layouts incorrectly. Removed logic in `PageManager` that forced the default grid to always persist, allowing the user to delete it if they want. Refactored `HybridGridEditActivity` to use a central `loadHybridLocalItems` function that properly falls back to default layout if empty, fixing the issue where saving an unedited default layout resulted in an empty grid being saved.
+Verification: Local build

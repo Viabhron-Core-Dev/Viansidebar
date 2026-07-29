@@ -113,6 +113,11 @@ class WidgetsGridEditActivity : ComponentActivity() {
                         }
                     } catch (e: Exception) {}
                 }
+                val totalCols = prefs.getInt("widgets_grid_cols_$pageId", 4)
+                if (defaultCols > totalCols) {
+                    android.widget.Toast.makeText(this, "Cannot add: Requires $defaultCols columns, but grid only has $totalCols.", android.widget.Toast.LENGTH_LONG).show()
+                    return
+                }
                 parsedItems.add(com.example.service.GridWidgetItem(
                     id = elementId,
                     cols = defaultCols,
@@ -300,7 +305,7 @@ fun GridEditorCanvas(
                             onDragEnd = {
                                 isDragging = false
                                 // Snap to grid
-                                val gridX = (offsetX / cellWidthPx).roundToInt().coerceIn(0, cols - item.cols)
+                                val gridX = (offsetX / cellWidthPx).roundToInt().coerceIn(0, maxOf(0, cols - item.cols))
                                 val gridY = (offsetY / cellHeightPx).roundToInt().coerceAtLeast(0)
                                 offsetX = gridX * cellWidthPx
                                 offsetY = gridY * cellHeightPx
@@ -348,7 +353,7 @@ fun GridEditorCanvas(
                                 onDragEnd = {
                                     isResizing = false
                                     // Snap resize to grid
-                                    val finalCols = ((currentWidthPx) / cellWidthPx).roundToInt().coerceIn(1, cols - item.x)
+                                    val finalCols = ((currentWidthPx) / cellWidthPx).roundToInt().coerceIn(1, maxOf(1, cols - item.x))
                                     val finalRows = ((currentHeightPx) / cellHeightPx).roundToInt().coerceAtLeast(1)
                                     
                                     resizeDx = 0f

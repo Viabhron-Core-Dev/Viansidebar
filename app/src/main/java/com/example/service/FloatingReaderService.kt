@@ -689,6 +689,10 @@ class FloatingReaderService : Service() {
                 sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).getCurrentHeightPx())
             } else if (defaultPage is NotificationPageView) {
                 sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).getCurrentHeightPx())
+            } else if (defaultPage is WidgetsGridPageView) {
+                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).getCurrentHeightPx())
+            } else if (defaultPage is HybridGridPageView) {
+                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).getCurrentHeightPx())
             } else if (defaultPage != null) {
                 val density = resources.displayMetrics.density
                 sidebarView?.updatePageStyles(defaultPageConfig, (450 * density).toInt())

@@ -84,35 +84,13 @@ class HybridGridEditActivity : ComponentActivity() {
             if (updatedFolder != null && uuid != null) {
                 // Update items in prefs directly
                 val prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-                val itemsJson = prefs.getString("hybrid_grid_$pageId", "[]")
-                val arr = org.json.JSONArray(itemsJson)
-                val parsedItems = mutableListOf<com.example.service.GridWidgetItem>()
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    parsedItems.add(com.example.service.GridWidgetItem(
-                        id = obj.getString("id"),
-                        cols = obj.getInt("cols"),
-                        rows = obj.getInt("rows"),
-                        x = obj.getInt("x"),
-                        y = obj.getInt("y")
-                    ))
-                }
+                val parsedItems = loadHybridLocalItems(prefs, pageId).toMutableList()
                 
                 val index = parsedItems.indexOfFirst { it.id.startsWith("folder:$uuid:") }
                 if (index != -1) {
                     parsedItems[index] = parsedItems[index].copy(id = updatedFolder)
                     
-                    val newArr = org.json.JSONArray()
-                    parsedItems.forEach {
-                        val obj = org.json.JSONObject()
-                        obj.put("id", it.id)
-                        obj.put("cols", it.cols)
-                        obj.put("rows", it.rows)
-                        obj.put("x", it.x)
-                        obj.put("y", it.y)
-                        newArr.put(obj)
-                    }
-                    prefs.edit().putString("hybrid_grid_$pageId", newArr.toString()).apply()
+                    saveHybridItems(prefs, pageId, parsedItems)
                     
                     val bIntent = Intent("ELEMENT_ADDED_TO_HYBRID")
                     bIntent.putExtra("PAGE_ID", pageId)
@@ -124,21 +102,8 @@ class HybridGridEditActivity : ComponentActivity() {
             val elementId = data.getStringExtra("ELEMENT_ID")
             if (elementId != null) {
                 val prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-                val itemsJson = prefs.getString("hybrid_grid_$pageId", "[]") ?: "[]"
-                val arr = org.json.JSONArray(itemsJson)
-                val parsedItems = mutableListOf<com.example.service.GridWidgetItem>()
-                for (i in 0 until arr.length()) {
-                    val obj = arr.optJSONObject(i)
-                    if (obj != null) {
-                        parsedItems.add(com.example.service.GridWidgetItem(
-                            id = obj.optString("id"),
-                            cols = obj.optInt("cols", 1),
-                            rows = obj.optInt("rows", 1),
-                            x = obj.optInt("x", 0),
-                            y = obj.optInt("y", 0)
-                        ))
-                    }
-                }
+                val parsedItems = loadHybridLocalItems(prefs, pageId).toMutableList()
+                
                 var defaultCols = if (elementId.startsWith("widget:")) 2 else 1
                 var defaultRows = if (elementId.startsWith("widget:")) 2 else 1
                 if (elementId.startsWith("widget:")) {
@@ -151,6 +116,13 @@ class HybridGridEditActivity : ComponentActivity() {
                         }
                     } catch (e: Exception) {}
                 }
+                
+                val totalCols = prefs.getInt("hybrid_grid_cols_$pageId", 4)
+                if (defaultCols > totalCols) {
+                    android.widget.Toast.makeText(this, "Cannot add: Requires $defaultCols columns, but grid only has $totalCols.", android.widget.Toast.LENGTH_LONG).show()
+                    return
+                }
+
                 parsedItems.add(com.example.service.GridWidgetItem(
                     id = elementId,
                     cols = defaultCols,
@@ -330,7 +302,7 @@ fun HybridGridEditorCanvas(
                             onDragEnd = {
                                 isDragging = false
                                 // Snap to grid
-                                val gridX = (offsetX / cellWidthPx).roundToInt().coerceIn(0, cols - item.cols)
+                                val gridX = (offsetX / cellWidthPx).roundToInt().coerceIn(0, maxOf(0, cols - item.cols))
                                 val gridY = (offsetY / cellHeightPx).roundToInt().coerceAtLeast(0)
                                 offsetX = gridX * cellWidthPx
                                 offsetY = gridY * cellHeightPx
@@ -396,7 +368,7 @@ fun HybridGridEditorCanvas(
                                 onDragEnd = {
                                     isResizing = false
                                     // Snap resize to grid
-                                    val finalCols = ((currentWidthPx) / cellWidthPx).roundToInt().coerceIn(1, cols - item.x)
+                                    val finalCols = ((currentWidthPx) / cellWidthPx).roundToInt().coerceIn(1, maxOf(1, cols - item.x))
                                     val finalRows = ((currentHeightPx) / cellHeightPx).roundToInt().coerceAtLeast(1)
                                     
                                     resizeDx = 0f
@@ -433,7 +405,14 @@ fun getHybridWidgetName(context: Context, id: String, appWidgetManager: AppWidge
 }
 
 fun loadHybridLocalItems(prefs: android.content.SharedPreferences, pageId: String): List<GridWidgetItem> {
-    val jsonStr = prefs.getString("hybrid_grid_$pageId", "[]") ?: "[]"
+    var jsonStr = prefs.getString("hybrid_grid_$pageId", null)
+    if (jsonStr == null) {
+        if (pageId.startsWith("default_hybrid")) {
+            jsonStr = """[{"id": "system:ebook_reader", "cols": 1, "rows": 1, "x": 0, "y": 0}, {"id": "system:log_keeper", "cols": 1, "rows": 1, "x": 1, "y": 0}]"""
+        } else {
+            jsonStr = "[]"
+        }
+    }
     val arr = JSONArray(jsonStr)
     val list = mutableListOf<GridWidgetItem>()
     for (i in 0 until arr.length()) {
