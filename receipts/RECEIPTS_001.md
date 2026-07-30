@@ -93,3 +93,12 @@ Details:
 - Ensured physical `handleId` is correctly passed to `SidebarView` so `isRight` still functions correctly and positions the view accurately on the left or right edges.
 - Fixed `FloatingReaderService.kt` compile issues.
 Verified via: `gradle :app:assembleDebug`
+2026-07-30T01:21:00-07:00
+Fixed sidebar edge and position logic to read from Handle configuration correctly.
+Files modified:
+- app/src/main/java/com/example/service/SidebarView.kt
+- app/src/main/java/com/example/SidebarSettingsScreen.kt
+Details:
+- Replaced hardcoded `sidebar_position_left` check in `SidebarView` with a proper check to the physical handle's `edge` property (`handle_${handleId}_edge`), while falling back to the legacy `sidebar_position_left` property for the legacy `sidebar` handle id.
+- Removed the "Sidebar Position" switch from `SidebarSettingsScreen` entirely, as this logic is now controlled exclusively via the physical Handle Edit screen rather than the gesture's page configuration.
+Verified via: `gradle :app:assembleDebug`

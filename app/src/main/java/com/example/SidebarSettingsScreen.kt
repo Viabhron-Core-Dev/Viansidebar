@@ -93,7 +93,6 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
     var sidebarWrapContent by remember { mutableStateOf(prefs.getBoolean("handle_${handleId}_wrap_content", prefs.getBoolean("sidebar_wrap_content", true))) }
     var sidebarColorHex by remember { mutableStateOf(prefs.getString("handle_${handleId}_color", prefs.getString("sidebar_color", "#000000")) ?: "#000000") }
     var sidebarTransparency by remember { mutableStateOf(prefs.getFloat("handle_${handleId}_transparency", prefs.getFloat("sidebar_transparency", 0.9f))) }
-    var sidebarPositionLeft by remember { mutableStateOf(prefs.getBoolean("sidebar_position_left", false)) }
     var showAddDialog by remember { mutableStateOf(false) }
     fun savePages() {
         PageManager.savePages(prefs, handleId, pages)
@@ -241,20 +240,6 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
                         )
                     },
                     trailingContent = { Text(sidebarColumns.toString()) }
-                )
-                Divider()
-                ListItem(
-                    headlineContent = { Text("Sidebar Position") },
-                    supportingContent = { Text(if (sidebarPositionLeft) "Left Side" else "Right Side") },
-                    trailingContent = {
-                        Switch(
-                            checked = sidebarPositionLeft,
-                            onCheckedChange = { 
-                                sidebarPositionLeft = it
-                                prefs.edit().putBoolean("sidebar_position_left", it).apply()
-                            }
-                        )
-                    }
                 )
                 Divider()
                 Text(

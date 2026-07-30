@@ -57,7 +57,8 @@ class SidebarView(
         val wrapContent = prefs.getBoolean("handle_${containerId}_wrap_content", prefs.getBoolean("sidebar_wrap_content", true))
         val heightPx = if (wrapContent) WindowManager.LayoutParams.WRAP_CONTENT else (prefs.getInt("handle_${containerId}_height", prefs.getInt("sidebar_height", 360)) * density).toInt()
 
-        val isRight = if (handleId == "sidebar") !prefs.getBoolean("sidebar_position_left", false) else prefs.getString("handle_${handleId}_edge", "right") == "right"
+        val legacyEdge = if (prefs.getBoolean("sidebar_position_left", false)) "left" else "right"
+        val isRight = prefs.getString("handle_${handleId}_edge", if (handleId == "sidebar") legacyEdge else "right") == "right"
         val gravityEdge = if (isRight) Gravity.END else Gravity.START
 
         layoutParams = WindowManager.LayoutParams(
@@ -349,7 +350,8 @@ class SidebarView(
         }
         
         val alphaInt = (opacity * 255).toInt().coerceIn(0, 255)
-        val isRight = if (handleId == "sidebar") !prefs.getBoolean("sidebar_position_left", false) else prefs.getString("handle_${handleId}_edge", "right") == "right"
+        val legacyEdge = if (prefs.getBoolean("sidebar_position_left", false)) "left" else "right"
+        val isRight = prefs.getString("handle_${handleId}_edge", if (handleId == "sidebar") legacyEdge else "right") == "right"
         val drawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             val colorHex = prefs.getString("handle_${containerId}_color", prefs.getString("sidebar_color", "#000000")) ?: "#000000"
