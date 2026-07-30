@@ -66,8 +66,8 @@ class SidebarEditActivity : ComponentActivity() {
             val handleId = intent.getStringExtra("HANDLE_ID") ?: "sidebar"
             val c = prefs.getInt("handle_${handleId}_page_${pageId}_columns", -1)
             if (c == -1) {
-                totalCols = if (handleId == "sidebar" && pageId == "default_apps") prefs.getInt("sidebar_columns", 3) else 3
-                totalRows = if (handleId == "sidebar" && pageId == "default_apps") prefs.getInt("sidebar_rows", 3) else 3
+                totalCols = prefs.getInt("handle_${handleId}_columns", prefs.getInt("sidebar_columns", 3))
+                totalRows = prefs.getInt("handle_${handleId}_rows", prefs.getInt("sidebar_rows", 3))
             } else {
                 totalCols = c
                 totalRows = prefs.getInt("handle_${handleId}_page_${pageId}_rows", 3)
@@ -263,9 +263,10 @@ class SidebarEditActivity : ComponentActivity() {
             setResult(RESULT_OK, resultIntent)
             // Removed direct save to prefs; parent grid will save
         } else {
+            val handleId = intent.getStringExtra("HANDLE_ID") ?: "sidebar"
             prefs.edit().putString(myPrefKey, arr.toString()).apply()
-            prefs.edit().putInt("sidebar_columns", totalCols).apply()
-            prefs.edit().putInt("sidebar_rows", totalRows).apply()
+            prefs.edit().putInt("handle_${handleId}_page_${pageId}_columns", totalCols).apply()
+            prefs.edit().putInt("handle_${handleId}_page_${pageId}_rows", totalRows).apply()
             com.example.LogKeeper.writeLog("SidebarEdit", "Saved ${localIds.size} items to apps grid.")
         }
         

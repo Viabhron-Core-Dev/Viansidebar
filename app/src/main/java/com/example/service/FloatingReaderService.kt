@@ -108,7 +108,7 @@ class FloatingReaderService : Service() {
             "sidebar_wrap_content", "sidebar_transparency", "sidebar_position_left" -> {
                 val wasAttached = sidebarView?.windowToken != null
                 if (wasAttached) {
-                    showSidebar(currentHandleId)
+                    showSidebar(currentPhysicalHandleId, currentHandleId)
                 }
             }
             "reader_handle_enabled" -> {
@@ -177,7 +177,8 @@ class FloatingReaderService : Service() {
     private var wasSidebarEditOpen = false
     private var wasWidgetsGridEditOpen = false
     private var lastWidgetsGridPageId = ""
-    private var currentHandleId: String = "sidebar" 
+    private var currentHandleId: String = "sidebar"
+    private var currentPhysicalHandleId: String = "sidebar"
     private var screenStateReceiver: android.content.BroadcastReceiver? = null
     private var netSpeedEnabled = false
     private var mobileMb: Long = 0
@@ -383,11 +384,11 @@ class FloatingReaderService : Service() {
                     if (actionType == "ADD_TO_WIDGETS_GRID" || wasWidgetsGridEditOpen) {
                         val pageId = intent.getStringExtra("PAGE_ID") ?: lastWidgetsGridPageId
                         if (pageId.isNotEmpty()) {
-                            showSidebar(currentHandleId)
+                            showSidebar(currentPhysicalHandleId, currentHandleId)
                             showWidgetsGridEditOverlay(pageId)
                         }
                     } else if (actionType == "ADD_ELEMENT" || wasSidebarEditOpen) {
-                        showSidebar(currentHandleId)
+                        showSidebar(currentPhysicalHandleId, currentHandleId)
                         
                     }
                     wasSidebarEditOpen = false
@@ -659,11 +660,12 @@ class FloatingReaderService : Service() {
         standaloneSidebarView = null
     }
 
-    private fun showSidebar(handleId: String) {
-        currentHandleId = handleId
+    private fun showSidebar(handleId: String, containerId: String = handleId) {
+        currentHandleId = containerId
+        currentPhysicalHandleId = handleId
         if (sidebarView == null) {
-            rebuildSidebarPages(handleId)
-            sidebarView = SidebarView(this, prefs, windowManager, handleId, sidebarPagesList, PageManager.getPages(prefs, handleId), sidebarDefaultIndex, onClose = { closeSidebar() },
+            rebuildSidebarPages(containerId)
+            sidebarView = SidebarView(this, prefs, windowManager, handleId, containerId, sidebarPagesList, PageManager.getPages(prefs, containerId), sidebarDefaultIndex, onClose = { closeSidebar() },
                 onEditPageClicked = { page, config ->
                     if (page is AppsPageView) {
                         showSidebarEditOverlay(config.id)
@@ -714,7 +716,30 @@ class FloatingReaderService : Service() {
         }
     }
 
-    private fun showStandalonePage(handleId: String, type: String) {
+    fun openGestureSidebar(handleId: String, gesture: String) {
+        val containerId = "${handleId}_$gesture"
+        if (sidebarView != null) {
+            closeSidebar()
+        } else {
+            showSidebar(handleId, containerId)
+        }
+    }
+
+    fun openGestureSidebarPage(handleId: String, gesture: String, type: String) {
+        val containerId = "${handleId}_$gesture"
+        val pageConfigs = PageManager.getPages(prefs, containerId)
+        val index = pageConfigs.indexOfFirst { it.type == type }
+        if (index != -1) {
+            showSidebar(handleId, containerId)
+            sidebarView?.goToPage(index)
+        } else {
+            showStandalonePage(handleId, type, containerId)
+        }
+    }
+
+    private fun showStandalonePage(handleId: String, type: String, containerId: String = handleId) {
+        currentHandleId = containerId
+        currentPhysicalHandleId = handleId
         if (standaloneSidebarView != null) {
             windowManager.removeView(standaloneSidebarView)
             standaloneSidebarView = null
@@ -724,12 +749,12 @@ class FloatingReaderService : Service() {
         val tempPagesList = mutableListOf<View>()
         val pageView = when (config.type) {
             "apps" -> {
-                val prefKey = "sidebar_apps_" + currentHandleId + "_" + config.id
+                val prefKey = "sidebar_apps_" + containerId + "_" + config.id
                 val manager = appsManagers.getOrPut(prefKey) {
                     SidebarAppsManager(this, prefs, serviceScope, prefKey) {}
                 }
                 manager.ensureLoaded()
-                val p = AppsPageView(this, currentHandleId, config, manager, serviceScope,
+                val p = AppsPageView(this, containerId, config, manager, serviceScope,
                     onCloseSidebar = { standaloneSidebarView?.close() },
                     onHeightChanged = { newHeight -> standaloneSidebarView?.updatePageStyles(config, newHeight) }
                 )
@@ -758,7 +783,7 @@ class FloatingReaderService : Service() {
         
         if (pageView != null) {
             tempPagesList.add(pageView)
-            standaloneSidebarView = SidebarView(this, prefs, windowManager, handleId, tempPagesList, listOf(config), 0, onClose = { 
+            standaloneSidebarView = SidebarView(this, prefs, windowManager, handleId, containerId, tempPagesList, listOf(config), 0, onClose = { 
                 standaloneSidebarView?.detach()
                 standaloneSidebarView = null 
             }, onEditPageClicked = { page, _ ->
@@ -806,6 +831,7 @@ class FloatingReaderService : Service() {
     fun showSidebarEditOverlay(pageId: String = "default_apps") {
         val intent = android.content.Intent(this, com.example.SidebarEditActivity::class.java).apply {
             putExtra("PAGE_ID", pageId)
+            putExtra("HANDLE_ID", currentHandleId)
             addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)
@@ -939,7 +965,9 @@ class FloatingReaderService : Service() {
                     obj.put("x", 0)
                     obj.put("y", 0)
                     arr.put(obj)
-                    prefs.edit().putString("hybrid_grid_$pageId", arr.toString()).apply()
+                    prefs.edit().putString("hybrid_grid_$pageId", arr.toString())
+                         .putBoolean("hybrid_grid_modified_$pageId", true)
+                         .apply()
                     
                     val bIntent = android.content.Intent("ELEMENT_ADDED_TO_HYBRID")
                     bIntent.putExtra("PAGE_ID", pageId)

@@ -85,18 +85,18 @@ class TriggerHandleView(
         val action = prefs.getString("$prefix$gesture", "none") ?: "none"
         com.example.LogKeeper.writeLog("TriggerHandle", "Gesture: $gesture, Action: $action")
         if (action == "toggle_sidebar") {
-            onTriggerTapped(handleId)
+            FloatingReaderService.instance?.openGestureSidebar(handleId, gesture)
         } else if (action == "toggle_reader") {
             FloatingReaderService.instance?.toggleReader()
         } else if (action.startsWith("open_page:")) {
             val pageType = action.removePrefix("open_page:")
-            FloatingReaderService.instance?.openSidebarPage(handleId, pageType)
+            FloatingReaderService.instance?.openGestureSidebarPage(handleId, gesture, pageType)
         } else if (action.startsWith("open_element:")) {
             val elementId = action.removePrefix("open_element:")
             FloatingReaderService.instance?.executeElementAction(elementId)
         } else if (action.startsWith("open_")) {
             val pageType = action.removePrefix("open_")
-            FloatingReaderService.instance?.openSidebarPage(handleId, pageType)
+            FloatingReaderService.instance?.openGestureSidebarPage(handleId, gesture, pageType)
         } else if (action.startsWith("action_")) {
             val sysAction = action.removePrefix("action_")
             VianSideAccessibilityService.instance?.performAction(sysAction)

@@ -67,7 +67,7 @@ fun HandlesListSettingsScreen(
                         expandedHandleId = if (expandedHandleId == handle.id) null else handle.id
                     },
                     onNavigateToHandle = { onNavigateToHandle(handle.id) },
-                    onNavigateToSidebarSettings = { action -> onNavigateToSidebarSettings(handle.id + (if (action != null) "|$action" else "")) },
+                    onNavigateToSidebarSettings = { gesture, action -> onNavigateToSidebarSettings("${handle.id}_$gesture" + (if (action != null) "|$action" else "")) },
                     onUpdate = { updated ->
                         handles = handles.map { if (it.id == updated.id) updated else it }
                         save()
@@ -94,7 +94,7 @@ fun HandleItem(
     isExpanded: Boolean,
     onExpand: () -> Unit,
     onNavigateToHandle: () -> Unit,
-    onNavigateToSidebarSettings: (String?) -> Unit,
+    onNavigateToSidebarSettings: (String, String?) -> Unit,
     onUpdate: (HandleConfig) -> Unit,
     onDelete: () -> Unit
 ) {
@@ -205,9 +205,9 @@ fun HandleItem(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                 onClick = {
                                     if (action == "toggle_sidebar") {
-                                        onNavigateToSidebarSettings(null)
+                                        onNavigateToSidebarSettings(gesture, null)
                                     } else if (action.startsWith("open_page:")) {
-                                        onNavigateToSidebarSettings(action)
+                                        onNavigateToSidebarSettings(gesture, action)
                                     }
                                 }
                             ) {
@@ -234,7 +234,7 @@ fun HandleItem(
                                                     text = { Text("Sidebar Settings") },
                                                     onClick = {
                                                         showGestureMenu = false
-                                                        onNavigateToSidebarSettings(null)
+                                                        onNavigateToSidebarSettings(gesture, null)
                                                     }
                                                 )
                                             }

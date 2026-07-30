@@ -87,12 +87,12 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
         return
     }
     // Sidebar options
-    var sidebarColumns by remember { mutableStateOf(prefs.getInt("sidebar_columns", 3)) }
-    var sidebarWidth by remember { mutableStateOf(prefs.getInt("sidebar_width", 216)) }
-    var sidebarHeight by remember { mutableStateOf(prefs.getInt("sidebar_height", 360)) }
-    var sidebarWrapContent by remember { mutableStateOf(prefs.getBoolean("sidebar_wrap_content", true)) }
-    var sidebarColorHex by remember { mutableStateOf(prefs.getString("sidebar_color", "#000000") ?: "#000000") }
-    var sidebarTransparency by remember { mutableStateOf(prefs.getFloat("sidebar_transparency", 0.9f)) }
+    var sidebarColumns by remember { mutableStateOf(prefs.getInt("handle_${handleId}_columns", prefs.getInt("sidebar_columns", 3))) }
+    var sidebarWidth by remember { mutableStateOf(prefs.getInt("handle_${handleId}_width", prefs.getInt("sidebar_width", 216))) }
+    var sidebarHeight by remember { mutableStateOf(prefs.getInt("handle_${handleId}_height", prefs.getInt("sidebar_height", 360))) }
+    var sidebarWrapContent by remember { mutableStateOf(prefs.getBoolean("handle_${handleId}_wrap_content", prefs.getBoolean("sidebar_wrap_content", true))) }
+    var sidebarColorHex by remember { mutableStateOf(prefs.getString("handle_${handleId}_color", prefs.getString("sidebar_color", "#000000")) ?: "#000000") }
+    var sidebarTransparency by remember { mutableStateOf(prefs.getFloat("handle_${handleId}_transparency", prefs.getFloat("sidebar_transparency", 0.9f))) }
     var sidebarPositionLeft by remember { mutableStateOf(prefs.getBoolean("sidebar_position_left", false)) }
     var showAddDialog by remember { mutableStateOf(false) }
     fun savePages() {
@@ -134,7 +134,7 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
                             value = sidebarWidth.toFloat(),
                             onValueChange = { 
                                 sidebarWidth = it.toInt()
-                                prefs.edit().putInt("sidebar_width", it.toInt()).apply()
+                                prefs.edit().putInt("handle_${handleId}_width", it.toInt()).apply()
                             },
                             valueRange = 100f..maxScreenWidth,
                                 steps = ((maxScreenWidth - 100f) / 10f).toInt()
@@ -150,7 +150,7 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
                             value = sidebarHeight.toFloat(),
                             onValueChange = { 
                                 sidebarHeight = it.toInt()
-                                prefs.edit().putInt("sidebar_height", it.toInt()).apply()
+                                prefs.edit().putInt("handle_${handleId}_height", it.toInt()).apply()
                             },
                             valueRange = 300f..maxScreenHeight,
                                 steps = ((maxScreenHeight - 300f) / 10f).toInt()
@@ -167,7 +167,7 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
                             checked = sidebarWrapContent,
                             onCheckedChange = { 
                                 sidebarWrapContent = it
-                                prefs.edit().putBoolean("sidebar_wrap_content", it).apply()
+                                prefs.edit().putBoolean("handle_${handleId}_wrap_content", it).apply()
                             }
                         )
                     }
@@ -203,7 +203,7 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
                                         )
                                         .clickable {
                                             sidebarColorHex = colorString
-                                            prefs.edit().putString("sidebar_color", colorString).apply()
+                                            prefs.edit().putString("handle_${handleId}_color", colorString).apply()
                                         }
                                 )
                             }
@@ -218,7 +218,7 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
                             value = sidebarTransparency,
                             onValueChange = { 
                                 sidebarTransparency = it
-                                prefs.edit().putFloat("sidebar_transparency", it).apply()
+                                prefs.edit().putFloat("handle_${handleId}_transparency", it).apply()
                             },
                             valueRange = 0f..1f,
                             steps = 20
@@ -234,7 +234,7 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
                             value = sidebarColumns.toFloat(),
                             onValueChange = { 
                                 sidebarColumns = it.toInt()
-                                prefs.edit().putInt("sidebar_columns", it.toInt()).apply()
+                                prefs.edit().putInt("handle_${handleId}_columns", it.toInt()).apply()
                             },
                             valueRange = 2f..6f,
                             steps = 3

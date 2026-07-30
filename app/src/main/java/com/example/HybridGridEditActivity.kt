@@ -406,7 +406,8 @@ fun getHybridWidgetName(context: Context, id: String, appWidgetManager: AppWidge
 
 fun loadHybridLocalItems(prefs: android.content.SharedPreferences, pageId: String): List<GridWidgetItem> {
     var jsonStr = prefs.getString("hybrid_grid_$pageId", null)
-    if (jsonStr == null) {
+    val isModified = prefs.getBoolean("hybrid_grid_modified_$pageId", false)
+    if (jsonStr == null || (jsonStr == "[]" && pageId.startsWith("default_hybrid") && !isModified)) {
         if (pageId.startsWith("default_hybrid")) {
             jsonStr = """[{"id": "system:ebook_reader", "cols": 1, "rows": 1, "x": 0, "y": 0}, {"id": "system:log_keeper", "cols": 1, "rows": 1, "x": 1, "y": 0}]"""
         } else {
@@ -453,5 +454,7 @@ fun saveHybridItems(prefs: android.content.SharedPreferences, pageId: String, it
         obj.put("y", it.y)
         arr.put(obj)
     }
-    prefs.edit().putString("hybrid_grid_$pageId", arr.toString()).apply()
+    prefs.edit().putString("hybrid_grid_$pageId", arr.toString())
+        .putBoolean("hybrid_grid_modified_$pageId", true)
+        .apply()
 }

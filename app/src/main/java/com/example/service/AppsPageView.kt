@@ -50,7 +50,7 @@ class AppsPageView(
     init {
         val density = context.resources.displayMetrics.density
         val c = prefs.getInt("handle_${handleId}_page_${pageConfig?.id}_columns", -1)
-        val defaultCols = if (handleId == "sidebar" && pageConfig?.id == "default_apps") prefs.getInt("sidebar_columns", 3) else 3
+        val defaultCols = prefs.getInt("handle_${handleId}_columns", prefs.getInt("sidebar_columns", 3))
         columns = if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else (if (c != -1) c else defaultCols)
 
         adapter = AppsAdapter(displayedItems)
@@ -236,7 +236,7 @@ class AppsPageView(
             }
         }
         
-        val maxCols = if (folder.popupColumns > 0) folder.popupColumns else (if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else prefs.getInt("sidebar_columns", 3))
+        val maxCols = if (folder.popupColumns > 0) folder.popupColumns else (if (pageConfig?.useCustomSettings == true) pageConfig.gridColumns else prefs.getInt("handle_${handleId}_columns", prefs.getInt("sidebar_columns", 3)))
         val columns = if (folderItems.size <= maxCols && folderItems.isNotEmpty()) folderItems.size else maxCols
         val validCols = if (columns > 0) columns else 1
         
