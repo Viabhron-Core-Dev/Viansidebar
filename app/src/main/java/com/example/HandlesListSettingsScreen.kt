@@ -185,6 +185,27 @@ fun HandleItem(
                             gesturesMap.remove(gesture)
                         } else {
                             gesturesMap[gesture] = action
+                            if (action.startsWith("open_page:")) {
+                                val pageType = action.removePrefix("open_page:")
+                                val containerId = "${handle.id}_$gesture"
+                                val currentPages = prefs.getString("handle_${containerId}_pages", null)
+                                if (currentPages == null) {
+                                    val pageTitle = when(pageType) {
+                                        "apps" -> "Apps Grid"
+                                        "widgets_grid" -> "Widgets Grid"
+                                        "hybrid_grid" -> "Hybrid Grid"
+                                        "app_tracker" -> "App Tracker"
+                                        "calculator" -> "Calculator"
+                                        "scheduler" -> "Scheduler"
+                                        "compass" -> "Compass"
+                                        "notifications" -> "Notifications"
+                                        else -> "Page"
+                                    }
+                                    val newPage = com.example.utils.SidebarPage(id = UUID.randomUUID().toString(), type = pageType, title = pageTitle)
+                                    val arr = org.json.JSONArray().apply { put(newPage.toJson()) }
+                                    prefs.edit().putString("handle_${containerId}_pages", arr.toString()).apply()
+                                }
+                            }
                         }
                         prefs.edit().putString("${prefix}$gesture", action).apply()
                     }

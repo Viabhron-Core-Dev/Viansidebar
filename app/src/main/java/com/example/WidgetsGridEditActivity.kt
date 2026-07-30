@@ -118,12 +118,38 @@ class WidgetsGridEditActivity : ComponentActivity() {
                     android.widget.Toast.makeText(this, "Cannot add: Requires $defaultCols columns, but grid only has $totalCols.", android.widget.Toast.LENGTH_LONG).show()
                     return
                 }
+
+                var targetX = 0
+                var targetY = 0
+                var found = false
+                var searchY = 0
+                while (!found && searchY < 100) {
+                    for (searchX in 0..totalCols - defaultCols + 1) {
+                        if (searchX + defaultCols > totalCols) continue
+                        var overlap = false
+                        for (item in parsedItems) {
+                            if (searchX < item.x + item.cols && searchX + defaultCols > item.x &&
+                                searchY < item.y + item.rows && searchY + defaultRows > item.y) {
+                                overlap = true
+                                break
+                            }
+                        }
+                        if (!overlap) {
+                            targetX = searchX
+                            targetY = searchY
+                            found = true
+                            break
+                        }
+                    }
+                    if (!found) searchY++
+                }
+
                 parsedItems.add(com.example.service.GridWidgetItem(
                     id = elementId,
                     cols = defaultCols,
                     rows = defaultRows,
-                    x = 0,
-                    y = 0
+                    x = targetX,
+                    y = targetY
                 ))
                 val newArr = org.json.JSONArray()
                 parsedItems.forEach {
