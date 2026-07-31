@@ -38,7 +38,11 @@ class WidgetsGridPageView(
 ) : FrameLayout(context) {
 
     private val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-    
+
+    private val appsManager = SidebarAppsManager(context, prefs, CoroutineScope(Dispatchers.IO), "wg_${pageId}") {
+        post { loadWidgets() }
+    }
+
     private val gridLayout = FrameLayout(context).apply {
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
     }
@@ -63,6 +67,7 @@ class WidgetsGridPageView(
     }
 
     init {
+        appsManager.ensureLoaded()
         com.example.LogKeeper.writeLog("WidgetsGrid", "Opened widgets grid page")
         val scrollView = ScrollView(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
@@ -74,12 +79,13 @@ class WidgetsGridPageView(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && oldw != w) {
-            loadWidgets()
+            post { loadWidgets() }
         }
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        post { loadWidgets() }
         val filter = IntentFilter()
         filter.addAction("WIDGET_ADDED_TO_GRID")
         filter.addAction("UPDATE_GRID")
@@ -180,8 +186,6 @@ class WidgetsGridPageView(
         val appWidgetManager = AppWidgetManager.getInstance(context)
         val host = AppWidgetHelper.getHost(context)
             
-            val appsManager = SidebarAppsManager(context, prefs, CoroutineScope(Dispatchers.IO), "wg_${pageId}") {}
-            appsManager.ensureLoaded()
             
             var maxHeight = 0
             for (item in items) {
@@ -304,11 +308,35 @@ class WidgetsGridPageView(
                             }
                             
                             elementView.setOnClickListener {
-                                val i = Intent(context, FloatingReaderService::class.java).apply {
-                                    action = "LAUNCH_APP"
-                                    putExtra("APP_PACKAGE", item.id)
+                                if (parsed is SidebarItem.App) {
+                                    val intent = context.packageManager.getLaunchIntentForPackage(parsed.packageName)
+                                    if (intent != null) {
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        try { context.startActivity(intent) } catch (e: Exception) {}
+                                    }
+                                } else if (parsed is SidebarItem.FloatingTrigger) {
+                                    val intent = Intent(context, FloatingTriggerService::class.java)
+                                    intent.putExtra("TARGET_ID", parsed.targetId)
+                                    context.startService(intent)
+                                } else if (parsed is SidebarItem.Link) {
+                                    try {
+                                        val intent = if (parsed.url.startsWith("intent:")) {
+                                            Intent.parseUri(parsed.url, Intent.URI_INTENT_SCHEME)
+                                        } else {
+                                            Intent(Intent.ACTION_VIEW, android.net.Uri.parse(parsed.url))
+                                        }
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {}
+                                } else if (parsed is SidebarItem.QuickTile) {
+                                    QuickTileHandler.handleQuickTileAction(context, parsed.action)
+                                } else if (parsed is SidebarItem.IntentAction) {
+                                    try {
+                                        val intent = Intent.parseUri(parsed.uri, Intent.URI_INTENT_SCHEME)
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {}
                                 }
-                                context.startService(i)
                             }
                             
                             val wCols = minOf(item.cols, totalCols)

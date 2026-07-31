@@ -5,3 +5,13 @@
 - Verified by local build (gradle :app:compileDebugKotlin and gradle :app:assembleDebug successful)
 - No deviation from requested.
 - None
+- Extracted Sidebar-related code from FloatingReaderService.kt into SidebarService.kt.
+- Separated Sidebar Handle logic into ReaderHandleView and TriggerHandleView correctly passing SidebarService and FloatingReaderService instances.
+- Updated BootReceiver and MainActivity to start SidebarService by default instead of FloatingReaderService.
+- Updated Manifest to declare SidebarService.
+- Verified implementation logic across `MainActivity.kt`, `FloatingReaderService.kt` and `SidebarService.kt`.
+- Cleaned up leftover Sidebar variables and duplicate methods from `FloatingReaderService.kt` that were unnecessarily copied over during split.
+- Fixed `FloatingReaderService.kt` `onStartCommand` to purely handle reader intents (load book, unfold, etc.).
+- Fixed duplicate `startForeground` Notification ID and duplicate managers (`NetSpeedManager` and `CallRecorderManager`) to exist purely in `SidebarService.kt`.
+- Ensured that `ReaderHandleView.kt` and `TriggerHandleView.kt` check if `FloatingReaderService` is active and send a starting intent to properly mount the Reader if it was killed by system instead of throwing NPE.
+- Verified that `WelcomeScreen` sets `first_launch` to false and forwards exactly to `SettingsActivity`.

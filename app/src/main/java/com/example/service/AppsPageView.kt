@@ -397,6 +397,12 @@ class AppsPageView(
                         currentFolderPopup?.dismiss()
                         onCloseSidebar()
                     }
+                } else if (item is SidebarItem.FloatingTrigger) {
+                    val intent = android.content.Intent(context, FloatingTriggerService::class.java)
+                    intent.putExtra("TARGET_ID", item.targetId)
+                    context.startService(intent)
+                    currentFolderPopup?.dismiss()
+                    onCloseSidebar()
                 } else if (item is SidebarItem.Folder) {
                     showFolderPopup(itemView, item)
                 } else if (item is SidebarItem.Link) {
@@ -467,6 +473,14 @@ class AppsPageView(
                     }
                     currentFolderPopup?.dismiss()
                         onCloseSidebar()
+                } else if (item is SidebarItem.PageWindow) {
+                    val intent = android.content.Intent(context, PageWindowService::class.java).apply {
+                        action = "TOGGLE"
+                        putExtra("PAGE_TYPE", item.pageType)
+                    }
+                    context.startService(intent)
+                    currentFolderPopup?.dismiss()
+                    onCloseSidebar()
                 } else if (item is SidebarItem.VolumeAction) {
                     try {
                         com.example.LogKeeper.writeLog("Sidebar", "Volume action: ${item.stream}_${item.action}")

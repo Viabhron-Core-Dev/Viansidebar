@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
                 repository.importBook(uri)
             }
             // re-launch service to library
-            val intent = Intent(this@MainActivity, FloatingReaderService::class.java).apply {
+            val intent = Intent(this@MainActivity, com.example.service.SidebarService::class.java).apply {
                 putExtra("OPEN_FROM_LAUNCHER", true)
             }
             androidx.core.content.ContextCompat.startForegroundService(this@MainActivity, intent)
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 e.printStackTrace()
             }
         }
-        val intent = Intent(this@MainActivity, FloatingReaderService::class.java).apply {
+        val intent = Intent(this@MainActivity, com.example.service.SidebarService::class.java).apply {
             putExtra("OPEN_FROM_LAUNCHER", true)
         }
         androidx.core.content.ContextCompat.startForegroundService(this@MainActivity, intent)
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
         }
 
         if (!firstLaunch && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this)) {
-            val svcIntent = Intent(this@MainActivity, FloatingReaderService::class.java).apply {
+            val svcIntent = Intent(this@MainActivity, com.example.service.SidebarService::class.java).apply {
                 putExtra("OPEN_FROM_LAUNCHER", true)
             }
             androidx.core.content.ContextCompat.startForegroundService(this, svcIntent)
@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        val serviceIntent = Intent(this, FloatingReaderService::class.java).apply {
+        val serviceIntent = Intent(this, com.example.service.SidebarService::class.java).apply {
             putExtra("OPEN_FROM_LAUNCHER", true)
         }
         androidx.core.content.ContextCompat.startForegroundService(this, serviceIntent)

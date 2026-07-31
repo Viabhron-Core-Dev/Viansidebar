@@ -47,6 +47,14 @@ sealed class SidebarItem {
         override var id = "volume:${stream}_$action"
     }
 
+    data class PageWindow(
+        val pageType: String,
+        override val label: String,
+        val iconResId: Int
+    ) : SidebarItem() {
+        override var id = "page_window:$pageType"
+    }
+
     data class MediaAction(
         val action: String,
         override val label: String,
@@ -115,6 +123,12 @@ sealed class SidebarItem {
         override val label = "Spacer"
     }
 
+    data class FloatingTrigger(
+        val targetId: String,
+        override val label: String,
+        override var id: String = "floating_trigger:$targetId"
+    ) : SidebarItem()
+    
     data class IntentAction(
         val uri: String,
         override val label: String,
@@ -210,9 +224,13 @@ val ALL_DISPLAY_ACTIONS = listOf(
 val ALL_UTILITIES_ACTIONS = listOf(
     SidebarItem.DisplayAction("blue_light_filter", "Blue Light Filter", android.R.drawable.ic_menu_view),
     SidebarItem.SystemAction("log_keeper", "Log Keeper", android.R.drawable.ic_menu_agenda),
+    SidebarItem.SystemAction("dictionary_full", "Dictionary (Full Screen)", android.R.drawable.ic_menu_sort_alphabetically)
+)
+
+val ALL_FLOATING_WINDOWS = listOf(
     SidebarItem.SystemAction("ebook_reader", "eBook Reader", com.example.R.drawable.ic_library_books),
     SidebarItem.SystemAction("dictionary_floating", "Dictionary (Floating)", android.R.drawable.ic_menu_sort_alphabetically),
-    SidebarItem.SystemAction("dictionary_full", "Dictionary (Full Screen)", android.R.drawable.ic_menu_sort_alphabetically)
+    SidebarItem.SystemAction("work_notes", "Work Notes", android.R.drawable.ic_menu_edit)
 )
 
 data class AppInfo(
@@ -411,6 +429,10 @@ class SidebarAppsManager(
                 icon.setImageResource(parsed.iconResId)
                 icon.setColorFilter(android.graphics.Color.WHITE)
             }
+        } else if (parsed is SidebarItem.PageWindow) {
+            icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            icon.setImageResource(parsed.iconResId)
+            icon.setColorFilter(android.graphics.Color.WHITE)
         } else if (parsed is SidebarItem.DisplayAction) {
             icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
             icon.setImageResource(parsed.iconResId)
@@ -463,6 +485,11 @@ class SidebarAppsManager(
                     }
                 }
             }
+        } else if (parsed is SidebarItem.FloatingTrigger) {
+            val innerBmp = getIconBitmap(parsed.targetId)
+            icon.setImageDrawable(com.example.service.BubbleDrawable(innerBmp))
+            icon.clearColorFilter()
+            icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         }
     }
 
@@ -491,6 +518,7 @@ class SidebarAppsManager(
         }
         val resId = when (parsed) {
             is SidebarItem.SystemAction -> parsed.iconResId
+            is SidebarItem.PageWindow -> parsed.iconResId
             is SidebarItem.QuickTile -> parsed.iconResId
             is SidebarItem.VolumeAction -> parsed.iconResId
             is SidebarItem.MediaAction -> parsed.iconResId
@@ -561,6 +589,11 @@ class SidebarAppsManager(
                 val componentStr = id.substringAfter("intent:")
                 return SidebarItem.IntentAction(componentStr, componentStr)
             }
+        } else if (id.startsWith("floating_trigger:")) {
+            val targetId = id.substringAfter("floating_trigger:")
+            val innerParsed = parseIdInternal(targetId)
+            val label = innerParsed?.label ?: "Trigger"
+            return SidebarItem.FloatingTrigger(targetId, "Trigger: $label", id)
         } else if (id.startsWith("quicktile:")) {
             val action = id.substringAfter("quicktile:")
             val qTile = ALL_QUICK_TILES.find { it.action == action }
@@ -569,10 +602,21 @@ class SidebarAppsManager(
             }
         } else if (id.startsWith("system:")) {
             val action = id.substringAfter("system:")
-            val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action } ?: ALL_UTILITIES_ACTIONS.filterIsInstance<SidebarItem.SystemAction>().find { it.action == action }
+            val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action } ?: ALL_UTILITIES_ACTIONS.filterIsInstance<SidebarItem.SystemAction>().find { it.action == action } ?: ALL_FLOATING_WINDOWS.find { it.action == action }
             if (sysAction != null) {
                 return SidebarItem.SystemAction(action, sysAction.label, sysAction.iconResId)
             }
+        } else if (id.startsWith("page_window:")) {
+            val pageType = id.substringAfter("page_window:")
+            val title = when (pageType) {
+                "calculator" -> "Calculator"
+                "compass" -> "Compass"
+                "scheduler" -> "Scheduler"
+                "notifications" -> "Notifications"
+                "app_tracker" -> "App Tracker"
+                else -> "Page Window"
+            }
+            return SidebarItem.PageWindow(pageType, "Window: $title", android.R.drawable.ic_menu_gallery)
         } else if (id.startsWith("volume:")) {
             val actionId = id.substringAfter("volume:")
             val volAction = ALL_VOLUME_ACTIONS.find { "${it.stream}_${it.action}" == actionId }
@@ -739,10 +783,21 @@ class SidebarAppsManager(
                 }
             } else if (id.startsWith("system:")) {
                 val action = id.substringAfter("system:")
-                val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action } ?: ALL_UTILITIES_ACTIONS.filterIsInstance<SidebarItem.SystemAction>().find { it.action == action }
+                val sysAction = ALL_SYSTEM_ACTIONS.find { it.action == action } ?: ALL_SCREEN_CAPTURE_ACTIONS.find { it.action == action } ?: ALL_UTILITIES_ACTIONS.filterIsInstance<SidebarItem.SystemAction>().find { it.action == action } ?: ALL_FLOATING_WINDOWS.find { it.action == action }
                 if (sysAction != null) {
                     result.add(SidebarItem.SystemAction(action, sysAction.label, sysAction.iconResId))
                 }
+            } else if (id.startsWith("page_window:")) {
+                val pageType = id.substringAfter("page_window:")
+                val title = when (pageType) {
+                    "calculator" -> "Calculator"
+                    "compass" -> "Compass"
+                    "scheduler" -> "Scheduler"
+                    "notifications" -> "Notifications"
+                    "app_tracker" -> "App Tracker"
+                    else -> "Page Window"
+                }
+                result.add(SidebarItem.PageWindow(pageType, "Window: $title", android.R.drawable.ic_menu_gallery))
             } else if (id.startsWith("volume:")) {
                 val actionId = id.substringAfter("volume:")
                 val volAction = ALL_VOLUME_ACTIONS.find { "${it.stream}_${it.action}" == actionId }

@@ -1,42 +1,17 @@
 import re
-
-with open("app/src/main/java/com/example/service/SidebarAppsManager.kt", "r") as f:
+with open('app/src/main/java/com/example/service/SidebarService.kt', 'r') as f:
     content = f.read()
 
-target = """        } else if (parsed is SidebarItem.SystemAction) {
-            icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            if (parsed.action == "screen_record" && com.example.service.ScreenRecordService.isRecording) {
-                icon.setImageResource(android.R.drawable.ic_media_pause)
-                icon.setColorFilter(android.graphics.Color.RED)
-            } else if (parsed.action == "blue_light_filter" && com.example.service.BlueLightFilterManager.isEnabled) {
-                icon.setImageResource(parsed.iconResId)
-                icon.setColorFilter(android.graphics.Color.parseColor("#FF9900"))
-            } else {
-                icon.setImageResource(parsed.iconResId)
-                icon.setColorFilter(android.graphics.Color.WHITE)
-            }
-        } else if (parsed is SidebarItem.VolumeAction || parsed is SidebarItem.MediaAction || parsed is SidebarItem.DisplayAction || parsed is SidebarItem.SettingsShortcut || parsed is SidebarItem.Link) {"""
-        
-replacement = """        } else if (parsed is SidebarItem.SystemAction) {
-            icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            if (parsed.action == "screen_record" && com.example.service.ScreenRecordService.isRecording) {
-                icon.setImageResource(android.R.drawable.ic_media_pause)
-                icon.setColorFilter(android.graphics.Color.RED)
-            } else {
-                icon.setImageResource(parsed.iconResId)
-                icon.setColorFilter(android.graphics.Color.WHITE)
-            }
-        } else if (parsed is SidebarItem.DisplayAction) {
-            icon.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            icon.setImageResource(parsed.iconResId)
-            if (parsed.action == "blue_light_filter" && com.example.service.BlueLightFilterManager.isEnabled) {
-                icon.setColorFilter(android.graphics.Color.parseColor("#FF9900"))
-            } else {
-                icon.setColorFilter(android.graphics.Color.WHITE)
-            }
-        } else if (parsed is SidebarItem.VolumeAction || parsed is SidebarItem.MediaAction || parsed is SidebarItem.SettingsShortcut || parsed is SidebarItem.Link) {"""
+# Fix Too many arguments for 'public constructor(...) com.example.service.TriggerHandleView'
+# TriggerHandleView was called with: (this@SidebarService, prefs, windowManager, handleId, onTriggerTapped) 
+# but now the constructor only takes: (context, prefs, windowManager, handleId)
+# We just need to remove the last argument. Wait, in SidebarService line 219.
+# Let's see what is there.
+content = re.sub(r'TriggerHandleView\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*\{[^\}]*\}\)', r'TriggerHandleView(\1, \2, \3, \4)', content)
 
-content = content.replace(target, replacement)
+# Wait, in the original TriggerHandleView, maybe it took a lambda. But in the new one, we removed it because handleAction handles it.
+# Let's just fix TriggerHandleView instantiation.
+content = re.sub(r'TriggerHandleView\([^)]+\)', r'TriggerHandleView(this@SidebarService, prefs, windowManager, prefKey.removePrefix("handle_").removeSuffix("_enabled"))', content)
 
-with open("app/src/main/java/com/example/service/SidebarAppsManager.kt", "w") as f:
+with open('app/src/main/java/com/example/service/SidebarService.kt', 'w') as f:
     f.write(content)

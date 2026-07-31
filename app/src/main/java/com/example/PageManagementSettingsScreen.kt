@@ -155,6 +155,7 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                             "apps" to "Apps Grid",
                             "scheduler" to "Scheduler",
                             "calculator" to "Calculator",
+                            "media_player" to "Media Player",
                             "compass" to "Compass",
                             "notifications" to "Notifications",
                             "widgets_grid" to "Widgets Grid",

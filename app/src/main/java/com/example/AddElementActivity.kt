@@ -151,6 +151,7 @@ class AddElementActivity : ComponentActivity() {
         }
 
         addHeader("Special items")
+        val isFloatingTrigger = intent.getBooleanExtra("IS_FLOATING_TRIGGER_SELECTION", false)
         addItem(android.R.drawable.ic_menu_more, "Folder") {
             val options = arrayOf("Grid", "Stack")
             android.app.AlertDialog.Builder(this)
@@ -215,9 +216,29 @@ class AddElementActivity : ComponentActivity() {
         addItem(android.R.drawable.ic_menu_view, "Display") { openActionPicker("display", "Display Actions") }
         addItem(android.R.drawable.ic_menu_agenda, "Utilities") { openActionPicker("utilities", "Utilities") }
         
-        addHeader("App Custom")
+        addHeader("Floating Windows")
+        if (!isFloatingTrigger) {
+            addItem(android.R.drawable.ic_menu_crop, "Floating Trigger") {
+                val intent = Intent(this, AddElementActivity::class.java).apply {
+                    putExtra("IS_FLOATING_TRIGGER_SELECTION", true)
+                }
+                startActivityForResult(intent, 700)
+            }
+        }
+        addItem(com.example.R.drawable.ic_library_books, "eBook Reader") {
+            finishWithId("system:ebook_reader")
+        }
+        addItem(android.R.drawable.ic_menu_sort_alphabetically, "Dictionary") {
+            finishWithId("system:dictionary_floating")
+        }
+        addItem(android.R.drawable.ic_menu_edit, "Work Notes") {
+            finishWithId("system:work_notes")
+        }
         addItem(android.R.drawable.ic_menu_add, "PWA Loader") {
-            startActivityForResult(Intent(this, PwaPickerActivity::class.java), 600)
+            startActivityForResult(Intent(this, PwaPickerActivity::class.java), 800)
+        }
+        addItem(android.R.drawable.ic_menu_gallery, "Page Window") {
+            startActivityForResult(Intent(this, PageWindowPickerActivity::class.java), 900)
         }
 
         scrollView.addView(contentLayout)
@@ -253,6 +274,8 @@ class AddElementActivity : ComponentActivity() {
             if (id != null) {
                 if (requestCode == 500 && id.startsWith("widget:")) {
                     finishWithId("popup_widget:" + id.removePrefix("widget:"))
+                } else if (requestCode == 700) {
+                    finishWithId("floating_trigger:$id")
                 } else {
                     finishWithId(id)
                 }

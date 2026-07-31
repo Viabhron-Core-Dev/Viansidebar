@@ -34,7 +34,11 @@ class HybridGridPageView(
 ) : FrameLayout(context) {
 
     private val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-    
+
+    private val appsManager = SidebarAppsManager(context, prefs, CoroutineScope(Dispatchers.IO), "hg_${pageId}") {
+        post { loadWidgets() }
+    }
+
     private val gridLayout = FrameLayout(context).apply {
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
     }
@@ -61,6 +65,7 @@ class HybridGridPageView(
     }
 
     init {
+        appsManager.ensureLoaded()
         com.example.LogKeeper.writeLog("HybridGrid", "Opened widgets grid page")
         val scrollView = ScrollView(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
@@ -72,12 +77,13 @@ class HybridGridPageView(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && oldw != w) {
-            loadWidgets()
+            post { loadWidgets() }
         }
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        post { loadWidgets() }
         val filter = IntentFilter()
         filter.addAction("ELEMENT_ADDED_TO_HYBRID")
         filter.addAction("UPDATE_GRID")
@@ -190,8 +196,6 @@ class HybridGridPageView(
         val appWidgetManager = AppWidgetManager.getInstance(context)
         val host = AppWidgetHelper.getHost(context)
             
-            val appsManager = SidebarAppsManager(context, prefs, CoroutineScope(Dispatchers.IO), "wg_${pageId}") {}
-            appsManager.ensureLoaded()
             
             var maxHeight = 0
             for (item in items) {
@@ -323,6 +327,16 @@ class HybridGridPageView(
                                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         try { context.startActivity(intent) } catch (e: Exception) {}
                                     }
+                                } else if (parsed is SidebarItem.PageWindow) {
+                                    val intent = Intent(context, PageWindowService::class.java).apply {
+                                        action = "TOGGLE"
+                                        putExtra("PAGE_TYPE", parsed.pageType)
+                                    }
+                                    context.startService(intent)
+                                } else if (parsed is SidebarItem.FloatingTrigger) {
+                                    val intent = Intent(context, FloatingTriggerService::class.java)
+                                    intent.putExtra("TARGET_ID", parsed.targetId)
+                                    context.startService(intent)
                                 } else if (parsed is SidebarItem.Folder) {
                                     showFolderPopup(elementView, parsed, appsManager)
                                 } else if (parsed is SidebarItem.PopupWidget) {
@@ -353,6 +367,10 @@ class HybridGridPageView(
                                     } else if (parsed.action == "ebook_reader") {
                                         val intent = Intent(context, FloatingReaderService::class.java)
                                         intent.putExtra("UNFOLD", true)
+                                        context.startService(intent)
+                                    } else if (parsed.action == "work_notes") {
+                                        val intent = Intent(context, WorkNotesService::class.java)
+                                        intent.action = "TOGGLE"
                                         context.startService(intent)
                                     } else if (parsed.action == "screen_record") {
                                         val intent = Intent(context, ScreenRecordActivity::class.java)
@@ -586,6 +604,13 @@ class HybridGridPageView(
                             try { context.startActivity(intent) } catch (e: Exception) {}
                             popupWindow?.dismiss()
                         }
+                    } else if (parsed is SidebarItem.PageWindow) {
+                        val intent = Intent(context, PageWindowService::class.java).apply {
+                            action = "TOGGLE"
+                            putExtra("PAGE_TYPE", parsed.pageType)
+                        }
+                        context.startService(intent)
+                        popupWindow?.dismiss()
                     } else if (parsed is SidebarItem.Link) {
                         try {
                             val intent = if (parsed.url.startsWith("intent:")) {
@@ -615,6 +640,10 @@ class HybridGridPageView(
                         } else if (parsed.action == "ebook_reader") {
                             val intent = Intent(context, FloatingReaderService::class.java)
                             intent.putExtra("UNFOLD", true)
+                            context.startService(intent)
+                        } else if (parsed.action == "work_notes") {
+                            val intent = Intent(context, WorkNotesService::class.java)
+                            intent.action = "TOGGLE"
                             context.startService(intent)
                         } else if (parsed.action == "screen_record") {
                             val intent = Intent(context, ScreenRecordActivity::class.java)
