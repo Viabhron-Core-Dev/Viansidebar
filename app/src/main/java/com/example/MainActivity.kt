@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
                 putExtra("OPEN_FROM_LAUNCHER", true)
             }
             androidx.core.content.ContextCompat.startForegroundService(this@MainActivity, intent)
-            finishAndRemoveTask()
+            finish()
         }
     }
 
@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
             putExtra("OPEN_FROM_LAUNCHER", true)
         }
         androidx.core.content.ContextCompat.startForegroundService(this@MainActivity, intent)
-        finishAndRemoveTask()
+        finish()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
                 putExtra("OPEN_FROM_LAUNCHER", true)
             }
             androidx.core.content.ContextCompat.startForegroundService(this, svcIntent)
-            finishAndRemoveTask()
+            finish()
             return
         }
 
@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
                             prefs.edit().putBoolean("first_launch", false).apply()
                             val settingsIntent = Intent(this@MainActivity, SettingsActivity::class.java)
                             startActivity(settingsIntent)
-                            finishAndRemoveTask()
+                            finish()
                         }
                     )
                 }
@@ -110,7 +110,7 @@ class MainActivity : ComponentActivity() {
             val permIntent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             startActivity(permIntent)
             Toast.makeText(this, "Please grant overlay permission", Toast.LENGTH_SHORT).show()
-            finishAndRemoveTask()
+            finish()
             return
         }
 
@@ -135,7 +135,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     Toast.makeText(this@MainActivity, "Failed to import book", Toast.LENGTH_SHORT).show()
                 }
-                finishAndRemoveTask()
+                finish()
             }
             return
         }
@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
             putExtra("OPEN_FROM_LAUNCHER", true)
         }
         androidx.core.content.ContextCompat.startForegroundService(this, serviceIntent)
-        finishAndRemoveTask()
+        finish()
     }
 
     @Deprecated("Deprecated in Java", ReplaceWith("super.onRequestPermissionsResult(requestCode, permissions, grantResults)"))
@@ -165,7 +165,7 @@ class MainActivity : ComponentActivity() {
                 handleIntent(intent)
             } else {
                 Toast.makeText(this, "Notification permission is required", Toast.LENGTH_SHORT).show()
-                finishAndRemoveTask()
+                finish()
             }
         }
     }

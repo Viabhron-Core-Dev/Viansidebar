@@ -93,7 +93,14 @@ class ReaderHandleView(
         layoutParams?.height = heightPx
         layoutParams?.width = widthPx
         
-        val colorInt = prefs.getInt("${prefix}color", android.graphics.Color.GRAY)
+        val colorInt = try {
+            val c = prefs.all["${prefix}color"]
+            when (c) {
+                is Int -> c
+                is String -> android.graphics.Color.parseColor(c)
+                else -> android.graphics.Color.GRAY
+            }
+        } catch(e: Exception) { android.graphics.Color.GRAY }
         val transparency = prefs.getInt("${prefix}transparency", 50)
         val alpha = (transparency / 100f * 255).toInt()
         val finalColor = android.graphics.Color.argb(alpha, android.graphics.Color.red(colorInt), android.graphics.Color.green(colorInt), android.graphics.Color.blue(colorInt))

@@ -15,3 +15,7 @@
 - Fixed duplicate `startForeground` Notification ID and duplicate managers (`NetSpeedManager` and `CallRecorderManager`) to exist purely in `SidebarService.kt`.
 - Ensured that `ReaderHandleView.kt` and `TriggerHandleView.kt` check if `FloatingReaderService` is active and send a starting intent to properly mount the Reader if it was killed by system instead of throwing NPE.
 - Verified that `WelcomeScreen` sets `first_launch` to false and forwards exactly to `SettingsActivity`.
+- Refactored `SidebarService.kt` to completely strip out left-over Reader functionality that was migrated to `FloatingReaderService.kt` in the previous fix. This includes `floatingView`, `layoutParams` for the floating view, overlay logic, drag logic, and theme references for missing views.
+- Cleaned up edge flag in `TriggerHandleView.kt` and `ReaderHandleView.kt` as well as fixed the color exception casting.
+- Refactored `SidebarService.kt` to completely strip out left-over Reader functionality that was migrated to `FloatingReaderService.kt` in the previous fix. This includes `floatingView`, `layoutParams` for the floating view, overlay logic, drag logic, and theme references for missing views.
+- Cleaned up edge flag in `TriggerHandleView.kt` and `ReaderHandleView.kt` as well as fixed the color exception casting.

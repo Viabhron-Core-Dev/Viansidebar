@@ -34,38 +34,12 @@ class SidebarService : Service() {
 
     private var serviceLifecycleOwner: ServiceLifecycleOwner? = null
     private lateinit var windowManager: WindowManager
-    private lateinit var floatingView: View
-    private lateinit var layoutParams: WindowManager.LayoutParams
     
     // UI Refs
-    private lateinit var tvWindowTitle: TextView
-    private lateinit var tvContent: TextView
-    private lateinit var scrollView: ScrollView
-    private lateinit var tvProgress: TextView
-    private lateinit var toolbarContainer: View
-    private lateinit var bubbleIcon: TextView
-    private lateinit var windowContainer: View
-    private lateinit var topDragBar: View
 
-    private var cameFromLibrary = false
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
-    private var currentBook: EpubBook? = null
-    private var currentChapterIndex: Int = 0
-    private var chapterContent: String = ""
 
-    private var isFolded = true
-    private var savedWindowWidth = 800
-    private var savedWindowHeight = 1200
-    private var initialX = 0
-    private var initialY = 0
-    private var initialTouchX = 0f
-    private var initialTouchY = 0f
-    private var foldedX = 0
-    private var foldedY = 0
-    private var savedWindowX = 0
-    private var savedWindowY = 0
-    private var librarySearchQuery: String = ""
 
     private lateinit var prefs: SharedPreferences
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
@@ -78,16 +52,10 @@ class SidebarService : Service() {
             }
 
             "keep_screen_on" -> {
-                if (::windowContainer.isInitialized) {
-                    windowContainer.keepScreenOn = sharedPreferences.getBoolean("keep_screen_on", true)
-                }
             }
             "use_scoped_dir" -> {
             }
             "font_size_scale" -> {
-                if (::tvContent.isInitialized) {
-                    tvContent.textSize = 16f * sharedPreferences.getFloat("font_size_scale", 1.0f)
-                }
             }
             "use_dark_theme" -> {
                 applyThemeFromPrefs()
@@ -149,15 +117,8 @@ class SidebarService : Service() {
     }
     
     private fun applyThemeFromPrefs() {
-        if (!::windowContainer.isInitialized) return
         val isDark = prefs.getBoolean("use_dark_theme", true)
-        val bgColor = if (isDark) android.graphics.Color.parseColor("#222222") else android.graphics.Color.WHITE
-        val txColor = if (isDark) android.graphics.Color.parseColor("#DDDDDD") else android.graphics.Color.BLACK
         
-        windowContainer.setBackgroundColor(bgColor)
-        tvContent.setTextColor(txColor)
-        overlayChapters?.setBackgroundColor(bgColor)
-        overlayLibrary?.setBackgroundColor(bgColor)
     }
     private val triggerHandleViews = mutableListOf<TriggerHandleView>()
     private var readerHandleView: ReaderHandleView? = null
@@ -183,24 +144,8 @@ class SidebarService : Service() {
     private var downSpeed: Long = 0
     private var upSpeed: Long = 0
     
-    private var tts: TextToSpeech? = null
-    private var isTtsReady = false
-    private var isSpeaking = false
-    private lateinit var btnTts: ImageView
 
-    // Auto Scroll State
-    private var isAutoScrolling = false
-    private val scrollHandler = Handler(Looper.getMainLooper())
-    private var mediaSession: android.media.session.MediaSession? = null
 
-    private val scrollRunnable = object : Runnable {
-        override fun run() {
-            if (isAutoScrolling) {
-                scrollView.smoothScrollBy(0, 2)
-                scrollHandler.postDelayed(this, 30) // light speed modifier
-            }
-        }
-    }
 
     companion object {
         var instance: SidebarService? = null
@@ -256,8 +201,8 @@ class SidebarService : Service() {
             .setContentIntent(pendingIntent)
             .build()
             
-        mediaSession = android.media.session.MediaSession(this, "FloatingReader")
-        mediaSession?.isActive = true
+        
+        
 
         if (Build.VERSION.SDK_INT >= 29) {
             val foregroundServiceTypes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -276,12 +221,7 @@ class SidebarService : Service() {
 
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         loadSettingsFromPrefs()
-        savedWindowWidth = prefs.getInt("win_w", 800)
-        savedWindowHeight = prefs.getInt("win_h", 1200)
-        savedWindowX = prefs.getInt("win_x", 0)
-        savedWindowY = prefs.getInt("win_y", 0)
-        foldedX = prefs.getInt("fold_x", 0)
-        foldedY = prefs.getInt("fold_y", 100)
+
         
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
@@ -1000,33 +940,13 @@ class SidebarService : Service() {
         return START_NOT_STICKY
     }
 
-    private var overlayLibrary: View? = null
-    private var overlayChapters: View? = null
-    private var overlayBookmarks: View? = null
-    private var overlaySearch: View? = null
-    private var overlaySearchResults: View? = null
-    private var overlayNotes: View? = null
     private lateinit var bottomWindowControls: View
-    private var listLibrary: androidx.recyclerview.widget.RecyclerView? = null
-    private var listChapters: androidx.recyclerview.widget.RecyclerView? = null
-    private var listBookmarks: androidx.recyclerview.widget.RecyclerView? = null
 
     private var toastJob: kotlinx.coroutines.Job? = null
 
     private fun showToast(message: String) {
         serviceScope.launch(Dispatchers.Main) {
-            val tvToast = floatingView.findViewById<TextView>(R.id.tv_custom_toast)
-            if (tvToast != null) {
-                tvToast.text = message
-                tvToast.visibility = View.VISIBLE
-                toastJob?.cancel()
-                toastJob = launch {
-                    kotlinx.coroutines.delay(2500)
-                    tvToast.visibility = View.GONE
-                }
-            } else {
-                Toast.makeText(this@SidebarService, message, Toast.LENGTH_SHORT).show()
-            }
+            Toast.makeText(this@SidebarService, message, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1042,16 +962,6 @@ class SidebarService : Service() {
     private var preFullScreenWidth = 0
     private var preFullScreenHeight = 0
 
-    private fun updateKeepScreenOn() {
-        if (prefs.getBoolean("keep_screen_on", false)) {
-            layoutParams.flags = layoutParams.flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-        } else {
-            layoutParams.flags = layoutParams.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
-        }
-        if (this::windowManager.isInitialized) {
-            windowManager.updateViewLayout(floatingView, layoutParams)
-        }
-    }
 
     private fun loadSettingsFromPrefs() {
         currentLibraryTab = prefs.getString("last_library_tab", "Recent") ?: "Recent"
@@ -1090,69 +1000,6 @@ class SidebarService : Service() {
 
     private var lastKnownScrollY = 0
 
-    private fun createLongPressDragListener(): View.OnTouchListener {
-        return object : View.OnTouchListener {
-            private val handler = Handler(Looper.getMainLooper())
-            private var isLongPressed = false
-            private var downX = 0f
-            private var downY = 0f
-            private val longPressRunnable = Runnable { isLongPressed = true }
-
-            override fun onTouch(view: View, event: MotionEvent): Boolean {
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        initialX = layoutParams.x
-                        initialY = layoutParams.y
-                        downX = event.rawX
-                        downY = event.rawY
-                        initialTouchX = event.rawX
-                        initialTouchY = event.rawY
-                        isLongPressed = false
-                        handler.postDelayed(longPressRunnable, 300)
-                        return true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        if (!isLongPressed) {
-                            if (Math.abs(event.rawX - downX) > 20 || Math.abs(event.rawY - downY) > 20) {
-                                handler.removeCallbacks(longPressRunnable)
-                            }
-                        } else {
-                            layoutParams.x = initialX + (event.rawX - initialTouchX).toInt()
-                            layoutParams.y = initialY + (event.rawY - initialTouchY).toInt()
-                            if (isFolded) {
-                                foldedX = layoutParams.x
-                                foldedY = layoutParams.y
-                                prefs.edit()
-                                    .putInt("fold_x", foldedX)
-                                    .putInt("fold_y", foldedY)
-                                    .apply()
-                            } else {
-                                savedWindowX = layoutParams.x
-                                savedWindowY = layoutParams.y
-                                prefs.edit()
-                                    .putInt("win_x", savedWindowX)
-                                    .putInt("win_y", savedWindowY)
-                                    .apply()
-                            }
-                            windowManager.updateViewLayout(floatingView, layoutParams)
-                        }
-                        return true
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        handler.removeCallbacks(longPressRunnable)
-                        if (!isLongPressed) {
-                            if (Math.abs(event.rawX - downX) < 20 && Math.abs(event.rawY - downY) < 20) {
-                                view.performClick()
-                            }
-                        }
-                        isLongPressed = false
-                        return true
-                    }
-                }
-                return false
-            }
-        }
-    }
 
     private var autoSaveJob: Job? = null
     private var searchJob: Job? = null
@@ -1161,73 +1008,18 @@ class SidebarService : Service() {
 
     
 
-    private fun getCoverCacheDir(): java.io.File {
-        val root = android.os.Environment.getExternalStorageDirectory()
-        val cacheDir = java.io.File(root, "Books/VianReader/.covers")
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs()
-        }
-        return cacheDir
-    }
 
-    private fun loadEpubCover(file: java.io.File): android.graphics.Bitmap? {
-        val cacheDir = getCoverCacheDir()
-        val cacheFile = java.io.File(cacheDir, "${file.absolutePath.hashCode()}.jpg")
-        
-        if (cacheFile.exists()) {
-            try {
-                val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = 2 }
-                return android.graphics.BitmapFactory.decodeFile(cacheFile.absolutePath, opts)
-            } catch (e: Exception) {}
-        }
-        
-        try {
-            java.util.zip.ZipFile(file).use { zip ->
-                val entries = zip.entries().asSequence().toList()
-                val coverEntry = entries.firstOrNull { 
-                    it.name.contains("cover", true) && 
-                    (it.name.endsWith(".jpg", true) || it.name.endsWith(".png", true) || it.name.endsWith(".jpeg", true)) 
-                } ?: entries.firstOrNull { 
-                    it.name.endsWith(".jpg", true) || it.name.endsWith(".png", true) || it.name.endsWith(".jpeg", true) 
-                }
-                
-                if (coverEntry != null) {
-                    val bytes = zip.getInputStream(coverEntry).readBytes()
-                    
-                    try {
-                        java.io.FileOutputStream(cacheFile).use { fos ->
-                            fos.write(bytes)
-                        }
-                    } catch(e: Exception) {}
-                    
-                    val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = 2 }
-                    return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-                }
-            }
-        } catch (e: Exception) {}
-        return null
-    }
 
     
 
     // --- Quick Notes Implementation ---
-    private lateinit var listNotes: androidx.recyclerview.widget.RecyclerView
-    private lateinit var btnNotesBack: View
-    private lateinit var btnNotesAdd: View
-    private lateinit var btnNotesDelete: View
-    private lateinit var tvNotesTitle: android.widget.TextView
-    private var notesAdapter: NotesAdapter? = null
     
-    private val selectedNotes = mutableSetOf<com.example.data.QuickNote>()
-    private var notesList = listOf<com.example.data.QuickNote>()
     
-    private var notesSearchQuery: String = ""
 
     
 
     
     
-    private val bookmarksList = mutableListOf<BookmarkItem>()
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
@@ -1253,11 +1045,7 @@ class SidebarService : Service() {
 
         readerHandleView?.detach()
         readerHandleView = null
-        scrollHandler.removeCallbacks(scrollRunnable)
         serviceScope.cancel()
-        if (::windowManager.isInitialized && ::floatingView.isInitialized) {
-            windowManager.removeView(floatingView)
-        }
         serviceLifecycleOwner?.onPause()
         serviceLifecycleOwner?.onStop()
         serviceLifecycleOwner?.onDestroy()
