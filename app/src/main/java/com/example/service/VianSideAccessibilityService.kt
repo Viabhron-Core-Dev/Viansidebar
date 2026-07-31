@@ -17,10 +17,12 @@ import java.util.Date
 import java.util.Locale
 
 class VianSideAccessibilityService : AccessibilityService() {
+    private var autoScrollManager: AutoScrollManager? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        autoScrollManager = AutoScrollManager(this)
         com.example.LogKeeper.writeLog("VianSideAccessibility", "Service connected")
         android.util.Log.d("VianSideAccessibility", "Service connected")
     }
@@ -72,6 +74,11 @@ class VianSideAccessibilityService : AccessibilityService() {
     fun performAction(action: String): Boolean {
         com.example.LogKeeper.writeLog("VianSideAccessibility", "Performing action: $action")
         
+        if (action == "auto_scroll") {
+            autoScrollManager?.start()
+            return true
+        }
+
         if (action == "screenshot") {
             handleScreenshotWithDelay()
             return true

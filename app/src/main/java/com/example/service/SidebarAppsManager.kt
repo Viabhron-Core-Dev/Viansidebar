@@ -222,6 +222,7 @@ val ALL_DISPLAY_ACTIONS = listOf(
 )
 
 val ALL_UTILITIES_ACTIONS = listOf(
+    SidebarItem.SystemAction("auto_scroll", "Auto Scroll", android.R.drawable.ic_menu_sort_by_size),
     SidebarItem.DisplayAction("blue_light_filter", "Blue Light Filter", android.R.drawable.ic_menu_view),
     SidebarItem.SystemAction("log_keeper", "Log Keeper", android.R.drawable.ic_menu_agenda),
     SidebarItem.SystemAction("dictionary_full", "Dictionary (Full Screen)", android.R.drawable.ic_menu_sort_alphabetically)

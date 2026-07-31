@@ -19,3 +19,7 @@
 - Cleaned up edge flag in `TriggerHandleView.kt` and `ReaderHandleView.kt` as well as fixed the color exception casting.
 - Refactored `SidebarService.kt` to completely strip out left-over Reader functionality that was migrated to `FloatingReaderService.kt` in the previous fix. This includes `floatingView`, `layoutParams` for the floating view, overlay logic, drag logic, and theme references for missing views.
 - Cleaned up edge flag in `TriggerHandleView.kt` and `ReaderHandleView.kt` as well as fixed the color exception casting.
+- Implemented "Auto scroll by pixel" functionality in `AutoScrollManager.kt`. It dispatches smooth continuous scroll gestures using Android's `AccessibilityService` `dispatchGesture`.
+- Added `auto_scroll` action to `ALL_UTILITIES_ACTIONS` in `SidebarAppsManager.kt`.
+- Handled the `auto_scroll` trigger in `VianSideAccessibilityService.kt` to spawn the `AutoScrollManager` floating pill interface.
+- Created `overlay_auto_scroll.xml` for the pill UI that contains Slower, Pause/Play, Faster, and Exit buttons.
