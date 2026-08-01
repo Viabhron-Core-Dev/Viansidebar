@@ -14,6 +14,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.view.accessibility.AccessibilityNodeInfo
 import com.example.R
 
 class AutoScrollManager(private val service: AccessibilityService) {
@@ -23,7 +25,7 @@ class AutoScrollManager(private val service: AccessibilityService) {
 
     private var isScrolling = true
     private var speed = 3 // 1 to 10
-    private var isRunning = false
+    var isRunning = false
     
     private val screenHeight: Int
     private val screenWidth: Int
@@ -80,11 +82,32 @@ class AutoScrollManager(private val service: AccessibilityService) {
         handler.post(scrollRunnable)
     }
 
-    private fun stop() {
+    fun stop() {
         isRunning = false
         isScrolling = false
         handler.removeCallbacks(scrollRunnable)
         removeFloatingControls()
+    }
+
+    private fun isScreenScrollable(): Boolean {
+        val rootNode = service.rootInActiveWindow ?: return false
+        val queue = java.util.LinkedList<AccessibilityNodeInfo>()
+        queue.add(rootNode)
+        var found = false
+        while (queue.isNotEmpty()) {
+            val node = queue.poll()
+            if (node?.isScrollable == true) {
+                found = true
+                break
+            }
+            for (i in 0 until (node?.childCount ?: 0)) {
+                val child = node?.getChild(i)
+                if (child != null) {
+                    queue.add(child)
+                }
+            }
+        }
+        return found
     }
 
     private fun showFloatingControls() {
@@ -107,6 +130,20 @@ class AutoScrollManager(private val service: AccessibilityService) {
         val btnSlower = floatingView?.findViewById<ImageButton>(R.id.btn_slower)
         val btnFaster = floatingView?.findViewById<ImageButton>(R.id.btn_faster)
         val btnExit = floatingView?.findViewById<ImageButton>(R.id.btn_exit)
+        val ivIndicator = floatingView?.findViewById<ImageView>(R.id.iv_scroll_indicator)
+
+        val checkScrollRunnable = object : Runnable {
+            override fun run() {
+                if (!isRunning) return
+                if (isScreenScrollable()) {
+                    ivIndicator?.setColorFilter(android.graphics.Color.GREEN)
+                } else {
+                    ivIndicator?.setColorFilter(android.graphics.Color.RED)
+                }
+                handler.postDelayed(this, 1000)
+            }
+        }
+        handler.post(checkScrollRunnable)
 
         fun updatePlayIcon() {
             if (isScrolling) {

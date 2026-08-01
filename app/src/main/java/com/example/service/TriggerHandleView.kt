@@ -11,6 +11,7 @@ import android.view.View
 import android.view.WindowManager
 
 import com.example.utils.Utils
+import com.example.utils.HandleShapeDrawable
 import com.example.utils.getEdgeFlag
 
 import kotlin.math.abs
@@ -107,7 +108,9 @@ class TriggerHandleView(
             }
         } catch(e: Exception) { android.graphics.Color.GRAY }
         
-        handleView?.setBackgroundColor(colorInt)
+        val shapeStr = prefs.getString("${prefix}shape", "rectangle") ?: "rectangle"
+        val edgeStrForShape = prefs.getString("${prefix}edge", "right") ?: "right"
+        handleView?.background = HandleShapeDrawable(colorInt, shapeStr, edgeStrForShape)
         
         if (isAttached) {
             windowManager.updateViewLayout(handleView, layoutParams)

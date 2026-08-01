@@ -259,11 +259,9 @@ class WorkNotesWindowManager(private val context: Context) {
             prefs.edit().putString("work_notes_text", notesText).apply()
         }
 
+        Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1E1E2E))) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF1E1E2E))
+            modifier = Modifier.fillMaxSize()
         ) {
             // Top Bar
             Row(
@@ -327,38 +325,14 @@ class WorkNotesWindowManager(private val context: Context) {
                 }
             }
             
-            // Bottom controls
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .background(Color(0xFF2A2A3C)),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { 
-                    onMinimize()
-                }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color(0xFF2A2A3C))
-                        .pointerInput(Unit) {
-                            detectDragGestures { change, dragAmount ->
-                                change.consume()
-                                onResize(dragAmount.x, dragAmount.y)
-                            }
-                        }
-                ) {
-                    Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.Center).padding(end = 4.dp, bottom = 4.dp))
-                }
-            }
-        }
+        } // end column
+        com.example.ui.WindowBottomControls(
+            onClose = onClose,
+            onMinimize = onMinimize,
+            onResize = onResize,
+            modifier = Modifier.align(Alignment.BottomEnd)
+        )
+    } // end outer box
     }
 
     private fun setupLifecycle(view: View) {

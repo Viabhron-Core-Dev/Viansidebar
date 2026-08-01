@@ -75,7 +75,7 @@ class VianSideAccessibilityService : AccessibilityService() {
         com.example.LogKeeper.writeLog("VianSideAccessibility", "Performing action: $action")
         
         if (action == "auto_scroll") {
-            autoScrollManager?.start()
+            if (autoScrollManager?.isRunning == true) autoScrollManager?.stop() else autoScrollManager?.start()
             return true
         }
 

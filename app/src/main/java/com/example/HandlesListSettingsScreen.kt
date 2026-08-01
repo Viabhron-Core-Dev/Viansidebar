@@ -101,6 +101,8 @@ fun HandleItem(
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showAddGestureDialog by remember { mutableStateOf(false) }
+                    var showChangeGestureDialog by remember { mutableStateOf(false) }
+                    var gestureToChange by remember { mutableStateOf("") }
 
     Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column {
@@ -260,6 +262,14 @@ fun HandleItem(
                                                 )
                                             }
                                             DropdownMenuItem(
+                                                text = { Text("Change") },
+                                                onClick = {
+                                                    showGestureMenu = false
+                                                    gestureToChange = gesture
+                                                    showChangeGestureDialog = true
+                                                }
+                                            )
+                                            DropdownMenuItem(
                                                 text = { Text("Remove") },
                                                 onClick = {
                                                     showGestureMenu = false
@@ -282,6 +292,74 @@ fun HandleItem(
                         Text("ADD GESTURE")
                     }
                     
+                    if (showChangeGestureDialog) {
+                        val context = LocalContext.current
+                        val pageConfigs = com.example.utils.PageManager.getPages(prefs, handle.id)
+                        
+                        val categoryOptions = listOf(
+                            "page" to "Page",
+                            "element" to "Action/Element",
+                            "sidebar" to "Sidebar"
+                        )
+                        var selectedCategory by remember { mutableStateOf(categoryOptions.first().first) }
+                        var selectedPageType by remember { mutableStateOf(if (pageConfigs.isNotEmpty()) pageConfigs.first().type else "") }
+                        
+                        AlertDialog(
+                            onDismissRequest = { showChangeGestureDialog = false },
+                            title = { Text("Change Action for ${gestureLabels[gestureToChange] ?: gestureToChange}") },
+                            text = {
+                                Column {
+                                    ActionDropdown("Type/Content", selectedCategory, categoryOptions) { selectedCategory = it }
+                                    
+                                    if (selectedCategory == "page") {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        val pageOptions = listOf(
+                                            "apps" to "Apps Grid",
+                                            "widgets_grid" to "Widgets Grid",
+                                            "hybrid_grid" to "Hybrid Grid",
+                                            "app_tracker" to "App Tracker",
+                                            "calculator" to "Calculator",
+                                            "scheduler" to "Scheduler",
+                                            "compass" to "Compass",
+                                            "notifications" to "Notifications"
+                                        )
+                                        if (selectedPageType.isEmpty()) selectedPageType = "apps"
+                                        ActionDropdown("Select Page", selectedPageType, pageOptions) { selectedPageType = it }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    if (selectedCategory == "sidebar") {
+                                        updateGesture(gestureToChange, "toggle_sidebar")
+                                        showChangeGestureDialog = false
+                                    } else if (selectedCategory == "page") {
+                                        if (selectedPageType.isNotEmpty()) {
+                                            updateGesture(gestureToChange, "open_page:$selectedPageType")
+                                            showChangeGestureDialog = false
+                                        }
+                                    } else if (selectedCategory == "element") {
+                                        val intent = android.content.Intent(context, com.example.AddElementActivity::class.java).apply {
+                                            action = "SELECT_ELEMENT_FOR_HANDLE"
+                                            putExtra("handle_prefix", prefix)
+                                            putExtra("gesture", gestureToChange)
+                                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(intent)
+                                        showChangeGestureDialog = false
+                                    }
+                                }) {
+                                    Text("Change")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showChangeGestureDialog = false }) {
+                                    Text("Cancel")
+                                }
+                            }
+                        )
+                    }
+
                     if (showAddGestureDialog) {
                         val context = LocalContext.current
                         val pageConfigs = com.example.utils.PageManager.getPages(prefs, handle.id)
@@ -289,7 +367,8 @@ fun HandleItem(
                         
                         val categoryOptions = listOf(
                             "page" to "Page",
-                            "element" to "Action/Element"
+                            "element" to "Action/Element",
+                            "sidebar" to "Sidebar"
                         )
                         var selectedCategory by remember { mutableStateOf(categoryOptions.first().first) }
                         var selectedPageType by remember { mutableStateOf(if (pageConfigs.isNotEmpty()) pageConfigs.first().type else "") }

@@ -95,8 +95,8 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
     fun show() {
         if (floatingView != null || foldedView != null) return
 
-        val width = prefs.getInt("page_window_${pageType}_width", 800)
-        val height = prefs.getInt("page_window_${pageType}_height", 1000)
+        val width = prefs.getInt("page_window_${pageType}_width", 400)
+        val height = prefs.getInt("page_window_${pageType}_height", 500)
         val x = prefs.getInt("page_window_${pageType}_x", 100)
         val y = prefs.getInt("page_window_${pageType}_y", 100)
 
@@ -245,11 +245,9 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
             else -> "Page Window"
         }
 
+        Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1E1E2E))) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF1E1E2E))
+            modifier = Modifier.fillMaxSize()
         ) {
             // Top Bar
             Row(
@@ -292,39 +290,17 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
                 )
             }
             
-            // Bottom controls
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .background(Color(0xFF2A2A3C)),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { 
-                    onMinimize()
-                }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color(0xFF2A2A3C))
-                        .pointerInput(Unit) {
-                            detectDragGestures { change, dragAmount ->
-                                change.consume()
-                                onResize(dragAmount.x, dragAmount.y)
-                            }
-                        }
-                ) {
-                    Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.Center).padding(end = 4.dp, bottom = 4.dp))
-                }
-            }
-        }
-    }
+        } // end column
+
+        // Overlay Bottom Controls
+        com.example.ui.WindowBottomControls(
+            onClose = onClose,
+            onMinimize = onMinimize,
+            onResize = onResize,
+            modifier = Modifier.align(Alignment.BottomEnd)
+        )
+    } // end outer box
+}
 
     private fun setupLifecycle(view: View) {
         val lifecycleOwner = CustomLifecycleOwner()

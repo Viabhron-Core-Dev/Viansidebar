@@ -8,6 +8,14 @@
     android:elevation="8dp"
     android:gravity="center">
 
+    <ImageView
+        android:id="@+id/iv_scroll_indicator"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="8dp"
+        android:src="@android:drawable/ic_dialog_info"
+        android:contentDescription="Scroll Indicator" />
+
     <ImageButton
         android:id="@+id/btn_slower"
         android:layout_width="40dp"

@@ -85,8 +85,8 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
             pwaServer?.start()
         }
 
-        val width = prefs.getInt("pwa_${pwa.id}_width", 800)
-        val height = prefs.getInt("pwa_${pwa.id}_height", 1000)
+        val width = prefs.getInt("pwa_${pwa.id}_width", 400)
+        val height = prefs.getInt("pwa_${pwa.id}_height", 500)
         val x = prefs.getInt("pwa_${pwa.id}_x", 100)
         val y = prefs.getInt("pwa_${pwa.id}_y", 100)
 
@@ -135,8 +135,8 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
                                     this@PwaWindowManager.layoutParams?.x = 0
                                     this@PwaWindowManager.layoutParams?.y = 0
                                 } else {
-                                    this@PwaWindowManager.layoutParams?.width = prefs.getInt("pwa_${pwa.id}_width", 800)
-                                    this@PwaWindowManager.layoutParams?.height = prefs.getInt("pwa_${pwa.id}_height", 1000)
+                                    this@PwaWindowManager.layoutParams?.width = prefs.getInt("pwa_${pwa.id}_width", 400)
+                                    this@PwaWindowManager.layoutParams?.height = prefs.getInt("pwa_${pwa.id}_height", 500)
                                     this@PwaWindowManager.layoutParams?.x = prefs.getInt("pwa_${pwa.id}_x", 100)
                                     this@PwaWindowManager.layoutParams?.y = prefs.getInt("pwa_${pwa.id}_y", 100)
                                 }
@@ -267,8 +267,8 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
                                     this@PwaWindowManager.layoutParams?.x = 0
                                     this@PwaWindowManager.layoutParams?.y = 0
                                 } else {
-                                    this@PwaWindowManager.layoutParams?.width = prefs.getInt("pwa_${pwa.id}_width", 800)
-                                    this@PwaWindowManager.layoutParams?.height = prefs.getInt("pwa_${pwa.id}_height", 1000)
+                                    this@PwaWindowManager.layoutParams?.width = prefs.getInt("pwa_${pwa.id}_width", 400)
+                                    this@PwaWindowManager.layoutParams?.height = prefs.getInt("pwa_${pwa.id}_height", 500)
                                     this@PwaWindowManager.layoutParams?.x = prefs.getInt("pwa_${pwa.id}_x", 100)
                                     this@PwaWindowManager.layoutParams?.y = prefs.getInt("pwa_${pwa.id}_y", 100)
                                 }
@@ -310,41 +310,19 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
                     )
                 }
 
+                } // end column
                 if (!isFullScreen) {
-                    // Bottom controls
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .background(Color(0xFF2A2A3C)),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { 
-                    onFold()
-                }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(20.dp))
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        com.example.ui.WindowBottomControls(
+                            onClose = onClose,
+                            onMinimize = onFold,
+                            onResize = onResize,
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                        )
+                    }
                 }
-                IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color(0xFF2A2A3C))
-                        .pointerInput(Unit) {
-                            detectDragGestures { change, dragAmount ->
-                                change.consume()
-                                onResize(dragAmount.x, dragAmount.y)
-                            }
-                        }
-                ) {
-                    Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.Center).padding(end = 4.dp, bottom = 4.dp))
-                }
-            }
-        }
-            }
-        }
+            } // end outer box
+        
     }
 
     private fun setupLifecycle(view: View) {

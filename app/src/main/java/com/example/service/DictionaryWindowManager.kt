@@ -86,8 +86,8 @@ class DictionaryWindowManager(private val context: Context) {
                     layoutParams?.x = 0
                     layoutParams?.y = 0
                 } else {
-                    layoutParams?.width = prefs.getInt("dict_window_width", 600)
-                    layoutParams?.height = prefs.getInt("dict_window_height", 800)
+                    layoutParams?.width = prefs.getInt("dict_window_width", 350)
+                    layoutParams?.height = prefs.getInt("dict_window_height", 450)
                     layoutParams?.x = prefs.getInt("dict_window_x", 100)
                     layoutParams?.y = prefs.getInt("dict_window_y", 100)
                 }
@@ -101,8 +101,8 @@ class DictionaryWindowManager(private val context: Context) {
         isFullScreen = fullScreen
         isFullScreenState.value = fullScreen
 
-        val width = prefs.getInt("dict_window_width", 600)
-        val height = prefs.getInt("dict_window_height", 800)
+        val width = prefs.getInt("dict_window_width", 350)
+        val height = prefs.getInt("dict_window_height", 450)
         val x = prefs.getInt("dict_window_x", 100)
         val y = prefs.getInt("dict_window_y", 100)
 
@@ -137,7 +137,7 @@ class DictionaryWindowManager(private val context: Context) {
                             onResize = { dx, dy ->
                                 if (!isFullScreen) {
                                     this@DictionaryWindowManager.layoutParams?.width = ((this@DictionaryWindowManager.layoutParams?.width ?: 0) + dx.roundToInt()).coerceAtLeast(300)
-                                    this@DictionaryWindowManager.layoutParams?.height = ((this@DictionaryWindowManager.layoutParams?.height ?: 0) + dy.roundToInt()).coerceAtLeast(400)
+                                    this@DictionaryWindowManager.layoutParams?.height = ((this@DictionaryWindowManager.layoutParams?.height ?: 0) + dy.roundToInt()).coerceAtLeast(300)
                                     windowManager.updateViewLayout(floatingView, this@DictionaryWindowManager.layoutParams)
                                     prefs.edit().putInt("dict_window_width", this@DictionaryWindowManager.layoutParams?.width ?: 0)
                                         .putInt("dict_window_height", this@DictionaryWindowManager.layoutParams?.height ?: 0).apply()
@@ -152,8 +152,8 @@ class DictionaryWindowManager(private val context: Context) {
                                     this@DictionaryWindowManager.layoutParams?.x = 0
                                     this@DictionaryWindowManager.layoutParams?.y = 0
                                 } else {
-                                    this@DictionaryWindowManager.layoutParams?.width = prefs.getInt("dict_window_width", 600)
-                                    this@DictionaryWindowManager.layoutParams?.height = prefs.getInt("dict_window_height", 800)
+                                    this@DictionaryWindowManager.layoutParams?.width = prefs.getInt("dict_window_width", 350)
+                                    this@DictionaryWindowManager.layoutParams?.height = prefs.getInt("dict_window_height", 450)
                                     this@DictionaryWindowManager.layoutParams?.x = prefs.getInt("dict_window_x", 100)
                                     this@DictionaryWindowManager.layoutParams?.y = prefs.getInt("dict_window_y", 100)
                                 }
@@ -295,6 +295,7 @@ class DictionaryWindowManager(private val context: Context) {
             modifier = Modifier.fillMaxSize().clip(if (isFullScreen) RoundedCornerShape(0.dp) else RoundedCornerShape(12.dp)),
             color = Color(0xFF1E1E2C)
         ) {
+            Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Top Bar (Draggable)
                 Row(
@@ -399,40 +400,17 @@ class DictionaryWindowManager(private val context: Context) {
                     }
                 }
 
-                // Bottom controls
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .background(Color(0xFF2A2A3C)),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { 
-                    onFold()
-                }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color(0xFF2A2A3C))
-                        .pointerInput(Unit) {
-                            detectDragGestures { change, dragAmount ->
-                                change.consume()
-                                onResize(dragAmount.x, dragAmount.y)
-                            }
-                        }
-                ) {
-                    Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.Center).padding(end = 4.dp, bottom = 4.dp))
-                }
-            }
-        }
-            }
-        }
+            } // end column
+            
+            com.example.ui.WindowBottomControls(
+                onClose = onClose,
+                onMinimize = onFold,
+                onResize = onResize,
+                modifier = Modifier.align(Alignment.BottomEnd)
+            )
+            
+            } // end Box
+        } // end Surface
     }
 
     private fun setupLifecycle(view: View) {
@@ -463,3 +441,4 @@ class DictionaryWindowManager(private val context: Context) {
             savedStateRegistryController.performRestore(savedState)
         }
     }
+}

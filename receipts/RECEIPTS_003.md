@@ -18,3 +18,12 @@ Files touched:
 - app/src/main/java/com/example/service/FloatingTriggerService.kt
 Action: Added `floating_trigger:` intent handler in `SidebarService` to launch the `FloatingTriggerService` and toggle it when pressed from the sidebar. Rewrote `executeAction` in `FloatingTriggerService` to forward the `targetId` directly to `SidebarService.instance?.executeElementAction(targetId)`, enabling it to support all action types (Apps, PWAs, Widgets, Intent, Screen actions) gracefully instead of reimplementing a faulty/incomplete fallback logic.
 Verification: Local build.
+
+2026-08-01T08:12:30Z
+Requested: In handle management page, be able to change gesture in three dot menu. Also add a light bulb in auto scroll toolbar to tell if current screen can't scroll.
+Files touched:
+- app/src/main/java/com/example/HandlesListSettingsScreen.kt
+- app/src/main/java/com/example/service/AutoScrollManager.kt
+- app/src/main/res/layout/overlay_auto_scroll.xml
+Action: Added "Change" option to the gesture item's 3-dot dropdown menu in HandlesListSettingsScreen, which opens a dialog to re-assign a new action to the existing gesture (sharing the add dialog's logic). In AutoScrollManager, added `isScreenScrollable` recursive check using `AccessibilityService.rootInActiveWindow` to look for nodes with `isScrollable = true`. Added `iv_scroll_indicator` to the overlay layout and set up a Runnable to tint the indicator green if a scrollable node exists, red otherwise.
+Verification: Local build.
