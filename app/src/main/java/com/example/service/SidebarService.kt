@@ -800,6 +800,13 @@ class SidebarService : Service() {
                     }
                 }
             }
+        } else if (id.startsWith("floating_trigger:")) {
+            val targetId = id.removePrefix("floating_trigger:")
+            val intent = Intent(this, com.example.service.FloatingTriggerService::class.java).apply {
+                action = "TOGGLE"
+                putExtra("TARGET_ID", targetId)
+            }
+            startService(intent)
         } else if (id.startsWith("page_window:")) {
             val pageType = id.removePrefix("page_window:")
             val intent = Intent(this, PageWindowService::class.java).apply {

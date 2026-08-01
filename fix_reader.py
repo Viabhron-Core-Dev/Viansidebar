@@ -1,18 +1,13 @@
-import re
-
-with open('app/src/main/java/com/example/service/ReaderHandleView.kt', 'r') as f:
+with open("app/src/main/java/com/example/service/ReaderHandleView.kt", "r") as f:
     content = f.read()
 
-content = content.replace("VianSideAccessibilityService.instance?.performAction(sysAction)", "")
+bad = """        handleView?.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+        handleView?.setOnTouchListener { _, event ->"""
+good = """        handleView?.setOnTouchListener { _, event ->"""
 
-with open('app/src/main/java/com/example/service/ReaderHandleView.kt', 'w') as f:
+content = content.replace(bad, good)
+
+with open("app/src/main/java/com/example/service/ReaderHandleView.kt", "w") as f:
     f.write(content)
-import re
 
-with open('app/src/main/java/com/example/service/ReaderHandleView.kt', 'r') as f:
-    content = f.read()
-
-content = content.replace('val sysAction = action.removePrefix("action_")', 'val sysAction = action.removePrefix("action_")\n            com.example.service.VianSideAccessibilityService.instance?.performAction(sysAction)')
-
-with open('app/src/main/java/com/example/service/ReaderHandleView.kt', 'w') as f:
-    f.write(content)

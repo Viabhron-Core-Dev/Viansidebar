@@ -12,7 +12,12 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -69,6 +74,7 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
             8080
         }
     }
+
 
     fun show() {
         if (floatingView != null || foldedView != null) return
@@ -252,22 +258,35 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
                             )
                         }
                         .pointerInput(Unit) {
-                            detectDragGestures { change, dragAmount ->
-                                change.consume()
-                                onDrag(dragAmount.x, dragAmount.y)
+                        detectTapGestures(
+                            onDoubleTap = { 
+                                isFullScreen = !isFullScreen
+                                if (isFullScreen) {
+                                    this@PwaWindowManager.layoutParams?.width = WindowManager.LayoutParams.MATCH_PARENT
+                                    this@PwaWindowManager.layoutParams?.height = WindowManager.LayoutParams.MATCH_PARENT
+                                    this@PwaWindowManager.layoutParams?.x = 0
+                                    this@PwaWindowManager.layoutParams?.y = 0
+                                } else {
+                                    this@PwaWindowManager.layoutParams?.width = prefs.getInt("pwa_${pwa.id}_width", 800)
+                                    this@PwaWindowManager.layoutParams?.height = prefs.getInt("pwa_${pwa.id}_height", 1000)
+                                    this@PwaWindowManager.layoutParams?.x = prefs.getInt("pwa_${pwa.id}_x", 100)
+                                    this@PwaWindowManager.layoutParams?.y = prefs.getInt("pwa_${pwa.id}_y", 100)
+                                }
+                                windowManager.updateViewLayout(floatingView, this@PwaWindowManager.layoutParams)
                             }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress { change, dragAmount ->
+                            change.consume()
+                            onDrag(dragAmount.x, dragAmount.y)
                         }
+                    }
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(pwa.name, color = Color.White, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                    IconButton(onClick = onFold, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Menu, contentDescription = "Fold", tint = Color.White)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
-                    }
+                    
                 }
 
                 // WebView
@@ -292,22 +311,38 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
                 }
 
                 if (!isFullScreen) {
-                    // Resize handle
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(20.dp)
-                            .background(Color(0xFF2A2A3C))
-                            .pointerInput(Unit) {
-                                detectDragGestures { change, dragAmount ->
-                                    change.consume()
-                                    onResize(dragAmount.x, dragAmount.y)
-                                }
-                            }
-                    ) {
-                        Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp))
-                    }
+                    // Bottom controls
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .background(Color(0xFF2A2A3C)),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { 
+                    onFold()
+                }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(20.dp))
                 }
+                IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFF2A2A3C))
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                onResize(dragAmount.x, dragAmount.y)
+                            }
+                        }
+                ) {
+                    Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.Center).padding(end = 4.dp, bottom = 4.dp))
+                }
+            }
+        }
             }
         }
     }

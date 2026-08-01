@@ -11,7 +11,12 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -302,22 +307,21 @@ class DictionaryWindowManager(private val context: Context) {
                             )
                         }
                         .pointerInput(Unit) {
-                            detectDragGestures { change, dragAmount ->
-                                change.consume()
-                                onDrag(dragAmount.x, dragAmount.y)
-                            }
+                        detectTapGestures(
+                            onDoubleTap = { onToggleFullscreen() }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress { change, dragAmount ->
+                            change.consume()
+                            onDrag(dragAmount.x, dragAmount.y)
                         }
+                    }
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Dictionary", color = Color.White, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                    IconButton(onClick = onFold, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Menu, contentDescription = "Fold", tint = Color.White)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
-                    }
+                    
                 }
 
                 if (selectedEntry == null) {
@@ -395,23 +399,38 @@ class DictionaryWindowManager(private val context: Context) {
                     }
                 }
 
-                // Resize handle
-                if (!isFullScreen) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(20.dp)
-                            .background(Color(0xFF2A2A3C))
-                            .pointerInput(Unit) {
-                                detectDragGestures { change, dragAmount ->
-                                    change.consume()
-                                    onResize(dragAmount.x, dragAmount.y)
-                                }
-                            }
-                    ) {
-                        Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp))
-                    }
+                // Bottom controls
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .background(Color(0xFF2A2A3C)),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { 
+                    onFold()
+                }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(20.dp))
                 }
+                IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFF2A2A3C))
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                onResize(dragAmount.x, dragAmount.y)
+                            }
+                        }
+                ) {
+                    Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.Center).padding(end = 4.dp, bottom = 4.dp))
+                }
+            }
+        }
             }
         }
     }
@@ -444,4 +463,3 @@ class DictionaryWindowManager(private val context: Context) {
             savedStateRegistryController.performRestore(savedState)
         }
     }
-}

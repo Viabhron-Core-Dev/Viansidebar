@@ -12,7 +12,12 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +35,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlin.math.roundToInt
 import androidx.lifecycle.Lifecycle
@@ -57,6 +63,35 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
 
     private var lastStateBitmap: Bitmap? = null
 
+
+    private var isFullScreen = false
+    private var preFullScreenWidth = 800
+    private var preFullScreenHeight = 1000
+    private var preFullScreenX = 100
+    private var preFullScreenY = 100
+
+    private fun toggleFullScreen() {
+        if (!isFullScreen) {
+            preFullScreenWidth = layoutParams?.width ?: 800
+            preFullScreenHeight = layoutParams?.height ?: 1000
+            preFullScreenX = layoutParams?.x ?: 100
+            preFullScreenY = layoutParams?.y ?: 100
+            
+            val metrics = context.resources.displayMetrics
+            layoutParams?.width = metrics.widthPixels
+            layoutParams?.height = metrics.heightPixels
+            layoutParams?.x = 0
+            layoutParams?.y = 0
+            isFullScreen = true
+        } else {
+            layoutParams?.width = preFullScreenWidth
+            layoutParams?.height = preFullScreenHeight
+            layoutParams?.x = preFullScreenX
+            layoutParams?.y = preFullScreenY
+            isFullScreen = false
+        }
+        windowManager.updateViewLayout(floatingView, layoutParams)
+    }
     fun show() {
         if (floatingView != null || foldedView != null) return
 
@@ -148,11 +183,11 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
                     MaterialTheme(colorScheme = darkColorScheme()) {
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF2A2A3C).copy(alpha = 0.9f))
                                 .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onTap = { unfold() }
-                                    )
+                                    detectTapGestures(onTap = { unfold() })
                                 }
                                 .pointerInput(Unit) {
                                     detectDragGestures { change, dragAmount ->
@@ -160,19 +195,11 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
                                         foldedLayoutParams?.x = (foldedLayoutParams?.x ?: 0) + dragAmount.x.roundToInt()
                                         foldedLayoutParams?.y = (foldedLayoutParams?.y ?: 0) + dragAmount.y.roundToInt()
                                         windowManager.updateViewLayout(this@apply, foldedLayoutParams)
-                                        prefs.edit().putInt("page_window_${pageType}_folded_x", foldedLayoutParams?.x ?: 0)
-                                            .putInt("page_window_${pageType}_folded_y", foldedLayoutParams?.y ?: 0).apply()
                                     }
-                                }
-                        ) {
-                            AndroidView(
-                                factory = { 
-                                    ImageView(it).apply { 
-                                        background = BubbleDrawable(lastStateBitmap)
-                                    } 
                                 },
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("P", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp)
                         }
                     }
                 }
@@ -230,7 +257,12 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
                     .fillMaxWidth()
                     .background(Color(0xFF2A2A3C))
                     .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
+                        detectTapGestures(
+                            onDoubleTap = { toggleFullScreen() }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress { change, dragAmount ->
                             change.consume()
                             onDrag(dragAmount.x, dragAmount.y)
                         }
@@ -240,14 +272,7 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(title, color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
-                Row {
-                    IconButton(onClick = onMinimize, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
-                    }
-                }
+                
             }
 
             // Content
@@ -267,20 +292,36 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
                 )
             }
             
-            // Resize handle
-            Box(
+            // Bottom controls
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(20.dp)
-                    .background(Color(0xFF2A2A3C))
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            onResize(dragAmount.x, dragAmount.y)
-                        }
-                    }
+                    .height(36.dp)
+                    .background(Color(0xFF2A2A3C)),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp))
+                IconButton(onClick = { 
+                    onMinimize()
+                }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFF2A2A3C))
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                onResize(dragAmount.x, dragAmount.y)
+                            }
+                        }
+                ) {
+                    Text("///", color = Color.Gray, modifier = Modifier.align(Alignment.Center).padding(end = 4.dp, bottom = 4.dp))
+                }
             }
         }
     }

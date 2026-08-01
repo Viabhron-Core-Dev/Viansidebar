@@ -1,11 +1,26 @@
-import re
-
-with open('app/src/main/java/com/example/service/TriggerHandleView.kt', 'r') as f:
+with open("app/src/main/java/com/example/service/FloatingTriggerService.kt", "r") as f:
     content = f.read()
 
-content = content.replace("VianSideAccessibilityService.instance?.performAction(sysAction)", "")
-content = content.replace('val sysAction = action.removePrefix("action_")', 'val sysAction = action.removePrefix("action_")\n            com.example.service.VianSideAccessibilityService.instance?.performAction(sysAction)')
+import re
 
+# Find executeAction to end of adjustBrightness
+pattern = r"private fun executeAction\(targetId: String\) \{.*?\n    override fun onBind"
+replacement = """private fun executeAction(targetId: String) {
+        val sidebarInstance = SidebarService.instance
+        if (sidebarInstance != null) {
+            sidebarInstance.executeElementAction(targetId)
+        } else {
+            // Fallback: try to start SidebarService and hope it catches up, 
+            // but in normal usage SidebarService is always running.
+            val intent = Intent(this, SidebarService::class.java)
+            startService(intent)
+        }
+    }
 
-with open('app/src/main/java/com/example/service/TriggerHandleView.kt', 'w') as f:
-    f.write(content)
+    override fun onBind"""
+
+new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+
+with open("app/src/main/java/com/example/service/FloatingTriggerService.kt", "w") as f:
+    f.write(new_content)
+

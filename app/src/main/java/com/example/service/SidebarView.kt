@@ -51,11 +51,11 @@ class SidebarView(
         }
 
         val density = context.resources.displayMetrics.density
-        val widthDp = prefs.getInt("handle_${containerId}_width", prefs.getInt("sidebar_width", 216))
+        val widthDp = prefs.getInt("handle_${containerId}_sidebar_width", prefs.getInt("sidebar_width", 216))
         val widthPx = (widthDp * density).toInt()
         
-        val wrapContent = prefs.getBoolean("handle_${containerId}_wrap_content", prefs.getBoolean("sidebar_wrap_content", true))
-        val heightPx = if (wrapContent) WindowManager.LayoutParams.WRAP_CONTENT else (prefs.getInt("handle_${containerId}_height", prefs.getInt("sidebar_height", 360)) * density).toInt()
+        val wrapContent = prefs.getBoolean("handle_${containerId}_sidebar_wrap_content", prefs.getBoolean("sidebar_wrap_content", true))
+        val heightPx = if (wrapContent) WindowManager.LayoutParams.WRAP_CONTENT else (prefs.getInt("handle_${containerId}_sidebar_height", prefs.getInt("sidebar_height", 360)) * density).toInt()
 
         val legacyEdge = if (prefs.getBoolean("sidebar_position_left", false)) "left" else "right"
         val isRight = prefs.getString("handle_${handleId}_edge", if (handleId == "sidebar") legacyEdge else "right") == "right"
@@ -83,12 +83,12 @@ class SidebarView(
             }
         }
 
-        val opacity = prefs.getFloat("handle_${containerId}_transparency", prefs.getFloat("sidebar_transparency", 0.9f))
+        val opacity = prefs.getFloat("handle_${containerId}_sidebar_transparency", prefs.getFloat("sidebar_transparency", 0.9f))
         val alphaInt = (opacity * 255).toInt().coerceIn(0, 255)
         
         val drawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            val colorHex = prefs.getString("handle_${containerId}_color", prefs.getString("sidebar_color", "#000000")) ?: "#000000"
+            val colorHex = prefs.getString("handle_${containerId}_sidebar_color", prefs.getString("sidebar_color", "#000000")) ?: "#000000"
         val baseColor = try { Color.parseColor(colorHex) } catch(e:Exception){ Color.BLACK }
         val r = Color.red(baseColor)
         val g = Color.green(baseColor)
@@ -310,9 +310,9 @@ class SidebarView(
     fun updatePageStyles(pageConfig: com.example.utils.SidebarPage?, pageHeightPx: Int) {
         val density = context.resources.displayMetrics.density
         
-        val globalWrap = prefs.getBoolean("handle_${containerId}_wrap_content", prefs.getBoolean("sidebar_wrap_content", true))
-        val globalHeight = prefs.getInt("handle_${containerId}_height", prefs.getInt("sidebar_height", 360))
-        val globalWidth = prefs.getInt("handle_${containerId}_width", prefs.getInt("sidebar_width", 216))
+        val globalWrap = prefs.getBoolean("handle_${containerId}_sidebar_wrap_content", prefs.getBoolean("sidebar_wrap_content", true))
+        val globalHeight = prefs.getInt("handle_${containerId}_sidebar_height", prefs.getInt("sidebar_height", 360))
+        val globalWidth = prefs.getInt("handle_${containerId}_sidebar_width", prefs.getInt("sidebar_width", 216))
         
         val wrapContent = if (pageConfig?.useCustomSettings == true) pageConfig.wrapContentHeight else {
             when (pageConfig?.type) {
@@ -334,7 +334,7 @@ class SidebarView(
                 else -> globalWidth
             }
         }
-        val opacity = if (pageConfig?.useCustomSettings == true) pageConfig.transparency else prefs.getFloat("handle_${containerId}_transparency", prefs.getFloat("sidebar_transparency", 0.9f))
+        val opacity = if (pageConfig?.useCustomSettings == true) pageConfig.transparency else prefs.getFloat("handle_${containerId}_sidebar_transparency", prefs.getFloat("sidebar_transparency", 0.9f))
         
         val widthPx = (prefWidth * density).toInt()
         layoutParams.width = widthPx
@@ -356,7 +356,7 @@ class SidebarView(
         val isRight = prefs.getString("handle_${handleId}_edge", if (handleId == "sidebar") legacyEdge else "right") == "right"
         val drawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            val colorHex = prefs.getString("handle_${containerId}_color", prefs.getString("sidebar_color", "#000000")) ?: "#000000"
+            val colorHex = prefs.getString("handle_${containerId}_sidebar_color", prefs.getString("sidebar_color", "#000000")) ?: "#000000"
         val baseColor = try { Color.parseColor(colorHex) } catch(e:Exception){ Color.BLACK }
         val r = Color.red(baseColor)
         val g = Color.green(baseColor)

@@ -142,113 +142,15 @@ class FloatingTriggerService : Service() {
     }
     
     private fun executeAction(targetId: String) {
-        val parsed = appsManager.parseId(targetId) ?: return
-        
-        if (parsed is SidebarItem.App) {
-            val launchIntent = packageManager.getLaunchIntentForPackage(parsed.packageName)
-            if (launchIntent != null) {
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                try { startActivity(launchIntent) } catch (e: Exception) {}
-            }
-        } else if (parsed is SidebarItem.PageWindow) {
-            val intent = Intent(this, PageWindowService::class.java).apply {
-                action = "TOGGLE"
-                putExtra("PAGE_TYPE", parsed.pageType)
-            }
+        val sidebarInstance = SidebarService.instance
+        if (sidebarInstance != null) {
+            sidebarInstance.executeElementAction(targetId)
+        } else {
+            // Fallback: try to start SidebarService and hope it catches up, 
+            // but in normal usage SidebarService is always running.
+            val intent = Intent(this, SidebarService::class.java)
             startService(intent)
-        } else if (parsed is SidebarItem.Link) {
-            try {
-                val launchIntent = if (parsed.url.startsWith("intent:")) {
-                    Intent.parseUri(parsed.url, Intent.URI_INTENT_SCHEME)
-                } else {
-                    Intent(Intent.ACTION_VIEW, android.net.Uri.parse(parsed.url))
-                }
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(launchIntent)
-            } catch (e: Exception) {}
-        } else if (parsed is SidebarItem.QuickTile) {
-            QuickTileHandler.handleQuickTileAction(this, parsed.action)
-        } else if (parsed is SidebarItem.IntentAction) {
-            try {
-                val launchIntent = Intent.parseUri(parsed.uri, Intent.URI_INTENT_SCHEME)
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(launchIntent)
-            } catch (e: Exception) {}
-        } else if (parsed is SidebarItem.SystemAction) {
-            if (parsed.action == "log_keeper") {
-                val launchIntent = Intent(this, com.example.LogKeeperActivity::class.java)
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(launchIntent)
-            } else if (parsed.action == "ebook_reader") {
-                val launchIntent = Intent(this, FloatingReaderService::class.java)
-                launchIntent.action = "TOGGLE"
-                startService(launchIntent)
-            } else if (parsed.action == "work_notes") {
-                val launchIntent = Intent(this, WorkNotesService::class.java)
-                launchIntent.action = "TOGGLE"
-                startService(launchIntent)
-            } else if (parsed.action == "screenshot") {
-                val launchIntent = Intent(this, VianSideAccessibilityService::class.java)
-                launchIntent.action = "com.example.ACTION_TAKE_SCREENSHOT"
-                startService(launchIntent)
-            } else if (parsed.action == "qr_scan") {
-                val launchIntent = Intent(this, VianSideAccessibilityService::class.java)
-                launchIntent.action = "com.example.ACTION_START_CROP"
-                startService(launchIntent)
-            } else if (parsed.action == "screen_record") {
-                val launchIntent = Intent(this, ScreenRecordService::class.java)
-                launchIntent.action = if (ScreenRecordService.isRecording) "STOP_RECORDING" else "START_RECORDING"
-                startService(launchIntent)
-            } else {
-                val launchIntent = Intent(this, VianSideAccessibilityService::class.java)
-                launchIntent.action = "com.example.ACTION_SYSTEM_UI"
-                launchIntent.putExtra("ACTION", parsed.action)
-                startService(launchIntent)
-            }
-        } else if (parsed is SidebarItem.DisplayAction) {
-            if (parsed.action == "brightness_up") {
-                adjustBrightness(0.1f)
-            } else if (parsed.action == "brightness_down") {
-                adjustBrightness(-0.1f)
-            } else if (parsed.action == "blue_light_filter") {
-                BlueLightFilterManager.toggle(this)
-            } else if (parsed.action == "lock_screen_time") {
-                // Not supported
-            }
-        } else if (parsed is SidebarItem.VolumeAction) {
-            val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-            val streamType = when (parsed.stream) {
-                "ringer" -> android.media.AudioManager.STREAM_RING
-                "music" -> android.media.AudioManager.STREAM_MUSIC
-                "alarm" -> android.media.AudioManager.STREAM_ALARM
-                else -> android.media.AudioManager.STREAM_RING
-            }
-            if (parsed.action == "vol_up") {
-                audioManager.adjustStreamVolume(streamType, android.media.AudioManager.ADJUST_RAISE, android.media.AudioManager.FLAG_SHOW_UI)
-            } else if (parsed.action == "vol_down") {
-                audioManager.adjustStreamVolume(streamType, android.media.AudioManager.ADJUST_LOWER, android.media.AudioManager.FLAG_SHOW_UI)
-            } else if (parsed.action == "mute") {
-                audioManager.adjustStreamVolume(streamType, android.media.AudioManager.ADJUST_MUTE, android.media.AudioManager.FLAG_SHOW_UI)
-            } else if (parsed.action == "unmute") {
-                audioManager.adjustStreamVolume(streamType, android.media.AudioManager.ADJUST_UNMUTE, android.media.AudioManager.FLAG_SHOW_UI)
-            }
-        } else if (parsed is SidebarItem.MediaAction) {
-            val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-            val keyEvent = when (parsed.action) {
-                "play_pause" -> android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                "next" -> android.view.KeyEvent.KEYCODE_MEDIA_NEXT
-                "prev" -> android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS
-                else -> -1
-            }
-            if (keyEvent != -1) {
-                audioManager.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyEvent))
-                audioManager.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyEvent))
-            }
         }
-    }
-    
-    private fun adjustBrightness(delta: Float) {
-        // Just send intent to DisplayActionHandler if any
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

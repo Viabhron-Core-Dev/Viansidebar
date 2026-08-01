@@ -10,3 +10,11 @@ Requested: Fix home hybrid grid opening empty and big (wrap content) and restore
 Files touched: app/src/main/java/com/example/service/HybridGridPageView.kt, app/src/main/java/com/example/service/WidgetsGridPageView.kt, app/src/main/java/com/example/HybridGridEditActivity.kt, app/src/main/java/com/example/service/FloatingReaderService.kt
 Action: Changed `getCurrentHeightPx` in `HybridGridPageView` and `WidgetsGridPageView` to return 0 when `gridLayout.childCount == 0` instead of a static 150dp padding, enabling them to wrap content tightly. Updated `getWidgetItems` and `loadHybridLocalItems` to check a new `hybrid_grid_modified_$pageId` flag, ensuring the default Log Keeper and eBook Reader elements are correctly populated unless the user explicitly saves a modified grid (which now flips the flag to true).
 Verification: Local build
+
+2026-08-01T08:12:00Z
+Requested: Fix Floating Trigger toggle from sidebar, and make its executed action load the element properly.
+Files touched:
+- app/src/main/java/com/example/service/SidebarService.kt
+- app/src/main/java/com/example/service/FloatingTriggerService.kt
+Action: Added `floating_trigger:` intent handler in `SidebarService` to launch the `FloatingTriggerService` and toggle it when pressed from the sidebar. Rewrote `executeAction` in `FloatingTriggerService` to forward the `targetId` directly to `SidebarService.instance?.executeElementAction(targetId)`, enabling it to support all action types (Apps, PWAs, Widgets, Intent, Screen actions) gracefully instead of reimplementing a faulty/incomplete fallback logic.
+Verification: Local build.
