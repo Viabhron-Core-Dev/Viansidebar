@@ -1,0 +1,13 @@
+- Timestamp: 2026-08-01T09:44:00-07:00
+- Request: "Implement" (continued window conversions)
+- Files Touched:
+  - `app/src/main/res/layout/layout_pwa.xml` (Created)
+  - `app/src/main/java/com/example/service/PwaWindowManager.kt`
+  - `app/src/main/res/layout/layout_page.xml` (Created)
+  - `app/src/main/java/com/example/service/PageWindowManager.kt`
+- What was done:
+  - Converted `PwaWindowManager` to use XML views (`layout_pwa.xml` with `WebView`) instead of Compose wrappers. Retained drag, double tap to full screen, and lifecycle.
+  - Converted `PageWindowManager` to use XML views (`layout_page.xml`), programmatically adding custom Android page views (e.g. `CalculatorPageView`, `SchedulerPageView`) inside its `page_content_container`.
+  - All floating windows are now backed by traditional Android XML `LayoutInflater` and View listeners, meeting the lightweight and stability criteria requested by the user.
+- Verification: Local build only.
+- Update: Fixed compilation error in `PageWindowManager.kt` by removing a call to a non-existent `removePageWindow` function.

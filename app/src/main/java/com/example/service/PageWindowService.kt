@@ -15,7 +15,7 @@ class PageWindowService : Service() {
                 windows[pageType]?.close()
                 windows.remove(pageType)
             } else {
-                val window = PageWindowManager(this, pageType)
+                val window = PageWindowManager(this, pageType) { windows.remove(pageType) }
                 windows[pageType] = window
                 window.show()
             }

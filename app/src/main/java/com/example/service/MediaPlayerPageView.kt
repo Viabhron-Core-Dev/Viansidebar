@@ -7,28 +7,17 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.view.LayoutInflater
+import android.view.View
 import android.widget.FrameLayout
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
+import android.widget.ImageView
+import android.widget.TextView
+import com.example.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @SuppressLint("ViewConstructor")
 class MediaPlayerPageView(
@@ -36,182 +25,138 @@ class MediaPlayerPageView(
     private val onCloseSidebar: () -> Unit,
     private val onHeightChanged: (Int) -> Unit
 ) : FrameLayout(context) {
-    private var currentHeightPx: Int = 0
+
+    private val mediaSessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+    private var activeController: MediaController? = null
+    private var playbackState: PlaybackState? = null
+    private var metadata: MediaMetadata? = null
+
+    private val llBlank: View
+    private val llPlayer: View
+    private val ivArtwork: ImageView
+    private val tvTitle: TextView
+    private val tvArtist: TextView
+    private val btnPrev: ImageView
+    private val btnPlayPause: ImageView
+    private val btnNext: ImageView
+
+    private var currentHeightPx = 0
+    private val scope = CoroutineScope(Dispatchers.Main + Job())
+    private var updateJob: Job? = null
+
+    private val callback = object : MediaController.Callback() {
+        override fun onPlaybackStateChanged(state: PlaybackState?) {
+            playbackState = state
+            updateUI()
+        }
+
+        override fun onMetadataChanged(metadataUpdate: MediaMetadata?) {
+            metadata = metadataUpdate
+            updateUI()
+        }
+    }
 
     init {
-        addView(ComposeView(context).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-            setContent {
-                MaterialTheme(colorScheme = darkColorScheme()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onSizeChanged { size ->
-                                if (currentHeightPx != size.height) {
-                                    currentHeightPx = size.height
-                                    onHeightChanged(size.height)
-                                }
-                            }
-                    ) {
-                        MediaPlayerScreen(context = context)
-                    }
-                }
-            }
-        })
-    }
-}
+        LayoutInflater.from(context).inflate(R.layout.page_media_player, this, true)
 
-@Composable
-fun MediaPlayerScreen(context: Context) {
-    val mediaSessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-    var activeController by remember { mutableStateOf<MediaController?>(null) }
-    var playbackState by remember { mutableStateOf<PlaybackState?>(null) }
-    var metadata by remember { mutableStateOf<MediaMetadata?>(null) }
+        llBlank = findViewById(R.id.ll_blank)
+        llPlayer = findViewById(R.id.ll_player)
+        ivArtwork = findViewById(R.id.iv_artwork)
+        tvTitle = findViewById(R.id.tv_title)
+        tvArtist = findViewById(R.id.tv_artist)
+        btnPrev = findViewById(R.id.btn_prev)
+        btnPlayPause = findViewById(R.id.btn_play_pause)
+        btnNext = findViewById(R.id.btn_next)
 
-    val callback = remember {
-        object : MediaController.Callback() {
-            override fun onPlaybackStateChanged(state: PlaybackState?) {
-                playbackState = state
+        btnPrev.setOnClickListener { activeController?.transportControls?.skipToPrevious() }
+        btnNext.setOnClickListener { activeController?.transportControls?.skipToNext() }
+        btnPlayPause.setOnClickListener {
+            if (playbackState?.state == PlaybackState.STATE_PLAYING) {
+                activeController?.transportControls?.pause()
+            } else {
+                activeController?.transportControls?.play()
             }
-            override fun onMetadataChanged(metadataUpdate: MediaMetadata?) {
-                metadata = metadataUpdate
+        }
+
+        addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+            val height = bottom - top
+            if (currentHeightPx != height && height > 0) {
+                currentHeightPx = height
+                onHeightChanged(height)
             }
         }
     }
 
-    val updateState = {
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        startUpdates()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        stopUpdates()
+    }
+
+    private fun startUpdates() {
+        updateJob = scope.launch {
+            while (true) {
+                updateState()
+                delay(1000)
+            }
+        }
+    }
+
+    private fun stopUpdates() {
+        updateJob?.cancel()
+        updateJob = null
+        activeController?.unregisterCallback(callback)
+    }
+
+    private fun updateState() {
         try {
             val componentName = ComponentName(context, AppNotificationListener::class.java)
             val controllers = mediaSessionManager.getActiveSessions(componentName)
             val controller = controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
                 ?: controllers.firstOrNull()
-            
+
             if (controller != activeController) {
                 activeController?.unregisterCallback(callback)
                 activeController = controller
                 activeController?.registerCallback(callback)
             }
-            
+
             playbackState = activeController?.playbackState
             metadata = activeController?.metadata
+            updateUI()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    LaunchedEffect(Unit) {
-        while(true) {
-            updateState()
-            delay(1000)
-        }
-    }
+    private fun updateUI() {
+        if (activeController == null) {
+            llBlank.visibility = View.VISIBLE
+            llPlayer.visibility = View.GONE
+        } else {
+            llBlank.visibility = View.GONE
+            llPlayer.visibility = View.VISIBLE
 
-    DisposableEffect(Unit) {
-        onDispose {
-            activeController?.unregisterCallback(callback)
-        }
-    }
+            val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown Title"
+            val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "Unknown Artist"
+            val artwork = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+                ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING
 
-    if (activeController == null) {
-        // Blank player
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF2A2A3C))
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Nothing playing", color = Color.Gray)
-        }
-    } else {
-        val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown Title"
-        val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "Unknown Artist"
-        val artwork = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
-            ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-        val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING
+            tvTitle.text = title
+            tvArtist.text = artist
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF2A2A3C))
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
             if (artwork != null) {
-                Image(
-                    bitmap = artwork.asImageBitmap(),
-                    contentDescription = "Artwork",
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                )
+                ivArtwork.setImageBitmap(artwork)
             } else {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF444455)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Gray)
-                }
+                ivArtwork.setImageResource(android.R.drawable.ic_media_play)
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = artist,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.LightGray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Row {
-                IconButton(
-                    onClick = { activeController?.transportControls?.skipToPrevious() },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", tint = Color.White)
-                }
-                IconButton(
-                    onClick = {
-                        if (isPlaying) {
-                            activeController?.transportControls?.pause()
-                        } else {
-                            activeController?.transportControls?.play()
-                        }
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
-                        tint = Color.White
-                    )
-                }
-                IconButton(
-                    onClick = { activeController?.transportControls?.skipToNext() },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White)
-                }
-            }
+            btnPlayPause.setImageResource(if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
         }
     }
 }

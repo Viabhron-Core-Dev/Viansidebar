@@ -1,91 +1,63 @@
 package com.example.service
 
 import android.content.Context
+import android.view.LayoutInflater
 import android.widget.FrameLayout
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import android.widget.TableLayout
+import android.widget.TableRow
+import android.widget.TextView
+import com.example.R
 import java.text.DecimalFormat
 
 class CalculatorPageView(context: Context) : FrameLayout(context) {
+
+    private var expression = ""
+    private var resultText = ""
+    private var expressionCompleted = false
+
+    private val tvExpression: TextView
+    private val tvResult: TextView
+
     init {
-        com.example.LogKeeper.writeLog("Calculator", "Opened calculator page")
-        addView(ComposeView(context).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-            setContent {
-                MaterialTheme(colorScheme = darkColorScheme()) {
-                    CalculatorScreen()
-                }
-            }
-        })
+        LayoutInflater.from(context).inflate(R.layout.page_calculator, this, true)
+        tvExpression = findViewById(R.id.tv_expression)
+        tvResult = findViewById(R.id.tv_result)
+
+        val tableLayout = findViewById<TableLayout>(R.id.tableLayout)
+        
+        // Setup click listeners for all textviews inside the tablelayout
+        for (i in 0 until (getChildAt(0) as android.view.ViewGroup).childCount) {
+             val view = (getChildAt(0) as android.view.ViewGroup).getChildAt(i)
+             if (view is TableLayout) {
+                 for (j in 0 until view.childCount) {
+                     val row = view.getChildAt(j) as TableRow
+                     for (k in 0 until row.childCount) {
+                         val btn = row.getChildAt(k) as TextView
+                         btn.setOnClickListener { onBtnClick(btn.text.toString()) }
+                     }
+                 }
+             }
+        }
+        updateUI()
     }
-}
 
-@Composable
-fun CalculatorScreen() {
-    var expression by remember { mutableStateOf("") }
-    var resultText by remember { mutableStateOf("") }
-    var expressionCompleted by remember { mutableStateOf(false) }
-
-    fun evaluateExpression(expr: String): String {
-        try {
-            if (expr.isEmpty()) return ""
-            // Replace x and ÷ with * and /
-            val cleanExpr = expr.replace("x", "*").replace("÷", "/").replace(",", "")
-            
-            // Simple evaluator
-            val result = evalBasic(cleanExpr)
-            
-            val formatter = DecimalFormat("#,###.########")
-            return formatter.format(result)
-        } catch (e: Exception) {
-            return "Error"
+    private fun onBtnClick(btn: String) {
+        when (btn) {
+            "C" -> onClear()
+            "DEL" -> onDelete()
+            "=" -> onEqual()
+            else -> onInput(btn)
         }
     }
 
-    fun onInput(char: String) {
-        if (expressionCompleted) {
-            if (char in listOf("+", "-", "x", "÷", "%")) {
-                expression = resultText.replace("=", "").trim() + char
-            } else {
-                expression = char
-            }
-            expressionCompleted = false
-            resultText = ""
-        } else {
-            expression += char
-            val res = evaluateExpression(expression)
-            if (res != "Error" && res.isNotEmpty() && expression.any { it in listOf('+', '-', 'x', '÷', '%') }) {
-                resultText = "=$res"
-            } else {
-                resultText = ""
-            }
-        }
-    }
-
-    fun onClear() {
+    private fun onClear() {
         expression = ""
         resultText = ""
         expressionCompleted = false
+        updateUI()
     }
 
-    fun onDelete() {
+    private fun onDelete() {
         if (expressionCompleted) {
             expression = ""
             resultText = ""
@@ -99,9 +71,30 @@ fun CalculatorScreen() {
                 resultText = ""
             }
         }
+        updateUI()
     }
 
-    fun onEqual() {
+    private fun onInput(input: String) {
+        if (expressionCompleted) {
+            expression = if (input in listOf("+", "-", "x", "÷", "%")) {
+                resultText.removePrefix("=") + input
+            } else {
+                input
+            }
+            expressionCompleted = false
+        } else {
+            expression += input
+        }
+        val res = evaluateExpression(expression)
+        if (res != "Error" && res.isNotEmpty() && expression.any { it in listOf('+', '-', 'x', '÷', '%') }) {
+            resultText = "=$res"
+        } else {
+            resultText = ""
+        }
+        updateUI()
+    }
+
+    private fun onEqual() {
         if (expression.isNotEmpty()) {
             val res = evaluateExpression(expression)
             if (res != "Error") {
@@ -109,221 +102,113 @@ fun CalculatorScreen() {
                 expressionCompleted = true
             }
         }
+        updateUI()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Bottom
-    ) {
-        // Display
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(2f)
-                .padding(vertical = 16.dp),
-            verticalArrangement = Arrangement.Bottom,
-            horizontalAlignment = Alignment.End
-        ) {
-            val scrollStateTop = rememberScrollState()
-            val scrollStateBottom = rememberScrollState()
-            
-            LaunchedEffect(expression) {
-                scrollStateTop.scrollTo(scrollStateTop.maxValue)
-            }
-            LaunchedEffect(resultText, expression) {
-                scrollStateBottom.scrollTo(scrollStateBottom.maxValue)
-            }
-
-            val displayTextTop = if (resultText.isNotEmpty() || expressionCompleted) formatExpression(expression) else ""
-            val displayTextBottom = when {
-                expression.isEmpty() -> "0"
-                resultText.isNotEmpty() -> resultText
-                else -> formatExpression(expression)
-            }
-
-            if (displayTextTop.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(scrollStateTop),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Text(
-                        text = displayTextTop,
-                        fontSize = 28.sp,
-                        color = Color.Gray,
-                        textAlign = TextAlign.End,
-                        maxLines = 1
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(scrollStateBottom),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = displayTextBottom,
-                    fontSize = 48.sp,
-                    color = Color.White,
-                    textAlign = TextAlign.End,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1
-                )
-            }
+    private fun updateUI() {
+        val displayTextTop = if (resultText.isNotEmpty() || expressionCompleted) formatExpression(expression) else ""
+        val displayTextBottom = when {
+            expression.isEmpty() -> "0"
+            resultText.isNotEmpty() -> resultText
+            else -> formatExpression(expression)
         }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        Divider(color = Color.DarkGray, thickness = 1.dp)
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // Keypad
-        val buttons = listOf(
-            listOf("C", "DEL", "%", "÷"),
-            listOf("7", "8", "9", "x"),
-            listOf("4", "5", "6", "-"),
-            listOf("1", "2", "3", "+"),
-            listOf("0", "00", ".", "=")
-        )
-        buttons.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth().weight(1f).padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                row.forEach { btn ->
-                    val isOperator = btn in listOf("÷", "x", "-", "+", "=")
-                    val isTopAction = btn in listOf("C", "DEL", "%")
-                    
-                    val textColor = when {
-                        isOperator -> Color(0xFFF06A35) // Orange color from screenshot
-                        isTopAction -> Color(0xFFF06A35)
-                        else -> Color.White
-                    }
-                    val bgColor = when {
-                        btn == "=" -> Color(0xFFF06A35)
-                        else -> Color.Transparent
-                    }
-                    val finalTextColor = if (btn == "=") Color.White else textColor
-                    
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .padding(4.dp)
-                            .background(bgColor, CircleShape)
-                            .clickable {
-                                when (btn) {
-                                    "C" -> onClear()
-                                    "DEL" -> onDelete()
-                                    "=" -> onEqual()
-                                    else -> onInput(btn)
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (btn == "DEL") {
-                            Icon(Icons.Default.Backspace, contentDescription = "Delete", tint = finalTextColor)
-                        } else {
-                            Text(
-                                text = btn, 
-                                fontSize = 28.sp, 
-                                fontWeight = if (isOperator || isTopAction) FontWeight.Medium else FontWeight.Normal,
-                                color = finalTextColor
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        tvExpression.text = displayTextTop
+        tvResult.text = displayTextBottom
     }
-}
 
-fun formatExpression(expr: String): String {
-    // A simple formatter that tries to format numbers with commas while preserving operators
-    val regex = Regex("(\\d+\\.?\\d*)")
-    return regex.replace(expr) { matchResult ->
-        try {
-            val numStr = matchResult.value
-            if (numStr.contains(".")) {
-                val parts = numStr.split(".")
-                val formatter = DecimalFormat("#,###")
-                formatter.format(parts[0].toLong()) + "." + parts[1]
-            } else {
-                val formatter = DecimalFormat("#,###")
-                formatter.format(numStr.toLong())
-            }
+    private fun evaluateExpression(expr: String): String {
+        if (expr.isEmpty()) return ""
+        val cleanExpr = expr.replace("x", "*").replace("÷", "/")
+        return try {
+            val result = evalBasic(cleanExpr)
+            val format = DecimalFormat("0.######")
+            format.format(result)
         } catch (e: Exception) {
-            matchResult.value
+            "Error"
         }
     }
-}
 
-fun evalBasic(str: String): Double {
-    return object : Any() {
-        var pos = -1
-        var ch = 0
-
-        fun nextChar() {
-            ch = if (++pos < str.length) str[pos].toInt() else -1
+    private fun formatExpression(expr: String): String {
+        val regex = Regex("(\\d+\\.?\\d*)")
+        return regex.replace(expr) { matchResult ->
+            try {
+                val numStr = matchResult.value
+                if (numStr.contains(".")) {
+                    val parts = numStr.split(".")
+                    val formatter = DecimalFormat("#,###")
+                    formatter.format(parts[0].toLong()) + "." + parts[1]
+                } else {
+                    val formatter = DecimalFormat("#,###")
+                    formatter.format(numStr.toLong())
+                }
+            } catch (e: Exception) {
+                matchResult.value
+            }
         }
+    }
 
-        fun eat(charToEat: Int): Boolean {
-            while (ch == ' '.toInt()) nextChar()
-            if (ch == charToEat) {
+    private fun evalBasic(str: String): Double {
+        return object : Any() {
+            var pos = -1
+            var ch = 0
+            fun nextChar() {
+                ch = if (++pos < str.length) str[pos].toInt() else -1
+            }
+
+            fun eat(charToEat: Int): Boolean {
+                while (ch == ' '.toInt()) nextChar()
+                if (ch == charToEat) {
+                    nextChar()
+                    return true
+                }
+                return false
+            }
+
+            fun parse(): Double {
                 nextChar()
-                return true
+                val x = parseExpression()
+                if (pos < str.length) throw RuntimeException("Unexpected: " + ch.toChar())
+                return x
             }
-            return false
-        }
 
-        fun parse(): Double {
-            nextChar()
-            val x = parseExpression()
-            if (pos < str.length) throw RuntimeException("Unexpected: " + ch.toChar())
-            return x
-        }
+            fun parseExpression(): Double {
+                var x = parseTerm()
+                while (true) {
+                    if (eat('+'.toInt())) x += parseTerm() // addition
+                    else if (eat('-'.toInt())) x -= parseTerm() // subtraction
+                    else return x
+                }
+            }
 
-        fun parseExpression(): Double {
-            var x = parseTerm()
-            while (true) {
-                if (eat('+'.toInt())) x += parseTerm() // addition
-                else if (eat('-'.toInt())) x -= parseTerm() // subtraction
-                else return x
+            fun parseTerm(): Double {
+                var x = parseFactor()
+                while (true) {
+                    if (eat('*'.toInt())) x *= parseFactor() // multiplication
+                    else if (eat('/'.toInt())) x /= parseFactor() // division
+                    else return x
+                }
             }
-        }
 
-        fun parseTerm(): Double {
-            var x = parseFactor()
-            while (true) {
-                if (eat('*'.toInt())) x *= parseFactor() // multiplication
-                else if (eat('/'.toInt())) x /= parseFactor() // division
-                else return x
+            fun parseFactor(): Double {
+                if (eat('+'.toInt())) return parseFactor() // unary plus
+                if (eat('-'.toInt())) return -parseFactor() // unary minus
+                var x: Double
+                val startPos = pos
+                if (eat('('.toInt())) { // parentheses
+                    x = parseExpression()
+                    eat(')'.toInt())
+                } else if (ch >= '0'.toInt() && ch <= '9'.toInt() || ch == '.'.toInt()) { // numbers
+                    while (ch >= '0'.toInt() && ch <= '9'.toInt() || ch == '.'.toInt()) nextChar()
+                    x = str.substring(startPos, pos).toDouble()
+                } else {
+                    throw RuntimeException("Unexpected: " + ch.toChar())
+                }
+                while (eat('%'.toInt())) {
+                    x /= 100.0
+                }
+                return x
             }
-        }
-
-        fun parseFactor(): Double {
-            if (eat('+'.toInt())) return parseFactor() // unary plus
-            if (eat('-'.toInt())) return -parseFactor() // unary minus
-            var x: Double
-            val startPos = pos
-            if (eat('('.toInt())) { // parentheses
-                x = parseExpression()
-                eat(')'.toInt())
-            } else if (ch >= '0'.toInt() && ch <= '9'.toInt() || ch == '.'.toInt()) { // numbers
-                while (ch >= '0'.toInt() && ch <= '9'.toInt() || ch == '.'.toInt()) nextChar()
-                x = str.substring(startPos, pos).toDouble()
-            } else {
-                throw RuntimeException("Unexpected: " + ch.toChar())
-            }
-            while (eat('%'.toInt())) {
-                x /= 100.0
-            }
-            return x
-        }
-    }.parse()
+        }.parse()
+    }
 }

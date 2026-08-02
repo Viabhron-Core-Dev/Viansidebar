@@ -236,15 +236,15 @@ class SidebarView(
 
                 
                 if (page is AppsPageView) {
-                    updatePageStyles(pageConfig, page.getCurrentHeightPx())
+                    updatePageStyles(pageConfig, page.height)
                 } else if (page is NotificationPageView) {
-                    updatePageStyles(pageConfig, page.getCurrentHeightPx())
+                    updatePageStyles(pageConfig, page.height)
                 } else if (page is WidgetPageView) {
-                    updatePageStyles(pageConfig, page.getCurrentHeightPx())
+                    updatePageStyles(pageConfig, page.height)
                 } else if (page is WidgetsGridPageView) {
-                    updatePageStyles(pageConfig, page.getCurrentHeightPx())
+                    updatePageStyles(pageConfig, page.height)
                 } else if (page is HybridGridPageView) {
-                    updatePageStyles(pageConfig, page.getCurrentHeightPx())
+                    updatePageStyles(pageConfig, page.height)
                 } else if (page != null) {
                     val density = context.resources.displayMetrics.density
                     updatePageStyles(pageConfig, (450 * density).toInt())

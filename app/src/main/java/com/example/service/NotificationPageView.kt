@@ -1,446 +1,178 @@
 package com.example.service
 
+import android.app.Notification
+import android.content.BroadcastReceiver
 import android.content.Context
-import android.service.notification.StatusBarNotification
-import android.widget.FrameLayout
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import android.app.ActivityOptions
-import android.os.Build
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.collectLatest
-import android.app.PendingIntent
-import android.graphics.drawable.Icon
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.foundation.Image
-import androidx.core.graphics.drawable.toBitmap
-import android.graphics.drawable.BitmapDrawable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.filled.FilterList
-import com.example.NotificationHistoryActivity
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.provider.Settings
+import android.service.notification.StatusBarNotification
+import android.text.format.DateUtils
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class NotificationPageView(
     context: Context,
     private val onCloseSidebar: () -> Unit,
-    private val onHeightChanged: (Int) -> Unit
+    private val onHideApp: (String) -> Unit
 ) : FrameLayout(context) {
 
-    private var currentHeightPx: Int = 0
-    
+    private val recyclerView: RecyclerView
+    private val tvEmpty: TextView
+    private val llPermissionBanner: View
+    private val fabClearAll: View
+
+    private val adapter = NotificationAdapter()
+    private val scope = CoroutineScope(Dispatchers.Main + Job())
+
+    private var activeNotifications = listOf<StatusBarNotification>()
+
+    private val notificationReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AppNotificationListener.Companion.ACTION_NOTIFICATION_POSTED || 
+                intent?.action == AppNotificationListener.Companion.ACTION_NOTIFICATION_REMOVED) {
+                loadNotifications()
+            }
+        }
+    }
 
     init {
-        
-        addView(ComposeView(context).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-            setContent {
-                MaterialTheme(colorScheme = darkColorScheme()) {
-                    Box(modifier = Modifier.fillMaxSize().onSizeChanged { size ->
-                        if (currentHeightPx != size.height) {
-                            currentHeightPx = size.height
-                            onHeightChanged(size.height)
-                        }
-                    }) {
-                        NotificationScreen(context, onCloseSidebar)
-                    }
-                }
+        com.example.LogKeeper.writeLog("Notification", "Opened Notification page")
+        LayoutInflater.from(context).inflate(R.layout.page_notification, this, true)
+
+        recyclerView = findViewById(R.id.recycler_view)
+        tvEmpty = findViewById(R.id.tv_empty)
+        llPermissionBanner = findViewById(R.id.ll_permission_banner)
+        fabClearAll = findViewById(R.id.fab_clear_all)
+
+        recyclerView.layoutManager = LinearLayoutManager(context)
+        recyclerView.adapter = adapter
+
+        findViewById<View>(R.id.btn_grant).setOnClickListener {
+            val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-        })
+            context.startActivity(intent)
+            onCloseSidebar()
+        }
+
+        fabClearAll.setOnClickListener {
+            val intent = Intent(context, AppNotificationListener::class.java).apply {
+                action = AppNotificationListener.Companion.ACTION_CLEAR_ALL
+            }
+            context.startService(intent)
+        }
+
+        val hasPermission = checkNotificationPermission()
+        llPermissionBanner.visibility = if (hasPermission) View.GONE else View.VISIBLE
+        
+        context.registerReceiver(notificationReceiver, IntentFilter().apply {
+            addAction(AppNotificationListener.Companion.ACTION_NOTIFICATION_POSTED)
+            addAction(AppNotificationListener.Companion.ACTION_NOTIFICATION_REMOVED)
+        }, Context.RECEIVER_NOT_EXPORTED)
+
+        loadNotifications()
     }
 
-    fun getCurrentHeightPx(): Int {
-        val density = context.resources.displayMetrics.density
-        return if (currentHeightPx > 0) currentHeightPx else (450 * density).toInt()
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun NotificationScreen(context: Context, onCloseSidebar: () -> Unit) {
-    LaunchedEffect(Unit) {
-        com.example.LogKeeper.writeLog("Sidebar", "Notification page viewed")
-    }
-    
-    val notifications by AppNotificationListener.notifications.collectAsState()
-    val prefs = remember { context.getSharedPreferences("NotificationPrefs", Context.MODE_PRIVATE) }
-    
-    // We store hidden packages in a Set string in SharedPreferences
-    var hiddenPackages by remember { 
-        mutableStateOf(prefs.getStringSet("hidden_packages", emptySet()) ?: emptySet())
-    }
-    
-    // Filter dialog
-    var showFilterDialog by remember { mutableStateOf(false) }
-    
-    // Check if permission is granted
-    val hasPermission = remember { 
-        android.provider.Settings.Secure.getString(
-            context.contentResolver,
-            "enabled_notification_listeners"
-        )?.contains(context.packageName) == true
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        try {
+            context.unregisterReceiver(notificationReceiver)
+        } catch (e: Exception) {}
     }
 
-    if (!hasPermission) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                Text("Notification Access Required", color = Color.White)
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = {
-                    val intent = android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
-                    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                    context.startActivity(intent)
-                }) {
-                    Text("Grant Permission")
-                }
+    private fun checkNotificationPermission(): Boolean {
+        val listeners = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+        return listeners != null && listeners.contains(context.packageName)
+    }
+
+    private fun loadNotifications() {
+        if (checkNotificationPermission()) {
+            AppNotificationListener.instance?.let { listener ->
+                try {
+                    val sbns = listener.activeNotifications
+                        .filter { it.isClearable }
+                        .sortedByDescending { it.postTime }
+                    
+                    activeNotifications = sbns
+                    adapter.submitList(activeNotifications)
+                    tvEmpty.visibility = if (activeNotifications.isEmpty()) View.VISIBLE else View.GONE
+                } catch (e: Exception) {}
             }
         }
-        return
     }
 
-    val visibleNotifications = notifications.filter { !hiddenPackages.contains(it.packageName) }
+    private inner class NotificationAdapter : RecyclerView.Adapter<NotificationAdapter.ViewHolder>() {
+        private var list = emptyList<StatusBarNotification>()
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Notifications", style = MaterialTheme.typography.titleMedium, color = Color.White)
-            Row {
-                IconButton(onClick = { showFilterDialog = true }) {
-                    Icon(Icons.Default.FilterList, "Filter Apps", tint = Color.White)
-                }
-                IconButton(onClick = { 
-                    val intent = Intent(context, NotificationHistoryActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        fun submitList(newList: List<StatusBarNotification>) {
+            list = newList
+            notifyDataSetChanged()
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_notification_row, parent, false)
+            return ViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val sbn = list[position]
+            val notification = sbn.notification
+            val extras = notification.extras
+
+            val title = extras.getString(Notification.EXTRA_TITLE) ?: ""
+            val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+
+            holder.tvTitle.text = title
+            holder.tvText.text = text
+            
+            val timeString = DateUtils.getRelativeTimeSpanString(
+                sbn.postTime, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS
+            ).toString()
+            holder.tvTime.text = timeString
+
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val appInfo = context.packageManager.getApplicationInfo(sbn.packageName, 0)
+                    val appName = context.packageManager.getApplicationLabel(appInfo).toString()
+                    val icon = context.packageManager.getApplicationIcon(appInfo)
+                    
+                    withContext(Dispatchers.Main) {
+                        holder.tvAppName.text = appName
+                        holder.ivIcon.setImageDrawable(icon)
                     }
-                    context.startActivity(intent)
+                } catch (e: Exception) {}
+            }
+
+            holder.itemView.setOnClickListener {
+                try {
+                    notification.contentIntent?.send()
                     onCloseSidebar()
-                }) {
-                    Icon(Icons.Default.History, "History", tint = Color.White)
-                }
+                } catch (e: Exception) {}
             }
         }
-        
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(visibleNotifications, key = { it.key }) { sbn ->
-                NotificationItem(context, sbn, onCloseSidebar = onCloseSidebar, onHideApp = { pkg ->
-                    val updated = hiddenPackages.toMutableSet().apply { add(pkg) }
-                    prefs.edit().putStringSet("hidden_packages", updated).apply()
-                    hiddenPackages = updated
-                })
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+
+        override fun getItemCount() = list.size
+
+        inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+            val ivIcon: ImageView = itemView.findViewById(R.id.iv_icon)
+            val tvAppName: TextView = itemView.findViewById(R.id.tv_app_name)
+            val tvTime: TextView = itemView.findViewById(R.id.tv_time)
+            val tvTitle: TextView = itemView.findViewById(R.id.tv_title)
+            val tvText: TextView = itemView.findViewById(R.id.tv_text)
         }
     }
-    
-    if (showFilterDialog) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f))
-                .clickable(
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                    indication = null
-                ) { showFilterDialog = false },
-            contentAlignment = Alignment.Center
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .fillMaxHeight(0.8f)
-                    .padding(16.dp),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
-                    Text(
-                        text = "Filter Apps in Sidebar",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    
-                    val pm = context.packageManager
-                    val appsInList = remember {
-                        val intent = android.content.Intent(android.content.Intent.ACTION_MAIN, null).apply {
-                            addCategory(android.content.Intent.CATEGORY_LAUNCHER)
-                        }
-                        pm.queryIntentActivities(intent, 0).map { 
-                            it.activityInfo.packageName to it.loadLabel(pm).toString()
-                        }.distinctBy { it.first }.sortedBy { it.second }
-                    }
-                    
-                    LazyColumn(modifier = Modifier.weight(1f)) {
-                        items(appsInList) { (pkg, name) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = !hiddenPackages.contains(pkg),
-                                    onCheckedChange = { checked ->
-                                        val newHidden = hiddenPackages.toMutableSet()
-                                        if (checked) {
-                                            newHidden.remove(pkg)
-                                        } else {
-                                            newHidden.add(pkg)
-                                        }
-                                        hiddenPackages = newHidden
-                                        prefs.edit().putStringSet("hidden_packages", newHidden).apply()
-                                    }
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(name)
-                            }
-                        }
-                    }
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showFilterDialog = false }) {
-                            Text("Done")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
-@Composable
-fun NotificationItem(context: Context, sbn: StatusBarNotification, onCloseSidebar: () -> Unit, onHideApp: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    var replyText by remember { mutableStateOf("") }
-    
-    val notification = sbn.notification
-    val title = notification.extras.getString(android.app.Notification.EXTRA_TITLE) ?: "No Title"
-    val text = notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
-    
-    val pm = context.packageManager
-    val appName = try {
-        pm.getApplicationLabel(pm.getApplicationInfo(sbn.packageName, 0)).toString()
-    } catch (e: Exception) {
-        sbn.packageName
-    }
-
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .combinedClickable(
-                        onClick = {
-                            try {
-                                if (android.os.Build.VERSION.SDK_INT >= 34) {
-                                    val options = android.app.ActivityOptions.makeBasic()
-                                    options.pendingIntentBackgroundActivityStartMode = android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                    notification.contentIntent?.send(context, 0, android.content.Intent(), null, null, null, options.toBundle())
-                                } else {
-                                    notification.contentIntent?.send()
-                                }
-                                AppNotificationListener.instance?.cancelNotification(sbn.key)
-                                onCloseSidebar()
-                            } catch (e: Exception) {
-                                com.example.LogKeeper.writeLog("Notification", "Failed to open notification content for ${sbn.packageName}: ${e.message}")
-                            }
-                        },
-                        onLongClick = {
-                            AppNotificationListener.instance?.cancelNotification(sbn.key)
-                        }
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A))
-            ) {
-                Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 4.dp)
-                    ) {
-                        Text(
-                            text = appName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.LightGray,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = { expanded = !expanded },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = if (expanded) "Collapse" else "Expand",
-                                tint = Color.LightGray
-                            )
-                        }
-                    }
-                    
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        maxLines = if (expanded) Int.MAX_VALUE else 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    
-                    if (text.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = text,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.LightGray,
-                            maxLines = if (expanded) Int.MAX_VALUE else 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    
-                    if (!expanded && (text.length > 30 || notification.actions?.isNotEmpty() == true)) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(2.dp)
-                                .background(Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(1.dp))
-                        )
-                    }
-                    
-                    if (expanded && notification.actions != null && notification.actions.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        val remoteInputActions = notification.actions.filter { it.remoteInputs?.isNotEmpty() == true }
-                        val normalActions = notification.actions.filter { it.remoteInputs.isNullOrEmpty() }
-                        
-                        if (remoteInputActions.isNotEmpty()) {
-                            val replyAction = remoteInputActions.first()
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                OutlinedTextField(
-                                    value = replyText,
-                                    onValueChange = { replyText = it },
-                                    placeholder = { Text(replyAction.title?.toString() ?: "Reply...") },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Button(
-                                    onClick = {
-                                        if (replyText.isNotEmpty()) {
-                                            try {
-                                                val remoteInputs = replyAction.remoteInputs
-                                                val intent = android.content.Intent()
-                                                val bundle = android.os.Bundle()
-                                                for (input in remoteInputs) {
-                                                    bundle.putCharSequence(input.resultKey, replyText)
-                                                }
-                                                android.app.RemoteInput.addResultsToIntent(remoteInputs, intent, bundle)
-                                                if (android.os.Build.VERSION.SDK_INT >= 34) {
-                                                    val options = android.app.ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode = android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    replyAction.actionIntent.send(context, 0, intent, null, null, null, options.toBundle())
-                                                } else {
-                                                    replyAction.actionIntent.send(context, 0, intent)
-                                                }
-                                                replyText = ""
-                                            } catch (e: Exception) {
-                                                com.example.LogKeeper.writeLog("Notification", "Failed to send reply to ${sbn.packageName}: ${e.message}")
-                                            }
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-                                ) {
-                                    Text("Send")
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                        
-                        if (normalActions.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                normalActions.take(3).forEach { action ->
-                                    val actionTitle = action.title?.toString() ?: ""
-                                    if (actionTitle.isNotEmpty()) {
-                                        Button(
-                                            onClick = {
-                                                try {
-                                                    if (android.os.Build.VERSION.SDK_INT >= 34) {
-                                                        val options = android.app.ActivityOptions.makeBasic()
-                                                        options.pendingIntentBackgroundActivityStartMode = android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                        action.actionIntent.send(context, 0, android.content.Intent(), null, null, null, options.toBundle())
-                                                    } else {
-                                                        action.actionIntent.send()
-                                                    }
-                                                    onCloseSidebar()
-                                                } catch (e: Exception) {
-                                                    com.example.LogKeeper.writeLog("Notification", "Failed to execute action ${actionTitle} for ${sbn.packageName}: ${e.message}")
-                                                }
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF444444)),
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(
-                                                actionTitle,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                style = MaterialTheme.typography.labelSmall
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (expanded) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            TextButton(
-                                onClick = { onHideApp(sbn.packageName) },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("Hide App in Sidebar", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                            }
-                        }
-                    }
-                }
-            }
 }

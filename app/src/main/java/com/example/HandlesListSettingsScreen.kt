@@ -103,6 +103,8 @@ fun HandleItem(
     var showAddGestureDialog by remember { mutableStateOf(false) }
                     var showChangeGestureDialog by remember { mutableStateOf(false) }
                     var gestureToChange by remember { mutableStateOf("") }
+    var showChangeTriggerDialog by remember { mutableStateOf(false) }
+    var triggerToChange by remember { mutableStateOf("") }
 
     Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column {
@@ -179,6 +181,39 @@ fun HandleItem(
                             if (action != "none") {
                                 gesturesMap[key] = action
                             }
+                        }
+                    }
+                    
+                    fun migrateGesture(oldGesture: String, newGesture: String) {
+                        val oldPrefix = "handle_${handle.id}_${oldGesture}"
+                        val newPrefix = "handle_${handle.id}_${newGesture}"
+                        val editor = prefs.edit()
+                        
+                        val action = prefs.getString(oldPrefix, null)
+                        if (action != null) {
+                            editor.putString(newPrefix, action)
+                            editor.remove(oldPrefix)
+                        }
+                        
+                        prefs.all.keys.forEach { key ->
+                            if (key.startsWith("${oldPrefix}_")) {
+                                val newKey = key.replaceFirst(oldPrefix, newPrefix)
+                                val value = prefs.all[key]
+                                when (value) {
+                                    is String -> editor.putString(newKey, value)
+                                    is Int -> editor.putInt(newKey, value)
+                                    is Boolean -> editor.putBoolean(newKey, value)
+                                    is Float -> editor.putFloat(newKey, value)
+                                    is Long -> editor.putLong(newKey, value)
+                                }
+                                editor.remove(key)
+                            }
+                        }
+                        editor.apply()
+                        
+                        gesturesMap.remove(oldGesture)
+                        if (action != null) {
+                            gesturesMap[newGesture] = action
                         }
                     }
                     
@@ -262,11 +297,19 @@ fun HandleItem(
                                                 )
                                             }
                                             DropdownMenuItem(
-                                                text = { Text("Change") },
+                                                text = { Text("Change Action") },
                                                 onClick = {
                                                     showGestureMenu = false
                                                     gestureToChange = gesture
                                                     showChangeGestureDialog = true
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Change Gesture") },
+                                                onClick = {
+                                                    showGestureMenu = false
+                                                    triggerToChange = gesture
+                                                    showChangeTriggerDialog = true
                                                 }
                                             )
                                             DropdownMenuItem(
@@ -290,6 +333,54 @@ fun HandleItem(
                         Icon(Icons.Default.Add, "Add")
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("ADD GESTURE")
+                    }
+                    
+                    if (showChangeTriggerDialog) {
+                        val availableGestures = gestureKeys.filter { !gesturesMap.containsKey(it) || it == triggerToChange }
+                        var selectedNewGesture by remember { mutableStateOf(availableGestures.firstOrNull { it != triggerToChange } ?: availableGestures.firstOrNull() ?: "") }
+                        val localContext = androidx.compose.ui.platform.LocalContext.current
+                        
+                        AlertDialog(
+                            onDismissRequest = { showChangeTriggerDialog = false },
+                            title = { Text("Change Gesture for ${gestureLabels[triggerToChange] ?: triggerToChange}") },
+                            text = {
+                                Column {
+                                    if (availableGestures.size <= 1) {
+                                        Text("No other available gestures.")
+                                    } else {
+                                        ActionDropdown(
+                                            "Select New Gesture", 
+                                            selectedNewGesture, 
+                                            availableGestures.filter { it != triggerToChange }.map { it to (gestureLabels[it] ?: it) }
+                                        ) { selectedNewGesture = it }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    if (selectedNewGesture.isNotEmpty() && selectedNewGesture != triggerToChange && availableGestures.contains(selectedNewGesture)) {
+                                        migrateGesture(triggerToChange, selectedNewGesture)
+                                        
+                                        // Notify service to reload configuration
+                                        val intent = android.content.Intent(localContext, com.example.service.FloatingReaderService::class.java).apply {
+                                            action = "UPDATE_CONFIG"
+                                        }
+                                        localContext.startService(intent)
+                                        
+                                        showChangeTriggerDialog = false
+                                    } else {
+                                        showChangeTriggerDialog = false
+                                    }
+                                }) {
+                                    Text("Change")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showChangeTriggerDialog = false }) {
+                                    Text("Cancel")
+                                }
+                            }
+                        )
                     }
                     
                     if (showChangeGestureDialog) {

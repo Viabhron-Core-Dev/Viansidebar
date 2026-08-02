@@ -143,7 +143,7 @@ fun WhitelistTab(context: Context, prefs: android.content.SharedPreferences, typ
                             val label = appInfo.loadLabel(pm).toString()
                             val icon = try { appInfo.loadIcon(pm) } catch (e: Exception) { null }
                             val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                            list.add(com.example.service.TrackedAppInfo(pkgName, label, icon, isSystem))
+                            list.add(com.example.service.TrackedAppInfo(pkgName, label))
                         } catch (e: Exception) {}
                     }
                 }
@@ -154,7 +154,7 @@ fun WhitelistTab(context: Context, prefs: android.content.SharedPreferences, typ
                     val label = appInfo.loadLabel(pm).toString()
                     val icon = try { appInfo.loadIcon(pm) } catch (e: Exception) { null }
                     val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                    list.add(com.example.service.TrackedAppInfo(pkg.packageName, label, icon, isSystem))
+                    list.add(com.example.service.TrackedAppInfo(pkg.packageName, label))
                 }
             }
             list.sortBy { it.appName.lowercase() }
@@ -164,7 +164,7 @@ fun WhitelistTab(context: Context, prefs: android.content.SharedPreferences, typ
     }
     
     val filteredApps = remember(apps, showSystemApps) {
-        apps.filter { it.isSystem == showSystemApps }
+        apps
     }
     
     Column(modifier = Modifier.fillMaxSize()) {
@@ -245,13 +245,20 @@ fun WhitelistTab(context: Context, prefs: android.content.SharedPreferences, typ
             ) {
                 items(filteredApps, key = { it.packageName }) { app ->
                     val isSelected = whitelist.contains(app.packageName)
-                    val bitmapState = remember(app.icon) {
-                        try {
-                            app.icon?.toBitmap(
-                                width = if (app.icon.intrinsicWidth > 0) app.icon.intrinsicWidth else 96,
-                                height = if (app.icon.intrinsicHeight > 0) app.icon.intrinsicHeight else 96
-                            )?.asImageBitmap()
-                        } catch (e: Exception) { null }
+                    var bitmapState by remember(app.packageName) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+                    
+                    LaunchedEffect(app.packageName) {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            try {
+                                val pm = context.packageManager
+                                val icon = pm.getApplicationIcon(app.packageName)
+                                val bitmap = icon.toBitmap(
+                                    width = if (icon.intrinsicWidth > 0) icon.intrinsicWidth else 96,
+                                    height = if (icon.intrinsicHeight > 0) icon.intrinsicHeight else 96
+                                ).asImageBitmap()
+                                bitmapState = bitmap
+                            } catch (e: Exception) {}
+                        }
                     }
                     val bgColor = if (isSelected) Color.White else Color(0xFF1E1E1E)
                     val textColor = if (isSelected) Color.Black else Color.White
@@ -269,8 +276,9 @@ fun WhitelistTab(context: Context, prefs: android.content.SharedPreferences, typ
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (bitmapState != null) {
-                            Image(bitmap = bitmapState, contentDescription = app.appName, modifier = Modifier.fillMaxSize())
+                        val currentBitmap = bitmapState
+                        if (currentBitmap != null) {
+                            Image(bitmap = currentBitmap, contentDescription = app.appName, modifier = Modifier.fillMaxSize())
                         } else {
                             Text(app.appName.take(1).uppercase(), color = textColor, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                         }
@@ -350,7 +358,7 @@ fun AllAppsTab(context: Context) {
                 val appInfo = pkg.applicationInfo ?: continue
                 val label = appInfo.loadLabel(pm).toString()
                 val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                list.add(com.example.service.TrackedAppInfo(pkg.packageName, label, null, isSystem))
+                list.add(com.example.service.TrackedAppInfo(pkg.packageName, label))
             }
             allApps = list.sortedBy { it.appName.lowercase() }
         }
@@ -359,8 +367,7 @@ fun AllAppsTab(context: Context) {
     
     val filteredApps = remember(allApps, showSystemApps, searchQuery) {
         allApps.filter { app ->
-            if (!showSystemApps && app.isSystem) false
-            else if (searchQuery.isNotBlank()) {
+            if (searchQuery.isNotBlank()) {
                 app.appName.contains(searchQuery, ignoreCase = true) ||
                 app.packageName.contains(searchQuery, ignoreCase = true)
             } else true

@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import com.example.R
 
 @Composable
 fun WindowBottomControls(
@@ -37,7 +39,7 @@ fun WindowBottomControls(
                 .clickable { onClose() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(16.dp))
+            Icon(painterResource(android.R.drawable.ic_menu_close_clear_cancel), contentDescription = "Close", tint = Color.White, modifier = Modifier.size(16.dp))
         }
         
         Spacer(modifier = Modifier.width(8.dp))
@@ -50,7 +52,7 @@ fun WindowBottomControls(
                 .clickable { onMinimize() },
             contentAlignment = Alignment.Center
         ) {
-            Box(modifier = Modifier.size(12.dp, 2.dp).background(Color.White))
+            Icon(painterResource(R.drawable.ic_minimize_window), contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(16.dp))
         }
         
         Spacer(modifier = Modifier.width(8.dp))
@@ -68,7 +70,7 @@ fun WindowBottomControls(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Text("///", color = Color.White, fontSize = 10.sp)
+            Icon(painterResource(R.drawable.ic_resize_window), contentDescription = "Resize", tint = Color.White, modifier = Modifier.size(16.dp))
         }
     }
 }

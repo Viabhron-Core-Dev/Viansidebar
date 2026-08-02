@@ -253,7 +253,7 @@ class SidebarService : Service() {
     }
 
     fun removePwaWindow(id: Int) {
-        pwaWindows.remove(id)
+        pwaWindows.remove(id.toInt())
     }
 
     fun toggleDictionaryWindow() {
@@ -512,11 +512,7 @@ class SidebarService : Service() {
                 "compass" -> CompassPageView(this)
                 "notifications" -> {
                     var p: NotificationPageView? = null
-                    p = NotificationPageView(this, { closeSidebar() }) { newHeight ->
-                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
-                            sidebarView?.updatePageStyles(config, newHeight)
-                        }
-                    }
+                    p = NotificationPageView(this, { closeSidebar() }, { _ -> })
                     p
                 }
                 "widgets_grid" -> {
@@ -541,11 +537,7 @@ class SidebarService : Service() {
                 "dictionary" -> { null }
                 "app_tracker" -> {
                     var p: AppTrackerPageView? = null
-                    p = AppTrackerPageView(this, { closeSidebar() }) { newHeight ->
-                        if (sidebarView != null && p != null && sidebarPagesList.indexOf(p!!) == sidebarView!!.getCurrentPageIndex()) {
-                            sidebarView?.updatePageStyles(config, newHeight)
-                        }
-                    }
+                    p = AppTrackerPageView(this, { closeSidebar() }, { _ -> })
                     p
                 }
                 "media_player" -> {
@@ -620,13 +612,13 @@ class SidebarService : Service() {
             val defaultPage = sidebarPagesList.getOrNull(sidebarDefaultIndex)
             val defaultPageConfig = PageManager.getPages(prefs, handleId).getOrNull(sidebarDefaultIndex)
             if (defaultPage is AppsPageView) {
-                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).getCurrentHeightPx())
+                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).height)
             } else if (defaultPage is NotificationPageView) {
-                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).getCurrentHeightPx())
+                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).height)
             } else if (defaultPage is WidgetsGridPageView) {
-                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).getCurrentHeightPx())
+                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).height)
             } else if (defaultPage is HybridGridPageView) {
-                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).getCurrentHeightPx())
+                sidebarView?.updatePageStyles(defaultPageConfig, (defaultPage).height)
             } else if (defaultPage != null) {
                 val density = resources.displayMetrics.density
                 sidebarView?.updatePageStyles(defaultPageConfig, (450 * density).toInt())
@@ -696,9 +688,7 @@ class SidebarService : Service() {
             "scheduler" -> SchedulerPageView(this, serviceScope)
             "calculator" -> CalculatorPageView(this)
             "compass" -> CompassPageView(this)
-            "notifications" -> NotificationPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
-                standaloneSidebarView?.updatePageStyles(config, newHeight)
-            }
+            "notifications" -> NotificationPageView(this, { standaloneSidebarView?.close() }, { _ -> })
             "widgets_grid" -> WidgetsGridPageView(this, config.id) { newHeight ->
                 standaloneSidebarView?.updatePageStyles(config, newHeight)
             }
@@ -707,9 +697,7 @@ class SidebarService : Service() {
             }
             "pwa_loader" -> null
             "dictionary" -> null // Removed from sidebar
-            "app_tracker" -> AppTrackerPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
-                standaloneSidebarView?.updatePageStyles(config, newHeight)
-            }
+            "app_tracker" -> AppTrackerPageView(this, { standaloneSidebarView?.close() }, { _ -> })
             "media_player" -> MediaPlayerPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
                 standaloneSidebarView?.updatePageStyles(config, newHeight)
             }
@@ -737,9 +725,9 @@ class SidebarService : Service() {
             
             standaloneSidebarView?.attach()
             if (pageView is AppsPageView) {
-                standaloneSidebarView?.updatePageStyles(config, pageView.getCurrentHeightPx())
+                standaloneSidebarView?.updatePageStyles(config, pageView.height)
             } else if (pageView is WidgetsGridPageView) {
-                standaloneSidebarView?.updatePageStyles(config, pageView.getCurrentHeightPx())
+                standaloneSidebarView?.updatePageStyles(config, pageView.height)
             }
         }
     }

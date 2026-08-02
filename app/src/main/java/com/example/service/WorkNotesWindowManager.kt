@@ -1,66 +1,27 @@
 package com.example.service
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.PixelFormat
 import android.os.Build
 import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.FrameLayout
+import android.widget.EditText
 import android.widget.ImageView
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+import android.widget.LinearLayout
+import androidx.core.widget.addTextChangedListener
+import com.example.R
 import kotlin.math.roundToInt
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.setViewTreeLifecycleOwner
-import androidx.lifecycle.setViewTreeViewModelStoreOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
-import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 class WorkNotesWindowManager(private val context: Context) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
 
     private var floatingView: View? = null
-    private var foldedView: View? = null
     private var layoutParams: WindowManager.LayoutParams? = null
-    private var foldedLayoutParams: WindowManager.LayoutParams? = null
-
-    private var lastStateBitmap: Bitmap? = null
-
 
     private var isFullScreen = false
     private var preFullScreenWidth = 800
@@ -68,7 +29,9 @@ class WorkNotesWindowManager(private val context: Context) {
     private var preFullScreenX = 100
     private var preFullScreenY = 100
 
-    private fun toggleFullScreen() {
+    private var isFolded = false
+
+    private fun toggleFullScreen(windowContainer: View, topDragBar: View) {
         if (!isFullScreen) {
             preFullScreenWidth = layoutParams?.width ?: 800
             preFullScreenHeight = layoutParams?.height ?: 1000
@@ -81,17 +44,21 @@ class WorkNotesWindowManager(private val context: Context) {
             layoutParams?.x = 0
             layoutParams?.y = 0
             isFullScreen = true
+            windowContainer.background = null // Remove rounded corners in fullscreen
         } else {
             layoutParams?.width = preFullScreenWidth
             layoutParams?.height = preFullScreenHeight
             layoutParams?.x = preFullScreenX
             layoutParams?.y = preFullScreenY
             isFullScreen = false
+            windowContainer.setBackgroundResource(R.drawable.bg_floating_window)
         }
         windowManager.updateViewLayout(floatingView, layoutParams)
     }
+
+    @SuppressLint("ClickableViewAccessibility")
     fun show() {
-        if (floatingView != null || foldedView != null) return
+        if (floatingView != null) return
 
         val width = prefs.getInt("work_notes_width", 800)
         val height = prefs.getInt("work_notes_height", 1000)
@@ -110,257 +77,199 @@ class WorkNotesWindowManager(private val context: Context) {
             this.y = y
         }
 
-        floatingView = FrameLayout(context).apply {
-            addView(ComposeView(context).apply {
-                setContent {
-                    MaterialTheme(colorScheme = darkColorScheme()) {
-                        WorkNotesContent(
-                            onClose = { close() },
-                            onMinimize = { fold() },
-                            onDrag = { dx, dy ->
-                                this@WorkNotesWindowManager.layoutParams?.x = (this@WorkNotesWindowManager.layoutParams?.x ?: 0) + dx.roundToInt()
-                                this@WorkNotesWindowManager.layoutParams?.y = (this@WorkNotesWindowManager.layoutParams?.y ?: 0) + dy.roundToInt()
-                                windowManager.updateViewLayout(floatingView, this@WorkNotesWindowManager.layoutParams)
-                                prefs.edit().putInt("work_notes_x", this@WorkNotesWindowManager.layoutParams?.x ?: 0)
-                                    .putInt("work_notes_y", this@WorkNotesWindowManager.layoutParams?.y ?: 0).apply()
-                            },
-                            onResize = { dx, dy ->
-                                this@WorkNotesWindowManager.layoutParams?.width = ((this@WorkNotesWindowManager.layoutParams?.width ?: 0) + dx.roundToInt()).coerceAtLeast(300)
-                                this@WorkNotesWindowManager.layoutParams?.height = ((this@WorkNotesWindowManager.layoutParams?.height ?: 0) + dy.roundToInt()).coerceAtLeast(400)
-                                windowManager.updateViewLayout(floatingView, this@WorkNotesWindowManager.layoutParams)
-                                prefs.edit().putInt("work_notes_width", this@WorkNotesWindowManager.layoutParams?.width ?: 0)
-                                    .putInt("work_notes_height", this@WorkNotesWindowManager.layoutParams?.height ?: 0).apply()
-                            }
-                        )
-                    }
-                }
-            })
+        floatingView = LayoutInflater.from(context).inflate(R.layout.layout_work_notes, null)
+        
+        val bubbleIcon = floatingView!!.findViewById<ImageView>(R.id.bubble_icon)
+        val windowContainer = floatingView!!.findViewById<LinearLayout>(R.id.window_container)
+        val topDragBar = floatingView!!.findViewById<LinearLayout>(R.id.top_drag_bar)
+        
+        val btnClose = floatingView!!.findViewById<ImageView>(R.id.btn_exit_bottom)
+        val btnMinimize = floatingView!!.findViewById<ImageView>(R.id.btn_minimize_bottom)
+        val btnResize = floatingView!!.findViewById<ImageView>(R.id.resize_handle)
+        
+        val etNotes = floatingView!!.findViewById<EditText>(R.id.et_notes)
+
+        // Load saved notes
+        etNotes.setText(prefs.getString("work_notes_text", ""))
+        etNotes.addTextChangedListener { text ->
+            prefs.edit().putString("work_notes_text", text.toString()).apply()
         }
 
-        setupLifecycle(floatingView!!)
+        // --- Dragging Window ---
+        var initialX = 0
+        var initialY = 0
+        var initialTouchX = 0f
+        var initialTouchY = 0f
+        var lastTouchTime = 0L
+
+        topDragBar.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = layoutParams!!.x
+                    initialY = layoutParams!!.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    
+                    val clickTime = System.currentTimeMillis()
+                    if (clickTime - lastTouchTime < 300) {
+                        toggleFullScreen(windowContainer, topDragBar)
+                    }
+                    lastTouchTime = clickTime
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!isFullScreen) {
+                        layoutParams!!.x = initialX + (event.rawX - initialTouchX).roundToInt()
+                        layoutParams!!.y = initialY + (event.rawY - initialTouchY).roundToInt()
+                        windowManager.updateViewLayout(floatingView, layoutParams)
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (!isFullScreen) {
+                        prefs.edit()
+                            .putInt("work_notes_x", layoutParams!!.x)
+                            .putInt("work_notes_y", layoutParams!!.y)
+                            .apply()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
+        // --- Resizing ---
+        btnResize.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = layoutParams!!.width
+                    initialY = layoutParams!!.height
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!isFullScreen) {
+                        layoutParams!!.width = Math.max(300, initialX + (event.rawX - initialTouchX).roundToInt())
+                        layoutParams!!.height = Math.max(300, initialY + (event.rawY - initialTouchY).roundToInt())
+                        windowManager.updateViewLayout(floatingView, layoutParams)
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (!isFullScreen) {
+                        prefs.edit()
+                            .putInt("work_notes_width", layoutParams!!.width)
+                            .putInt("work_notes_height", layoutParams!!.height)
+                            .apply()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+        
+        // --- Dragging Bubble ---
+        bubbleIcon.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = layoutParams!!.x
+                    initialY = layoutParams!!.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    
+                    val clickTime = System.currentTimeMillis()
+                    if (clickTime - lastTouchTime < 300) {
+                        // Double tap bubble -> unfold
+                        unfold()
+                    }
+                    lastTouchTime = clickTime
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    layoutParams!!.x = initialX + (event.rawX - initialTouchX).roundToInt()
+                    layoutParams!!.y = initialY + (event.rawY - initialTouchY).roundToInt()
+                    windowManager.updateViewLayout(floatingView, layoutParams)
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val dx = Math.abs(event.rawX - initialTouchX)
+                    val dy = Math.abs(event.rawY - initialTouchY)
+                    if (dx < 10 && dy < 10) {
+                        // single tap bubble -> unfold
+                        unfold()
+                    } else {
+                        // save position
+                        prefs.edit()
+                            .putInt("work_notes_x", layoutParams!!.x)
+                            .putInt("work_notes_y", layoutParams!!.y)
+                            .apply()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
+        btnClose.setOnClickListener { close() }
+        btnMinimize.setOnClickListener { fold() }
+
         windowManager.addView(floatingView, layoutParams)
-    }
-
-    private fun captureScreenshot(): Bitmap? {
-        val view = floatingView ?: return null
-        return try {
-            val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            view.draw(canvas)
-            bitmap
-        } catch (e: Exception) {
-            null
+        
+        // Ensure starting state is correct
+        if (isFolded) {
+            fold()
+        } else {
+            unfold()
         }
     }
 
-    private fun fold() {
+    fun fold() {
+        isFolded = true
         if (floatingView != null) {
-            lastStateBitmap = captureScreenshot()
-            windowManager.removeView(floatingView)
-            floatingView = null
-        }
-
-        if (foldedView == null) {
-            val fx = prefs.getInt("work_notes_folded_x", 100)
-            val fy = prefs.getInt("work_notes_folded_y", 100)
-
-            foldedLayoutParams = WindowManager.LayoutParams(
-                180,
-                180,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
-                PixelFormat.TRANSLUCENT
-            ).apply {
-                gravity = Gravity.TOP or Gravity.START
-                x = fx
-                y = fy
-            }
-
-            foldedView = ImageView(context).apply {
-                background = BubbleDrawable(lastStateBitmap)
-                setOnTouchListener { v, event ->
-                    var handled = false
-                    val detector = androidx.core.view.GestureDetectorCompat(context, object : android.view.GestureDetector.SimpleOnGestureListener() {
-                        override fun onSingleTapConfirmed(e: android.view.MotionEvent): Boolean {
-                            unfold()
-                            return true
-                        }
-                    })
-                    detector.onTouchEvent(event)
-                    // We need pointer input for dragging
-                    false
-                }
-            }
+            val bubbleIcon = floatingView!!.findViewById<ImageView>(R.id.bubble_icon)
+            val windowContainer = floatingView!!.findViewById<LinearLayout>(R.id.window_container)
             
-            // Re-implement the pointer input / dragging for ImageView since Compose pointerInput doesn't easily attach to ImageView in the same way without wrapping. 
-            // Better yet, use ComposeView for the folded view to reuse gesture logic.
-            val foldedComposeView = ComposeView(context).apply {
-                setContent {
-                    MaterialTheme(colorScheme = darkColorScheme()) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF2A2A3C).copy(alpha = 0.9f))
-                                .pointerInput(Unit) {
-                                    detectTapGestures(onTap = { unfold() })
-                                }
-                                .pointerInput(Unit) {
-                                    detectDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        foldedLayoutParams?.x = (foldedLayoutParams?.x ?: 0) + dragAmount.x.roundToInt()
-                                        foldedLayoutParams?.y = (foldedLayoutParams?.y ?: 0) + dragAmount.y.roundToInt()
-                                        windowManager.updateViewLayout(this@apply, foldedLayoutParams)
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("W", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp)
-                        }
-                    }
-                }
-            }
-            setupLifecycle(foldedComposeView)
-            foldedView = foldedComposeView
-            windowManager.addView(foldedView, foldedLayoutParams)
+            windowContainer.visibility = View.GONE
+            bubbleIcon.visibility = View.VISIBLE
+            
+            // Adjust dimensions for bubble
+            layoutParams?.width = WindowManager.LayoutParams.WRAP_CONTENT
+            layoutParams?.height = WindowManager.LayoutParams.WRAP_CONTENT
+            layoutParams?.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+            windowManager.updateViewLayout(floatingView, layoutParams)
         }
     }
 
     private fun unfold() {
-        if (foldedView != null) {
-            windowManager.removeView(foldedView)
-            foldedView = null
+        isFolded = false
+        if (floatingView != null) {
+            val bubbleIcon = floatingView!!.findViewById<ImageView>(R.id.bubble_icon)
+            val windowContainer = floatingView!!.findViewById<LinearLayout>(R.id.window_container)
+            
+            bubbleIcon.visibility = View.GONE
+            windowContainer.visibility = View.VISIBLE
+            
+            // Restore dimensions
+            if (isFullScreen) {
+                val metrics = context.resources.displayMetrics
+                layoutParams?.width = metrics.widthPixels
+                layoutParams?.height = metrics.heightPixels
+                layoutParams?.x = 0
+                layoutParams?.y = 0
+            } else {
+                layoutParams?.width = prefs.getInt("work_notes_width", 800)
+                layoutParams?.height = prefs.getInt("work_notes_height", 1000)
+            }
+            layoutParams?.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+            windowManager.updateViewLayout(floatingView, layoutParams)
         }
-        show()
     }
 
     fun close() {
         if (floatingView != null) {
             windowManager.removeView(floatingView)
             floatingView = null
-        }
-        if (foldedView != null) {
-            windowManager.removeView(foldedView)
-            foldedView = null
-        }
-    }
-    
-    @Composable
-    private fun WorkNotesContent(
-        onClose: () -> Unit,
-        onMinimize: () -> Unit,
-        onDrag: (dx: Float, dy: Float) -> Unit,
-        onResize: (dx: Float, dy: Float) -> Unit
-    ) {
-        var showSettings by remember { mutableStateOf(false) }
-        var notesText by remember { mutableStateOf(prefs.getString("work_notes_text", "") ?: "") }
-        
-        LaunchedEffect(notesText) {
-            prefs.edit().putString("work_notes_text", notesText).apply()
-        }
-
-        Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1E1E2E))) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Top Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF2A2A3C))
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onDoubleTap = { toggleFullScreen() }
-                        )
-                    }
-                    .pointerInput(Unit) {
-                        detectDragGesturesAfterLongPress { change, dragAmount ->
-                            change.consume()
-                            onDrag(dragAmount.x, dragAmount.y)
-                        }
-                    }
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Work Notes", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
-                Row {
-                    IconButton(onClick = { showSettings = !showSettings }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White, modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onMinimize, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = Color.White, modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
-
-            // Content
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                if (showSettings) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Settings", color = Color.White, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("No specific settings available yet.", color = Color.Gray)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { showSettings = false }) {
-                            Text("Back")
-                        }
-                    }
-                } else {
-                    OutlinedTextField(
-                        value = notesText,
-                        onValueChange = { notesText = it },
-                        modifier = Modifier.fillMaxSize().padding(8.dp),
-                        placeholder = { Text("Write your notes here...", color = Color.Gray) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-                }
-            }
-            
-        } // end column
-        com.example.ui.WindowBottomControls(
-            onClose = onClose,
-            onMinimize = onMinimize,
-            onResize = onResize,
-            modifier = Modifier.align(Alignment.BottomEnd)
-        )
-    } // end outer box
-    }
-
-    private fun setupLifecycle(view: View) {
-        val lifecycleOwner = CustomLifecycleOwner()
-        lifecycleOwner.performRestore(null)
-        lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        view.setViewTreeLifecycleOwner(lifecycleOwner)
-        view.setViewTreeSavedStateRegistryOwner(lifecycleOwner)
-        view.setViewTreeViewModelStoreOwner(lifecycleOwner)
-        lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-    }
-
-    class CustomLifecycleOwner : SavedStateRegistryOwner, ViewModelStoreOwner {
-        private val lifecycleRegistry = LifecycleRegistry(this)
-        private val savedStateRegistryController = SavedStateRegistryController.create(this)
-        private val store = ViewModelStore()
-
-        override val lifecycle: Lifecycle get() = lifecycleRegistry
-        override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
-        override val viewModelStore: ViewModelStore get() = store
-
-        fun handleLifecycleEvent(event: Lifecycle.Event) {
-            lifecycleRegistry.handleLifecycleEvent(event)
-        }
-
-        fun performRestore(savedState: android.os.Bundle?) {
-            savedStateRegistryController.performRestore(savedState)
         }
     }
 }
