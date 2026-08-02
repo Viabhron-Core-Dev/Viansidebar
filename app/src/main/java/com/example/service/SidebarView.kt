@@ -40,6 +40,7 @@ class SidebarView(
     private val dotsLayout: LinearLayout
     private val pages = mutableListOf<View>()
     private val dots = mutableListOf<View>()
+    private lateinit var editButton: ImageView
 
     init {
         com.example.LogKeeper.writeLog("Sidebar", "Opened sidebar")
@@ -150,7 +151,7 @@ class SidebarView(
             }
             addView(settingsIcon)
 
-            val addIcon = ImageView(context).apply {
+            editButton = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_edit)
                 setColorFilter(Color.WHITE)
                 val pad = (8 * resources.displayMetrics.density).toInt()
@@ -168,7 +169,7 @@ class SidebarView(
                     }
                 }
             }
-            addView(addIcon)
+            addView(editButton)
         }
 
         container = FrameLayout(context).apply {
@@ -232,6 +233,11 @@ class SidebarView(
                 val page = pages.getOrNull(actualPos)
                 val pageConfig = pageConfigs.getOrNull(actualPos)
                 com.example.utils.AppWidgetHelper.startListening(context)
+
+                if (::editButton.isInitialized) {
+                    val isEditable = page is AppsPageView || page is WidgetsGridPageView || page is HybridGridPageView || page is AppTrackerPageView
+                    editButton.visibility = if (isEditable) View.VISIBLE else View.INVISIBLE
+                }
 
 
                 

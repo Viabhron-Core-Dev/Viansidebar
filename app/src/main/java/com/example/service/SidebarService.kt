@@ -45,6 +45,7 @@ class SidebarService : Service() {
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
         if (key != null && key.startsWith("handle_") && key != "handles_list") {
             triggerHandleViews.forEach { it.updatePosition() }
+            readerHandleView?.updatePosition()
         }
         when (key) {
             "handles_list" -> {

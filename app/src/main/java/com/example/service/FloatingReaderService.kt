@@ -70,7 +70,7 @@ class FloatingReaderService : Service() {
     private lateinit var prefs: SharedPreferences
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
         if (key != null && key.startsWith("handle_") && key != "handles_list") {
-            
+            // The sidebar service manages readerHandleView updates now
         }
         when (key) {
             "handles_list" -> {

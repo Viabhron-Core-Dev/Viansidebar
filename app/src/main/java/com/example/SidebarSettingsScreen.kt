@@ -225,22 +225,7 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
                     },
                     trailingContent = { Text("${(sidebarTransparency * 100).toInt()}%") }
                 )
-                Divider()
-                ListItem(
-                    headlineContent = { Text("Columns (Apps Grid)") },
-                    supportingContent = {
-                        Slider(
-                            value = sidebarColumns.toFloat(),
-                            onValueChange = { 
-                                sidebarColumns = it.toInt()
-                                prefs.edit().putInt("handle_${handleId}_sidebar_columns", it.toInt()).apply()
-                            },
-                            valueRange = 2f..6f,
-                            steps = 3
-                        )
-                    },
-                    trailingContent = { Text(sidebarColumns.toString()) }
-                )
+                
                 Divider()
                 Text(
                     text = "Pages Management",

@@ -164,7 +164,7 @@ fun HandleEditScreen(handleId: String, onBack: () -> Unit) {
             
             Spacer(modifier = Modifier.height(8.dp))
             Text("Shape:")
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("triangle", "rectangle", "half_oval", "rounded_rect", "slanted_block").forEach { s ->
                     FilterChip(
                         selected = shape == s,
