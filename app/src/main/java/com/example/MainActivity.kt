@@ -77,6 +77,8 @@ class MainActivity : ComponentActivity() {
                 putExtra("OPEN_FROM_LAUNCHER", true)
             }
             androidx.core.content.ContextCompat.startForegroundService(this, svcIntent)
+            val settingsIntent = Intent(this@MainActivity, SettingsActivity::class.java)
+            startActivity(settingsIntent)
             finish()
             return
         }
@@ -90,6 +92,10 @@ class MainActivity : ComponentActivity() {
                     WelcomeScreen(
                         onContinue = {
                             prefs.edit().putBoolean("first_launch", false).apply()
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this@MainActivity)) {
+                                val svcIntent = Intent(this@MainActivity, com.example.service.SidebarService::class.java)
+                                androidx.core.content.ContextCompat.startForegroundService(this@MainActivity, svcIntent)
+                            }
                             val settingsIntent = Intent(this@MainActivity, SettingsActivity::class.java)
                             startActivity(settingsIntent)
                             finish()

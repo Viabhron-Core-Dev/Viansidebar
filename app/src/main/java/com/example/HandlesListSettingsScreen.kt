@@ -50,6 +50,7 @@ fun HandlesListSettingsScreen(
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 val newId = UUID.randomUUID().toString()
+                prefs.edit().putString("handle_${newId}_tap", "toggle_sidebar").apply()
                 handles = handles + HandleConfig(id = newId, name = "Handle ${handles.size + 1}", enabled = true)
                 save()
             }) {

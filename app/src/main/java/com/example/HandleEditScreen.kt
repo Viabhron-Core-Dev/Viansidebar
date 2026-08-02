@@ -29,7 +29,7 @@ fun HandleEditScreen(handleId: String, onBack: () -> Unit) {
     
     val prefix = "handle_${handleId}_"
     
-    var yPos by remember { mutableFloatStateOf(prefs.getInt("${prefix}y", 500).toFloat()) }
+    var yPos by remember { mutableFloatStateOf(prefs.getInt("${prefix}y", 50).toFloat()) }
     var sizeWidth by remember { mutableFloatStateOf(prefs.getInt("${prefix}width", if (handleId == "reader") 16 else 6).toFloat()) }
     var sizeHeight by remember { mutableFloatStateOf(prefs.getInt("${prefix}height", if (handleId == "reader") 60 else 120).toFloat()) }
     var colorHex by remember { mutableStateOf(prefs.getString("${prefix}color", if (handleId == "reader") "#44102d42" else "#3318304A") ?: "#3318304A") }
