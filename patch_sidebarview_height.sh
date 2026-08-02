@@ -1,1 +1,0 @@
-sed -i 's/else if (page is WidgetPageView) {/else if (page is WidgetPageView) {\n                    updatePageStyles(pageConfig, page.getCurrentHeightPx())\n                } else if (page is WidgetsGridPageView) {/g' app/src/main/java/com/example/service/SidebarView.kt

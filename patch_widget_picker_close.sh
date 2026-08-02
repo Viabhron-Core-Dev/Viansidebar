@@ -1,2 +1,0 @@
-sed -i '/override fun onCreate/i\
-    override fun onDestroy() {\n        super.onDestroy()\n        val actionType = intent.getStringExtra("ACTION_TYPE") ?: ""\n        if (actionType == "ADD_TO_WIDGETS_GRID") {\n            val pageId = intent.getStringExtra("PAGE_ID") ?: ""\n            val broadcastIntent = Intent("WIDGET_PICKER_CLOSED")\n            broadcastIntent.putExtra("PAGE_ID", pageId)\n            sendBroadcast(broadcastIntent)\n        }\n    }\n' app/src/main/java/com/example/WidgetPickerActivity.kt

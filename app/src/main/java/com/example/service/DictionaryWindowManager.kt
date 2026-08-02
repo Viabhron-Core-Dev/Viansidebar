@@ -19,6 +19,9 @@ import android.widget.TextView
 import androidx.core.widget.addTextChangedListener
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.core.text.HtmlCompat
+import android.content.Intent
+import com.example.SettingsActivity
 import com.example.R
 import com.example.data.AppDatabase
 import com.example.service.DictionaryEntry
@@ -48,6 +51,7 @@ class DictionaryWindowManager(private val context: Context) {
     private var isFolded = false
 
     private var tts: TextToSpeech? = null
+    private var selectedEntry: DictionaryEntry? = null
     
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -88,12 +92,14 @@ class DictionaryWindowManager(private val context: Context) {
 
     @SuppressLint("ClickableViewAccessibility")
     fun show(startFullscreen: Boolean = false) {
+        val defaultW = (context.resources.displayMetrics.widthPixels * 0.85).toInt()
+        val defaultH = (context.resources.displayMetrics.heightPixels * 0.6).toInt()
         if (floatingView != null) return
 
         initTTS()
 
-        val width = prefs.getInt("dict_width", 800)
-        val height = prefs.getInt("dict_height", 1000)
+        val width = prefs.getInt("dict_width", defaultW)
+        val height = prefs.getInt("dict_height", defaultH)
         val x = prefs.getInt("dict_x", 100)
         val y = prefs.getInt("dict_y", 100)
 
@@ -130,9 +136,13 @@ class DictionaryWindowManager(private val context: Context) {
         val tvWord = floatingView!!.findViewById<TextView>(R.id.tv_word)
         val tvDefinition = floatingView!!.findViewById<TextView>(R.id.tv_definition)
         val btnSpeakWord = floatingView!!.findViewById<ImageView>(R.id.btn_speak_word)
-        val btnSpeakDef = floatingView!!.findViewById<View>(R.id.btn_speak_def)
+        val btnSettings = floatingView!!.findViewById<ImageView>(R.id.btn_settings)
+        
+        val fontScale = prefs.getFloat("dict_font_size_scale", 1.0f)
+        tvDefinition.textSize = 16f * fontScale
+        tvWord.textSize = 20f * fontScale
 
-        var selectedEntry: DictionaryEntry? = null
+        
         var history = prefs.getString("dict_history", "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
         var searchResults = emptyList<DictionaryEntry>()
 
@@ -153,7 +163,7 @@ class DictionaryWindowManager(private val context: Context) {
             searchLayout.visibility = View.GONE
             detailLayout.visibility = View.VISIBLE
             tvWord.text = entry.word
-            tvDefinition.text = entry.definition
+            tvDefinition.text = HtmlCompat.fromHtml(entry.definition, HtmlCompat.FROM_HTML_MODE_COMPACT)
         }
         rvResults.adapter = adapter
         adapter.submitList(history.map { it to null })
@@ -184,10 +194,14 @@ class DictionaryWindowManager(private val context: Context) {
         btnSpeakWord.setOnClickListener {
             selectedEntry?.let { tts?.speak(it.word, TextToSpeech.QUEUE_FLUSH, null, null) }
         }
-
-        btnSpeakDef.setOnClickListener {
-            selectedEntry?.let { tts?.speak(it.definition, TextToSpeech.QUEUE_FLUSH, null, null) }
+        btnSettings.setOnClickListener {
+            val intent = android.content.Intent(context, com.example.SettingsActivity::class.java)
+            intent.putExtra("START_ROUTE", "dict")
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
         }
+
+        
 
         // --- Dragging Window ---
         var initialX = 0
@@ -331,6 +345,8 @@ class DictionaryWindowManager(private val context: Context) {
     }
 
     private fun unfold() {
+        val defaultW = (context.resources.displayMetrics.widthPixels * 0.85).toInt()
+        val defaultH = (context.resources.displayMetrics.heightPixels * 0.6).toInt()
         isFolded = false
         if (floatingView != null) {
             val bubbleIcon = floatingView!!.findViewById<ImageView>(R.id.bubble_icon)
@@ -346,8 +362,8 @@ class DictionaryWindowManager(private val context: Context) {
                 layoutParams?.x = 0
                 layoutParams?.y = 0
             } else {
-                layoutParams?.width = prefs.getInt("dict_width", 800)
-                layoutParams?.height = prefs.getInt("dict_height", 1000)
+                layoutParams?.width = prefs.getInt("dict_width", defaultW)
+                layoutParams?.height = prefs.getInt("dict_height", defaultH)
             }
             layoutParams?.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
             windowManager.updateViewLayout(floatingView, layoutParams)
@@ -395,5 +411,37 @@ class DictionaryWindowManager(private val context: Context) {
         }
 
         override fun getItemCount() = items.size
+    }
+    fun searchWord(query: String) {
+        if (floatingView == null) {
+            show(false)
+        }
+        val etSearch = floatingView?.findViewById<android.widget.EditText>(R.id.et_search)
+        if (isFolded) {
+            val bubbleIcon = floatingView?.findViewById<android.widget.ImageView>(R.id.bubble_icon)
+            bubbleIcon?.performClick()
+        }
+        etSearch?.setText(query)
+        
+        scope.launch {
+            val activeDict = prefs.getString("active_dict", "English") ?: "English"
+            val results = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                db.dictionaryDao().searchWords("$query%", activeDict)
+            }
+            if (results.isNotEmpty()) {
+                val entry = results.first()
+                selectedEntry = entry
+                floatingView?.findViewById<android.widget.LinearLayout>(R.id.search_layout)?.visibility = android.view.View.GONE
+                floatingView?.findViewById<android.widget.LinearLayout>(R.id.detail_layout)?.visibility = android.view.View.VISIBLE
+                
+                val fontScale = prefs.getFloat("dict_font_size_scale", 1.0f)
+                val tvWord = floatingView?.findViewById<android.widget.TextView>(R.id.tv_word)
+                val tvDefinition = floatingView?.findViewById<android.widget.TextView>(R.id.tv_definition)
+                tvWord?.textSize = 20f * fontScale
+                tvDefinition?.textSize = 16f * fontScale
+                tvWord?.text = entry.word
+                tvDefinition?.text = androidx.core.text.HtmlCompat.fromHtml(entry.definition, androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT)
+            }
+        }
     }
 }

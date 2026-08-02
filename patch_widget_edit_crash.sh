@@ -1,2 +1,0 @@
-sed -i 's/layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)/layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 8) }/g' app/src/main/java/com/example/service/WidgetsGridEditOverlayView.kt
-sed -i '/(layoutParams as ViewGroup.MarginLayoutParams).bottomMargin = 8/d' app/src/main/java/com/example/service/WidgetsGridEditOverlayView.kt

@@ -151,15 +151,7 @@
                                 android:textSize="16sp" />
                         </ScrollView>
 
-                        <com.google.android.material.floatingactionbutton.FloatingActionButton
-                            android:id="@+id/btn_speak_def"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="bottom|end"
-                            android:layout_margin="16dp"
-                            android:src="@android:drawable/ic_lock_silent_mode_off"
-                            android:tint="#FFFFFF"
-                            android:contentDescription="Speak Definition" />
+
                     </FrameLayout>
                 </LinearLayout>
             </LinearLayout>

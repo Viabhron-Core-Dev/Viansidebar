@@ -18,11 +18,13 @@ import java.util.Locale
 
 class VianSideAccessibilityService : AccessibilityService() {
     private var autoScrollManager: AutoScrollManager? = null
+    private var longScreenshotManager: LongScreenshotManager? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
         autoScrollManager = AutoScrollManager(this)
+        longScreenshotManager = LongScreenshotManager(this)
         com.example.LogKeeper.writeLog("VianSideAccessibility", "Service connected")
         android.util.Log.d("VianSideAccessibility", "Service connected")
     }

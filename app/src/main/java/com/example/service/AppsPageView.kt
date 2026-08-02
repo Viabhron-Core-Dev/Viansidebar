@@ -442,6 +442,16 @@ class AppsPageView(
                         val intent = android.content.Intent(context, com.example.LogKeeperActivity::class.java)
                         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                         context.startActivity(intent)
+                    } else if (item.action == "dictionary_floating") {
+                        val intent = android.content.Intent(context, SidebarService::class.java)
+                        intent.action = "EXECUTE_ACTION"
+                        intent.putExtra("ACTION_ID", "system:dictionary_floating")
+                        context.startService(intent)
+                    } else if (item.action == "dictionary_full") {
+                        val intent = android.content.Intent(context, SidebarService::class.java)
+                        intent.action = "EXECUTE_ACTION"
+                        intent.putExtra("ACTION_ID", "system:dictionary_full")
+                        context.startService(intent)
                     } else if (item.action == "ebook_reader") {
                         val intent = android.content.Intent(context, FloatingReaderService::class.java)
                         intent.putExtra("UNFOLD", true)

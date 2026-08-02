@@ -58,10 +58,12 @@ class WorkNotesWindowManager(private val context: Context) {
 
     @SuppressLint("ClickableViewAccessibility")
     fun show() {
+        val defaultW = (context.resources.displayMetrics.widthPixels * 0.85).toInt()
+        val defaultH = (context.resources.displayMetrics.heightPixels * 0.6).toInt()
         if (floatingView != null) return
 
-        val width = prefs.getInt("work_notes_width", 800)
-        val height = prefs.getInt("work_notes_height", 1000)
+        val width = prefs.getInt("work_notes_width", defaultW)
+        val height = prefs.getInt("work_notes_height", defaultH)
         val x = prefs.getInt("work_notes_x", 100)
         val y = prefs.getInt("work_notes_y", 100)
 
@@ -242,6 +244,8 @@ class WorkNotesWindowManager(private val context: Context) {
     }
 
     private fun unfold() {
+        val defaultW = (context.resources.displayMetrics.widthPixels * 0.85).toInt()
+        val defaultH = (context.resources.displayMetrics.heightPixels * 0.6).toInt()
         isFolded = false
         if (floatingView != null) {
             val bubbleIcon = floatingView!!.findViewById<ImageView>(R.id.bubble_icon)
@@ -258,8 +262,8 @@ class WorkNotesWindowManager(private val context: Context) {
                 layoutParams?.x = 0
                 layoutParams?.y = 0
             } else {
-                layoutParams?.width = prefs.getInt("work_notes_width", 800)
-                layoutParams?.height = prefs.getInt("work_notes_height", 1000)
+                layoutParams?.width = prefs.getInt("work_notes_width", defaultW)
+                layoutParams?.height = prefs.getInt("work_notes_height", defaultH)
             }
             layoutParams?.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
             windowManager.updateViewLayout(floatingView, layoutParams)

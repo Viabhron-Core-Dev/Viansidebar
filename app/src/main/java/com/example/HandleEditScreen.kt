@@ -73,7 +73,7 @@ fun HandleEditScreen(handleId: String, onBack: () -> Unit) {
             Slider(value = yPos, onValueChange = { 
                 yPos = it
                 prefs.edit().putInt("${prefix}y", it.toInt()).apply() 
-            }, valueRange = 0f..2500f)
+            }, valueRange = 0f..100f)
             
             Text("Width (Thickness): ${sizeWidth.toInt()}dp")
             Slider(value = sizeWidth, onValueChange = { 

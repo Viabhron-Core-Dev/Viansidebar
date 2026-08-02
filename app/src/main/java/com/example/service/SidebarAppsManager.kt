@@ -163,6 +163,7 @@ val ALL_SYSTEM_ACTIONS = listOf(
 
 val ALL_SCREEN_CAPTURE_ACTIONS = listOf(
     SidebarItem.SystemAction("screenshot", "Screenshot", android.R.drawable.ic_menu_camera),
+    SidebarItem.SystemAction("long_screenshot", "Long Screenshot", android.R.drawable.ic_menu_crop),
     SidebarItem.SystemAction("screen_record", "Screen Record", android.R.drawable.ic_media_play),
     SidebarItem.SystemAction("qr_scan", "Screen Crop / QR", android.R.drawable.ic_menu_search)
 )
@@ -225,7 +226,6 @@ val ALL_UTILITIES_ACTIONS = listOf(
     SidebarItem.SystemAction("auto_scroll", "Auto Scroll", android.R.drawable.ic_menu_sort_by_size),
     SidebarItem.DisplayAction("blue_light_filter", "Blue Light Filter", android.R.drawable.ic_menu_view),
     SidebarItem.SystemAction("log_keeper", "Log Keeper", android.R.drawable.ic_menu_agenda),
-    SidebarItem.SystemAction("dictionary_full", "Dictionary (Full Screen)", android.R.drawable.ic_menu_sort_alphabetically)
 )
 
 val ALL_FLOATING_WINDOWS = listOf(

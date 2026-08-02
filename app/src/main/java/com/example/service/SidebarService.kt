@@ -813,9 +813,10 @@ class SidebarService : Service() {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
             } else if (action == "dictionary_floating") {
+                if (dictWindowManager == null) {
+                    dictWindowManager = DictionaryWindowManager(this@SidebarService)
+                }
                 dictWindowManager?.show(false)
-            } else if (action == "dictionary_full") {
-                dictWindowManager?.show(true)
             } else if (action == "ebook_reader") {
                 val intent = Intent(this, FloatingReaderService::class.java)
                 intent.putExtra("UNFOLD", true)
@@ -876,6 +877,25 @@ class SidebarService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "OPEN_DICTIONARY") {
+            val query = intent.getStringExtra("QUERY")
+            if (dictWindowManager == null) {
+                dictWindowManager = DictionaryWindowManager(this)
+            }
+            if (query != null) {
+                dictWindowManager?.searchWord(query)
+            } else {
+                dictWindowManager?.show(false)
+            }
+            return START_NOT_STICKY
+        }
+        if (intent?.action == "EXECUTE_ACTION") {
+            val actionId = intent.getStringExtra("ACTION_ID")
+            if (actionId != null) {
+                executeElementAction(actionId)
+            }
+            return START_NOT_STICKY
+        }
         if (intent?.action == "UPDATE_CONFIG") {
             appsManagers.values.forEach { it.reloadActiveApps() }
             return START_NOT_STICKY

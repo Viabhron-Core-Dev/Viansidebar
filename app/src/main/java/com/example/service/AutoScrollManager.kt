@@ -26,6 +26,15 @@ class AutoScrollManager(private val service: AccessibilityService) {
     private var isScrolling = true
     private var speed = 3 // 1 to 10
     var isRunning = false
+    private var btnPausePlay: ImageButton? = null
+
+    private fun updatePlayIcon() {
+        if (isScrolling) {
+            btnPausePlay?.setImageResource(android.R.drawable.ic_media_pause)
+        } else {
+            btnPausePlay?.setImageResource(android.R.drawable.ic_media_play)
+        }
+    }
     
     private val screenHeight: Int
     private val screenWidth: Int
@@ -43,8 +52,8 @@ class AutoScrollManager(private val service: AccessibilityService) {
 
             // Perform scroll by creating a gesture
             val swipePath = Path()
-            val startY = screenHeight * 0.7f
-            val endY = screenHeight * 0.3f
+            val startY = screenHeight * 0.5f
+            val endY = screenHeight * 0.15f
             val x = screenWidth / 2f
             swipePath.moveTo(x, startY)
             swipePath.lineTo(x, endY)
@@ -67,7 +76,9 @@ class AutoScrollManager(private val service: AccessibilityService) {
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     super.onCancelled(gestureDescription)
                     if (isRunning && isScrolling) {
-                        handler.post(scrollRunnable)
+                        // Pause if gesture cancelled (e.g. by user touch)
+                        isScrolling = false
+                        handler.post { updatePlayIcon() }
                     }
                 }
             }, null)
@@ -126,7 +137,7 @@ class AutoScrollManager(private val service: AccessibilityService) {
         layoutParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         layoutParams.y = 150
 
-        val btnPausePlay = floatingView?.findViewById<ImageButton>(R.id.btn_pause_play)
+        btnPausePlay = floatingView?.findViewById<ImageButton>(R.id.btn_pause_play)
         val btnSlower = floatingView?.findViewById<ImageButton>(R.id.btn_slower)
         val btnFaster = floatingView?.findViewById<ImageButton>(R.id.btn_faster)
         val btnExit = floatingView?.findViewById<ImageButton>(R.id.btn_exit)
@@ -145,13 +156,7 @@ class AutoScrollManager(private val service: AccessibilityService) {
         }
         handler.post(checkScrollRunnable)
 
-        fun updatePlayIcon() {
-            if (isScrolling) {
-                btnPausePlay?.setImageResource(android.R.drawable.ic_media_pause)
-            } else {
-                btnPausePlay?.setImageResource(android.R.drawable.ic_media_play)
-            }
-        }
+
 
         btnPausePlay?.setOnClickListener {
             isScrolling = !isScrolling

@@ -3,6 +3,8 @@ package com.example.service
 import android.content.Intent
 import android.os.Bundle
 import android.content.Context
+import android.speech.tts.TextToSpeech
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -11,6 +13,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,15 +23,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.text.HtmlCompat
 import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class DictionaryPopupActivity : ComponentActivity() {
+    private var tts: TextToSpeech? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale.US
+            }
+        }
         
         var query = ""
         if (intent.action == Intent.ACTION_PROCESS_TEXT) {
@@ -36,9 +51,8 @@ class DictionaryPopupActivity : ComponentActivity() {
         }
         
         query = query.trim().split(Regex("\\s+")).firstOrNull()?.replace(Regex("[^a-zA-Z]"), "") ?: ""
-
         val db = Room.databaseBuilder(applicationContext, DictionaryDatabase::class.java, "dictionary.db").fallbackToDestructiveMigration().build()
-
+        
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 var definition by remember { mutableStateOf<String?>("Loading...") }
@@ -53,7 +67,7 @@ class DictionaryPopupActivity : ComponentActivity() {
                         definition = "No word selected."
                     }
                 }
-
+                
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -70,18 +84,67 @@ class DictionaryPopupActivity : ComponentActivity() {
                             .clickable(enabled = false) {}
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = if (query.isEmpty()) "Dictionary" else query,
-                                fontSize = 18.sp,
-                                color = Color.White,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            rememberScrollState().let { scrollState ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
-                                    text = definition ?: "",
-                                    fontSize = 14.sp,
-                                    color = Color.LightGray,
-                                    modifier = Modifier.verticalScroll(scrollState)
+                                    text = if (query.isEmpty()) "Dictionary" else query,
+                                    fontSize = 18.sp,
+                                    color = Color.White
+                                )
+                                if (query.isNotEmpty()) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                tts?.speak(query, TextToSpeech.QUEUE_FLUSH, null, null)
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.PlayArrow,
+                                                contentDescription = "Read Aloud",
+                                                tint = Color.White
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                val i = Intent(this@DictionaryPopupActivity, SidebarService::class.java)
+                                                i.action = "OPEN_DICTIONARY"
+                                                i.putExtra("QUERY", query)
+                                                startService(i)
+                                                finish()
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.OpenInNew,
+                                                contentDescription = "Open in Floating Dictionary",
+                                                tint = Color.White
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            rememberScrollState().let { scrollState ->
+                                AndroidView(
+                                    modifier = Modifier.verticalScroll(scrollState),
+                                    factory = { ctx ->
+                                        TextView(ctx).apply {
+                                            setTextColor(android.graphics.Color.LTGRAY)
+                                            textSize = 14f
+                                        }
+                                    },
+                                    update = { textView ->
+                                        textView.text = HtmlCompat.fromHtml(
+                                            definition ?: "",
+                                            HtmlCompat.FROM_HTML_MODE_COMPACT
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -89,5 +152,11 @@ class DictionaryPopupActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
     }
 }
