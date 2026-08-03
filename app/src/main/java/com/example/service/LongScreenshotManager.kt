@@ -174,15 +174,25 @@ class LongScreenshotManager(private val service: AccessibilityService) {
                     finalBitmap = tempBitmap
                 }
 
-                val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
-                dir.mkdirs()
-                val outFile = File(dir, "LongScreenshot_${System.currentTimeMillis()}.png")
-                FileOutputStream(outFile).use { out ->
-                    finalBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                val resolver = service.contentResolver
+                val contentValues = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, "LongScreenshot_${System.currentTimeMillis()}.png")
+                    put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/Screenshots")
                 }
-
-                handler.post {
-                    Toast.makeText(service, "Long Screenshot Saved!", Toast.LENGTH_SHORT).show()
+                
+                val imageUri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                if (imageUri != null) {
+                    resolver.openOutputStream(imageUri).use { out ->
+                        if (out != null) {
+                            finalBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                        }
+                    }
+                    handler.post {
+                        Toast.makeText(service, "Long Screenshot Saved!", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    throw Exception("Failed to create MediaStore entry")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -212,7 +222,8 @@ class LongScreenshotManager(private val service: AccessibilityService) {
             topImg.getPixels(compareRow, 0, topImg.width, 0, y, topImg.width, 1)
             
             var diff = 0
-            for (x in 0 until topImg.width step 10) { // step 10 for performance
+            val minWidth = Math.min(topImg.width, bottomImg.width)
+            for (x in 0 until minWidth step 10) { // step 10 for performance
                 val c1 = sampleRow[x]
                 val c2 = compareRow[x]
                 diff += Math.abs((c1 shr 16 and 0xFF) - (c2 shr 16 and 0xFF))
@@ -286,7 +297,7 @@ class LongScreenshotManager(private val service: AccessibilityService) {
         var initialY = 0
         var initialTouchX = 0f
         var initialTouchY = 0f
-        floatingView?.setOnTouchListener { _, event ->
+        floatingView?.setOnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialX = layoutParams.x

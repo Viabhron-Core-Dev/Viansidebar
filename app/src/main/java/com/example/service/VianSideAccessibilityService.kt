@@ -80,6 +80,10 @@ class VianSideAccessibilityService : AccessibilityService() {
             if (autoScrollManager?.isRunning == true) autoScrollManager?.stop() else autoScrollManager?.start()
             return true
         }
+        if (action == "long_screenshot") {
+            longScreenshotManager?.start()
+            return true
+        }
 
         if (action == "screenshot") {
             handleScreenshotWithDelay()

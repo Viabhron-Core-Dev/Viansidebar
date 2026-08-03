@@ -106,17 +106,23 @@ class AutoScrollManager(private val service: AccessibilityService) {
         queue.add(rootNode)
         var found = false
         while (queue.isNotEmpty()) {
-            val node = queue.poll()
-            if (node?.isScrollable == true) {
+            val node = queue.poll() ?: continue
+            if (node.isScrollable) {
                 found = true
+                node.recycle()
                 break
             }
-            for (i in 0 until (node?.childCount ?: 0)) {
-                val child = node?.getChild(i)
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i)
                 if (child != null) {
                     queue.add(child)
                 }
             }
+            node.recycle()
+        }
+        // Recycle remaining nodes in queue if we broke early
+        while (queue.isNotEmpty()) {
+            queue.poll()?.recycle()
         }
         return found
     }
