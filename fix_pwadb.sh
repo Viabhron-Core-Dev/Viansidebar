@@ -1,3 +1,5 @@
+#!/bin/bash
+cat << 'INNER' > app/src/main/java/com/example/service/PwaDatabase.kt
 package com.example.service
 
 import android.content.Context
@@ -77,3 +79,4 @@ abstract class PwaDatabase : RoomDatabase() {
         }
     }
 }
+INNER

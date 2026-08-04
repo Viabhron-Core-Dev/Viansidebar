@@ -49,7 +49,7 @@ class PwaPickerActivity : ComponentActivity() {
         setContentView(mainLayout)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = Room.databaseBuilder(applicationContext, PwaDatabase::class.java, "pwa.db").build()
+            val db = PwaDatabase.getDatabase(applicationContext)
             val pwas = db.pwaDao().getAllPwasSync()
             
             withContext(Dispatchers.Main) {

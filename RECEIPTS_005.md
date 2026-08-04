@@ -23,3 +23,4 @@
 - Added `auto_scroll` action to `ALL_UTILITIES_ACTIONS` in `SidebarAppsManager.kt`.
 - Handled the `auto_scroll` trigger in `VianSideAccessibilityService.kt` to spawn the `AutoScrollManager` floating pill interface.
 - Created `overlay_auto_scroll.xml` for the pill UI that contains Slower, Pause/Play, Faster, and Exit buttons.
+2026-08-04 05:37:00 - Implemented PwaManagerActivity with Virtual Host Interception, Persistent Port, and Incognito Mode settings. Modified 8 files (PwaDatabase.kt, SidebarService.kt, PwaImportActivity.kt, PwaPickerActivity.kt, PwaWindowManager.kt, SettingsActivity.kt, PwaManagerActivity.kt, AndroidManifest.xml) to provide dynamic origins, per-PWA configurations, and LogKeeper telemetry.

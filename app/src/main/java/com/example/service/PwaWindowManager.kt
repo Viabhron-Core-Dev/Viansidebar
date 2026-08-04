@@ -99,7 +99,8 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
         if (floatingView != null) return
 
         if (pwaServer == null) {
-            port = findFreePort()
+            com.example.LogKeeper.writeLog("PwaLoader", "Initializing PWA: ${pwa.name}. VirtualHost: ${pwa.useVirtualHost}, Port: ${if (pwa.persistentPort > 0) pwa.persistentPort else "Ephemeral"}, Incognito: ${pwa.incognitoMode}")
+            if (pwa.persistentPort > 0) port = pwa.persistentPort else port = findFreePort()
             pwaServer = PwaServer(port, pwa.zipPath, context.filesDir)
             pwaServer?.start()
         sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
@@ -165,7 +166,8 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
         
         webView.apply {
             settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
+            settings.domStorageEnabled = !pwa.incognitoMode
+            settings.databaseEnabled = !pwa.incognitoMode
             settings.allowFileAccess = true
             settings.allowContentAccess = true
             settings.setGeolocationEnabled(true)
@@ -205,6 +207,33 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
 
             addJavascriptInterface(sidebarBridge!!, "SidebarNative")
             webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(view: WebView?, request: android.webkit.WebResourceRequest?): android.webkit.WebResourceResponse? {
+                    if (pwa.useVirtualHost && request?.url?.host == "pwa-${pwa.id}.app") {
+                        try {
+                            val urlString = "http://127.0.0.1:$port${request.url.path ?: "/"}${if (request.url.query != null) "?" + request.url.query else ""}"
+                            val connection = java.net.URL(urlString).openConnection() as java.net.HttpURLConnection
+                            connection.requestMethod = request.method
+                            request.requestHeaders?.forEach { (key, value) ->
+                                connection.setRequestProperty(key, value)
+                            }
+                            val statusCode = connection.responseCode
+                            val message = connection.responseMessage
+                            val headers = connection.headerFields?.mapValues { it.value.joinToString(", ") }?.filterKeys { it != null }?.toMutableMap() ?: mutableMapOf()
+                            val contentTypeHeader = connection.contentType ?: "application/octet-stream"
+                            val mimeType = contentTypeHeader.substringBefore(";")
+                            val encoding = if (contentTypeHeader.contains("charset=")) contentTypeHeader.substringAfter("charset=") else "UTF-8"
+                            val inputStream = if (statusCode >= 400) connection.errorStream else connection.inputStream
+                            val response = android.webkit.WebResourceResponse(mimeType, encoding, inputStream)
+                            response.setStatusCodeAndReasonPhrase(statusCode, message)
+                            response.responseHeaders = headers
+                            return response
+                        } catch(e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                    return super.shouldInterceptRequest(view, request)
+                }
+
                 override fun onReceivedError(
                     view: WebView?,
                     request: android.webkit.WebResourceRequest?,
@@ -247,7 +276,7 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
                     return false
                 }
             }
-            loadUrl("http://localhost:$port/")
+            if (pwa.useVirtualHost) loadUrl("https://pwa-${pwa.id}.app/") else loadUrl("http://localhost:$port/")
 
         }
 

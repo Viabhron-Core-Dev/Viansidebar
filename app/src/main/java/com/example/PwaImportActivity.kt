@@ -36,7 +36,7 @@ class PwaImportActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        db = Room.databaseBuilder(applicationContext, PwaDatabase::class.java, "pwa.db").enableMultiInstanceInvalidation().build()
+        db = PwaDatabase.getDatabase(applicationContext)
 
         val pickZipLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
@@ -118,7 +118,16 @@ class PwaImportActivity : ComponentActivity() {
                     }
                 }
                 
-                db.pwaDao().insertPwa(PwaEntry(name = name, zipPath = destFile.absolutePath, isLightweight = lightweight))
+                val prefs = getSharedPreferences("PwaDefaults", android.content.Context.MODE_PRIVATE)
+                val defaultVirtualHost = prefs.getBoolean("defaultUseVirtualHost", true)
+                val defaultIncognito = prefs.getBoolean("defaultIncognitoMode", false)
+                db.pwaDao().insertPwa(PwaEntry(
+                    name = name,
+                    zipPath = destFile.absolutePath,
+                    isLightweight = lightweight,
+                    useVirtualHost = defaultVirtualHost,
+                    incognitoMode = defaultIncognito
+                ))
                 
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@PwaImportActivity, "Import complete!", Toast.LENGTH_SHORT).show()

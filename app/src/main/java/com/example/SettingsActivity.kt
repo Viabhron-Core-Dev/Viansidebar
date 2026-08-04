@@ -200,7 +200,7 @@ fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -
                     headlineContent = { Text("PWA Loader") },
                     supportingContent = { Text("Import and manage PWAs") },
                     modifier = Modifier.clickable { 
-                        val intent = Intent(context, com.example.PwaImportActivity::class.java).apply {
+                        val intent = Intent(context, com.example.PwaManagerActivity::class.java).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         context.startActivity(intent)

@@ -811,7 +811,7 @@ class SidebarService : Service() {
             val pwaId = pwaIdStr.toIntOrNull()
             if (pwaId != null) {
                 serviceScope.launch(Dispatchers.IO) {
-                    val db = androidx.room.Room.databaseBuilder(applicationContext, PwaDatabase::class.java, "pwa.db").build()
+                    val db = PwaDatabase.getDatabase(applicationContext)
                     val pwas = db.pwaDao().getAllPwasSync()
                     val pwa = pwas.find { it.id == pwaId }
                     if (pwa != null) {
