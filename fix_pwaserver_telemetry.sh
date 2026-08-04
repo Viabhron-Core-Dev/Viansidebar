@@ -1,3 +1,5 @@
+#!/bin/bash
+cat << 'INNER' > app/src/main/java/com/example/service/PwaServer.kt
 package com.example.service
 
 import fi.iki.elonen.NanoHTTPD
@@ -154,3 +156,4 @@ class PwaServer(port: Int, private val zipFilePath: String, private val filesDir
         }
     }
 }
+INNER

@@ -15,19 +15,37 @@ import android.webkit.WebViewClient
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+
 import com.example.R
 import java.net.ServerSocket
 import kotlin.math.roundToInt
 
+
 class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) {
+    companion object {
+        val pendingImportCallbacks = java.util.concurrent.ConcurrentHashMap<Int, (String) -> Unit>()
+        private var nextCallbackId = 0
+        @Synchronized fun generateCallbackId(): Int = nextCallbackId++
+    }
+
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
     
+    private var callbackId: Int = -1
     private var floatingView: View? = null
     private var layoutParams: WindowManager.LayoutParams? = null
 
     private var pwaServer: PwaServer? = null
     private var port: Int = 0
+    private var sensorManager: SensorManager? = null
+    private var sensorListener: SensorEventListener? = null
+
+    private var sidebarBridge: SidebarBridge? = null
+
 
     private var isFullScreen = !pwa.isLightweight
     private var preFullScreenWidth = 800
@@ -44,9 +62,10 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
             socket.close()
             freePort
         } catch (e: Exception) {
-            8080
+            throw RuntimeException("Network Stack Error: No free ports available")
         }
     }
+
 
     private fun toggleFullScreen(windowContainer: View, topDragBar: View) {
         if (!isFullScreen) {
@@ -81,8 +100,33 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
 
         if (pwaServer == null) {
             port = findFreePort()
-            pwaServer = PwaServer(port, pwa.zipPath)
+            pwaServer = PwaServer(port, pwa.zipPath, context.filesDir)
             pwaServer?.start()
+        sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        val rotationSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        if (rotationSensor != null) {
+            sensorListener = object : SensorEventListener {
+                override fun onSensorChanged(event: SensorEvent?) {
+                    if (event?.sensor?.type == Sensor.TYPE_ROTATION_VECTOR) {
+                        val rotationMatrix = FloatArray(9)
+                        SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+                        val orientation = FloatArray(3)
+                        SensorManager.getOrientation(rotationMatrix, orientation)
+                        val heading = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                        val pitch = Math.toDegrees(orientation[1].toDouble()).toFloat()
+                        val roll = Math.toDegrees(orientation[2].toDouble()).toFloat()
+                        floatingView?.findViewById<WebView>(R.id.webview)?.post {
+                            floatingView?.findViewById<WebView>(R.id.webview)?.evaluateJavascript(
+                                "if(window.onNativeSensorUpdate) { window.onNativeSensorUpdate($heading, $pitch, $roll); }", null
+                            )
+                        }
+                    }
+                }
+                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+            }
+            sensorManager?.registerListener(sensorListener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
+        }
+
         }
 
         val width = prefs.getInt("pwa_${pwa.id}_width", defaultW)
@@ -123,13 +167,88 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.allowFileAccess = true
-            webChromeClient = WebChromeClient()
+            settings.allowContentAccess = true
+            settings.setGeolocationEnabled(true)
+            settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                android.webkit.ServiceWorkerController.getInstance().serviceWorkerWebSettings.allowContentAccess = true
+                android.webkit.ServiceWorkerController.getInstance().serviceWorkerWebSettings.allowFileAccess = true
+            }
+
+            webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                    if (consoleMessage?.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
+                        com.example.LogKeeper.writeLog(
+                            "PwaWebView",
+                            "JS ERROR: ${consoleMessage.message()} at ${consoleMessage.sourceId()}:${consoleMessage.lineNumber()}"
+                        )
+                    }
+                    return super.onConsoleMessage(consoleMessage)
+                }
+
+                override fun onGeolocationPermissionsShowPrompt(origin: String, callback: android.webkit.GeolocationPermissions.Callback) {
+                    callback.invoke(origin, true, true)
+                }
+            }
+            val callbackId = generateCallbackId()
+            this@PwaWindowManager.callbackId = callbackId
+            sidebarBridge = SidebarBridge(context, callbackId) { errorMsg ->
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    webView.evaluateJavascript("if(window.onNativeExportError) { window.onNativeExportError(\"$errorMsg\"); } else { console.error(\"Native Error: $errorMsg\"); }", null)
+                }
+            }
+            pendingImportCallbacks[callbackId] = { content ->
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    webView.evaluateJavascript("if(window.onNativeFileImport) { window.onNativeFileImport(\"$content\"); }", null)
+                }
+            }
+
+            addJavascriptInterface(sidebarBridge!!, "SidebarNative")
             webViewClient = object : WebViewClient() {
+                override fun onReceivedError(
+                    view: WebView?,
+                    request: android.webkit.WebResourceRequest?,
+                    error: android.webkit.WebResourceError?
+                ) {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                        com.example.LogKeeper.writeLog(
+                            "PwaWebView",
+                            "Network Error: ${error?.errorCode} - ${error?.description} for URL: ${request?.url}"
+                        )
+                    }
+                    super.onReceivedError(view, request, error)
+                }
+
+                override fun onReceivedHttpError(
+                    view: WebView?,
+                    request: android.webkit.WebResourceRequest?,
+                    errorResponse: android.webkit.WebResourceResponse?
+                ) {
+                    com.example.LogKeeper.writeLog(
+                        "PwaWebView",
+                        "HTTP Error: ${errorResponse?.statusCode} - ${errorResponse?.reasonPhrase} for URL: ${request?.url}"
+                    )
+                    super.onReceivedHttpError(view, request, errorResponse)
+                }
+
+                override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
+                    com.example.LogKeeper.writeLog(
+                        "PwaWebView",
+                        "RENDER_PROCESS_GONE: WebGL crash detected. Did crash? ${detail?.didCrash()}"
+                    )
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        android.widget.Toast.makeText(context, "Map Engine Recovering...", android.widget.Toast.LENGTH_LONG).show()
+                        view?.reload()
+                    }
+                    return true
+                }
+
                 override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                     return false
                 }
             }
             loadUrl("http://localhost:$port/")
+
         }
 
         // --- Dragging Window ---
@@ -300,11 +419,22 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
     }
 
     fun close() {
+        pendingImportCallbacks.remove(callbackId)
+
+        floatingView?.findViewById<WebView>(R.id.webview)?.removeJavascriptInterface("SidebarNative")
+
         if (floatingView != null) {
             com.example.utils.ActiveAppTracker.removeApp("pwa_${pwa.id}")
             windowManager.removeView(floatingView)
             floatingView = null
         }
+        sidebarBridge?.destroy()
+        if (sensorListener != null) {
+            sensorManager?.unregisterListener(sensorListener)
+        }
+
+        sidebarBridge = null
+
         pwaServer?.stop()
         pwaServer = null
         (context as? SidebarService)?.removePwaWindow(pwa.id)

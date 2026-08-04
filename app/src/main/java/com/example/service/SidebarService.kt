@@ -225,6 +225,15 @@ class SidebarService : Service() {
                 var types = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
                 if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     types = types or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (androidx.core.content.ContextCompat.checkSelfPermission(this@SidebarService, android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        types = types or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                    }
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    types = types or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                }
+
                 }
                 types
             } else {
@@ -1092,6 +1101,15 @@ class SidebarService : Service() {
     }
 
     override fun onDestroy() {
+        try {
+            val importsDir = java.io.File(filesDir, "pwa_imports")
+            if (importsDir.exists() && importsDir.isDirectory) {
+                importsDir.listFiles()?.forEach { it.delete() }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         tts?.stop()
         tts?.shutdown()
         if (this::prefs.isInitialized) {
