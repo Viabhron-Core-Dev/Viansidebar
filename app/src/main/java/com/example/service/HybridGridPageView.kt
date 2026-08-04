@@ -181,7 +181,7 @@ class HybridGridPageView(
         return gridLayout.measuredHeight
     }
 
-    private fun loadWidgets() {
+    fun loadWidgets() {
         if (width == 0) {
             return
         }

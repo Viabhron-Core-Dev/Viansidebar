@@ -233,8 +233,9 @@ fun HandleItem(
                                         "widgets_grid" -> "Widgets Grid"
                                         "hybrid_grid" -> "Hybrid Grid"
                                         "app_tracker" -> "App Tracker"
+                                        "resources_tracker" -> "Resources Tracker"
                                         "calculator" -> "Calculator"
-                                        "scheduler" -> "Scheduler"
+                                        "scheduler" -> "Short Reminders"
                                         "compass" -> "Compass"
                                         "notifications" -> "Notifications"
                                         else -> "Page"
@@ -410,8 +411,9 @@ fun HandleItem(
                                             "widgets_grid" to "Widgets Grid",
                                             "hybrid_grid" to "Hybrid Grid",
                                             "app_tracker" to "App Tracker",
+                                            "resources_tracker" to "Resources Tracker",
                                             "calculator" to "Calculator",
-                                            "scheduler" to "Scheduler",
+                                            "scheduler" to "Short Reminders",
                                             "compass" to "Compass",
                                             "notifications" to "Notifications"
                                         )
@@ -481,8 +483,9 @@ fun HandleItem(
                                             "widgets_grid" to "Widgets Grid",
                                             "hybrid_grid" to "Hybrid Grid",
                                             "app_tracker" to "App Tracker",
+                                            "resources_tracker" to "Resources Tracker",
                                             "calculator" to "Calculator",
-                                            "scheduler" to "Scheduler",
+                                            "scheduler" to "Short Reminders",
                                             "compass" to "Compass",
                                             "notifications" to "Notifications"
                                         )

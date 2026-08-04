@@ -20,6 +20,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -120,6 +123,8 @@ class QRCropActivity : ComponentActivity() {
                         onAction = { action, x, y, width, height, shape, points ->
                             if (action == "scan") {
                                 scanCroppedArea(bitmap, x, y, width, height, shape, points)
+                            } else if (action == "ocr") {
+                                ocrCroppedArea(bitmap, x, y, width, height, shape, points)
                             } else if (action == "share") {
                                 shareCroppedArea(bitmap, x, y, width, height, shape, points)
                             }
@@ -128,6 +133,66 @@ class QRCropActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    private fun ocrCroppedArea(bitmap: Bitmap, x: Float, y: Float, w: Float, h: Float, shape: String, points: List<Offset>) {
+        val cropX = maxOf(0, x.toInt())
+        val cropY = maxOf(0, y.toInt())
+        val cropW = minOf(bitmap.width - cropX, w.toInt())
+        val cropH = minOf(bitmap.height - cropY, h.toInt())
+        if (cropW <= 0 || cropH <= 0) {
+            Toast.makeText(this, "Invalid crop area", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            var croppedBitmap = Bitmap.createBitmap(bitmap, cropX, cropY, cropW, cropH)
+            
+            if (shape == "circle") {
+                val output = Bitmap.createBitmap(cropW, cropH, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(output)
+                canvas.drawColor(android.graphics.Color.WHITE)
+                val path = android.graphics.Path()
+                path.addOval(android.graphics.RectF(0f, 0f, cropW.toFloat(), cropH.toFloat()), android.graphics.Path.Direction.CW)
+                canvas.clipPath(path)
+                canvas.drawBitmap(croppedBitmap, 0f, 0f, null)
+                croppedBitmap = output
+            } else if (shape == "polygon") {
+                val output = Bitmap.createBitmap(cropW, cropH, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(output)
+                canvas.drawColor(android.graphics.Color.WHITE)
+                if (points.isNotEmpty()) {
+                    val path = android.graphics.Path()
+                    path.moveTo(points.first().x - cropX, points.first().y - cropY)
+                    for (i in 1 until points.size) {
+                        path.lineTo(points[i].x - cropX, points[i].y - cropY)
+                    }
+                    path.close()
+                    canvas.clipPath(path)
+                }
+                canvas.drawBitmap(croppedBitmap, 0f, 0f, null)
+                croppedBitmap = output
+            }
+            
+            val image = InputImage.fromBitmap(croppedBitmap, 0)
+            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            recognizer.process(image)
+                .addOnSuccessListener { visionText ->
+                    val text = visionText.text
+                    if (text.isNotEmpty()) {
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("OCR Text", text))
+                        Toast.makeText(this, "Copied: $text", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this, "No text found", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Toast.makeText(this, "OCR failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Failed to crop for OCR", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -495,6 +560,36 @@ fun QRCropScreen(bitmap: Bitmap, onAction: (String, Float, Float, Float, Float, 
             }) {
                 Text("Scan QR")
             }
+            Button(onClick = {
+                val imgRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+                val viewRatio = viewSize.width.toFloat() / viewSize.height.toFloat()
+                var renderedW = viewSize.width.toFloat()
+                var renderedH = viewSize.height.toFloat()
+                var offsetX = 0f
+                var offsetY = 0f
+                if (imgRatio > viewRatio) {
+                    renderedH = viewSize.width / imgRatio
+                    offsetY = (viewSize.height - renderedH) / 2f
+                } else {
+                    renderedW = viewSize.height * imgRatio
+                    offsetX = (viewSize.width - renderedW) / 2f
+                }
+                val scale = bitmap.width / renderedW
+                val minX = polygonPoints.minOfOrNull { it.x } ?: 0f
+                val maxX = polygonPoints.maxOfOrNull { it.x } ?: 0f
+                val minY = polygonPoints.minOfOrNull { it.y } ?: 0f
+                val maxY = polygonPoints.maxOfOrNull { it.y } ?: 0f
+                val rectToUse = if (cropShape == "polygon" && polygonPoints.isNotEmpty()) Rect(minX, minY, maxX, maxY) else cropRect
+                val realX = (rectToUse.left - offsetX) * scale
+                val realY = (rectToUse.top - offsetY) * scale
+                val realW = rectToUse.width * scale
+                val realH = rectToUse.height * scale
+                val mappedPoints = polygonPoints.map { Offset((it.x - offsetX) * scale, (it.y - offsetY) * scale) }
+                onAction("ocr", realX, realY, realW, realH, cropShape, mappedPoints)
+            }) {
+                Text("OCR")
+            }
         }
     }
 }
+

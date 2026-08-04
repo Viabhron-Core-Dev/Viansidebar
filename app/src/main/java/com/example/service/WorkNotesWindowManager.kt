@@ -80,6 +80,7 @@ class WorkNotesWindowManager(private val context: Context) {
         }
 
         floatingView = LayoutInflater.from(context).inflate(R.layout.layout_work_notes, null)
+        com.example.utils.ActiveAppTracker.addApp("work_notes", "Work Notes", "Tool", 12)
         
         val bubbleIcon = floatingView!!.findViewById<ImageView>(R.id.bubble_icon)
         val windowContainer = floatingView!!.findViewById<LinearLayout>(R.id.window_container)
@@ -272,6 +273,7 @@ class WorkNotesWindowManager(private val context: Context) {
 
     fun close() {
         if (floatingView != null) {
+            com.example.utils.ActiveAppTracker.removeApp("work_notes")
             windowManager.removeView(floatingView)
             floatingView = null
         }

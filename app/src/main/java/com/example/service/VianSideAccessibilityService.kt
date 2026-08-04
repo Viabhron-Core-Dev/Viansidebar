@@ -18,12 +18,14 @@ import java.util.Locale
 
 class VianSideAccessibilityService : AccessibilityService() {
     private var autoScrollManager: AutoScrollManager? = null
+    private var cursorManager: CursorManager? = null
     private var longScreenshotManager: LongScreenshotManager? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
         autoScrollManager = AutoScrollManager(this)
+        cursorManager = CursorManager(this)
         longScreenshotManager = LongScreenshotManager(this)
         com.example.LogKeeper.writeLog("VianSideAccessibility", "Service connected")
         android.util.Log.d("VianSideAccessibility", "Service connected")
@@ -76,6 +78,10 @@ class VianSideAccessibilityService : AccessibilityService() {
     fun performAction(action: String): Boolean {
         com.example.LogKeeper.writeLog("VianSideAccessibility", "Performing action: $action")
         
+        if (action == "cursor") {
+            if (cursorManager?.isRunning == true) cursorManager?.stop() else cursorManager?.start()
+            return true
+        }
         if (action == "auto_scroll") {
             if (autoScrollManager?.isRunning == true) autoScrollManager?.stop() else autoScrollManager?.start()
             return true
@@ -87,6 +93,13 @@ class VianSideAccessibilityService : AccessibilityService() {
 
         if (action == "screenshot") {
             handleScreenshotWithDelay()
+            return true
+        }
+        if (action == "barcode_scanner") {
+            val intent = Intent(this, com.example.service.BarcodeScannerActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
             return true
         }
         if (action == "qr_scan") {

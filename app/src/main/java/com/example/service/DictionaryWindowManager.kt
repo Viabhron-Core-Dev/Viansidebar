@@ -90,6 +90,28 @@ class DictionaryWindowManager(private val context: Context) {
         windowManager.updateViewLayout(floatingView, layoutParams)
     }
 
+    private fun makeWordsClickable(htmlText: CharSequence, onWordClick: (String) -> Unit): CharSequence {
+        val spannable = android.text.SpannableString(htmlText)
+        val matcher = java.util.regex.Pattern.compile("[a-zA-Z]+").matcher(spannable)
+        while (matcher.find()) {
+            val word = matcher.group()
+            if (word.length > 3) {
+                val span = object : android.text.style.ClickableSpan() {
+                    override fun onClick(widget: android.view.View) {
+                        onWordClick(word)
+                    }
+                    override fun updateDrawState(ds: android.text.TextPaint) {
+                        super.updateDrawState(ds)
+                        ds.color = android.graphics.Color.parseColor("#4ea8de")
+                        ds.isUnderlineText = false
+                    }
+                }
+                spannable.setSpan(span, matcher.start(), matcher.end(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
+        return spannable
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     fun show(startFullscreen: Boolean = false) {
         val defaultW = (context.resources.displayMetrics.widthPixels * 0.85).toInt()
@@ -116,6 +138,7 @@ class DictionaryWindowManager(private val context: Context) {
         }
 
         floatingView = LayoutInflater.from(context).inflate(R.layout.layout_dictionary, null)
+        com.example.utils.ActiveAppTracker.addApp("dictionary", "Dictionary", "Tool", 25)
         
         val bubbleIcon = floatingView!!.findViewById<ImageView>(R.id.bubble_icon)
         val windowContainer = floatingView!!.findViewById<LinearLayout>(R.id.window_container)
@@ -140,7 +163,15 @@ class DictionaryWindowManager(private val context: Context) {
         
         val fontScale = prefs.getFloat("dict_font_size_scale", 1.0f)
         tvDefinition.textSize = 16f * fontScale
+        tvDefinition.movementMethod = android.text.method.LinkMovementMethod.getInstance()
         tvWord.textSize = 20f * fontScale
+
+        btnSpeakWord.setOnClickListener {
+            val text = tvWord.text.toString()
+            if (text.isNotBlank()) {
+                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "dict")
+            }
+        }
 
         
         var history = prefs.getString("dict_history", "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
@@ -163,7 +194,10 @@ class DictionaryWindowManager(private val context: Context) {
             searchLayout.visibility = View.GONE
             detailLayout.visibility = View.VISIBLE
             tvWord.text = entry.word
-            tvDefinition.text = HtmlCompat.fromHtml(entry.definition, HtmlCompat.FROM_HTML_MODE_COMPACT)
+            val htmlContent = HtmlCompat.fromHtml(entry.definition, HtmlCompat.FROM_HTML_MODE_COMPACT)
+            tvDefinition.text = makeWordsClickable(htmlContent) { word ->
+                searchWord(word)
+            }
         }
         rvResults.adapter = adapter
         adapter.submitList(history.map { it to null })
@@ -372,6 +406,7 @@ class DictionaryWindowManager(private val context: Context) {
 
     fun close() {
         if (floatingView != null) {
+            com.example.utils.ActiveAppTracker.removeApp("dictionary")
             windowManager.removeView(floatingView)
             floatingView = null
         }
@@ -440,7 +475,11 @@ class DictionaryWindowManager(private val context: Context) {
                 tvWord?.textSize = 20f * fontScale
                 tvDefinition?.textSize = 16f * fontScale
                 tvWord?.text = entry.word
-                tvDefinition?.text = androidx.core.text.HtmlCompat.fromHtml(entry.definition, androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT)
+                val htmlContent = androidx.core.text.HtmlCompat.fromHtml(entry.definition, androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT)
+                tvDefinition?.movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                tvDefinition?.text = makeWordsClickable(htmlContent) { word ->
+                    searchWord(word)
+                }
             }
         }
     }

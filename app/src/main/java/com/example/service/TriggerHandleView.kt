@@ -56,6 +56,10 @@ class TriggerHandleView(
         isAttached = true
     }
     
+    fun setVisibility(visible: Boolean) {
+        handleView?.visibility = if (visible) View.VISIBLE else View.GONE
+    }
+
     fun detach() {
         if (!isAttached) return
         if (handleView != null) {

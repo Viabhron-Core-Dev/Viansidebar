@@ -103,6 +103,7 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
         }
 
         floatingView = LayoutInflater.from(context).inflate(R.layout.layout_pwa, null)
+        com.example.utils.ActiveAppTracker.addApp("pwa_${pwa.id}", pwa.name, "PWA", 45)
         
         val bubbleIcon = floatingView!!.findViewById<TextView>(R.id.bubble_icon)
         val windowContainer = floatingView!!.findViewById<LinearLayout>(R.id.window_container)
@@ -300,6 +301,7 @@ class PwaWindowManager(private val context: Context, private val pwa: PwaEntry) 
 
     fun close() {
         if (floatingView != null) {
+            com.example.utils.ActiveAppTracker.removeApp("pwa_${pwa.id}")
             windowManager.removeView(floatingView)
             floatingView = null
         }

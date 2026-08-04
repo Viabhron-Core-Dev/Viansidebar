@@ -31,6 +31,8 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 class SidebarService : Service() {
+    
+    private var tts: TextToSpeech? = null
 
     private var serviceLifecycleOwner: ServiceLifecycleOwner? = null
     private lateinit var windowManager: WindowManager
@@ -155,7 +157,14 @@ class SidebarService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
 
+    fun setTriggerVisibility(visible: Boolean) {
+        triggerHandleViews.forEach { it.setVisibility(visible) }
+        readerHandleView?.setVisibility(visible)
+    }
+
     private fun reloadHandles() {
+        if (!android.provider.Settings.canDrawOverlays(this)) return
+
         triggerHandleViews.forEach { it.detach() }
         triggerHandleViews.clear()
 
@@ -172,6 +181,12 @@ class SidebarService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale.US
+            }
+        }
         
         serviceLifecycleOwner = ServiceLifecycleOwner()
         serviceLifecycleOwner?.onCreate()
@@ -243,6 +258,8 @@ class SidebarService : Service() {
     }
     
     private var dictWindowManager: DictionaryWindowManager? = null
+    private var translationWindowManager: TranslationWindowManager? = null
+    private var hybridGridWindowManager: HybridGridWindowManager? = null
     private val pwaWindows = mutableMapOf<Int, PwaWindowManager>()
 
     fun launchPwa(pwa: PwaEntry) {
@@ -536,6 +553,11 @@ class SidebarService : Service() {
                 }
                 "pwa_loader" -> { null }
                 "dictionary" -> { null }
+                "resources_tracker" -> {
+                    var p: ResourcesTrackerPageView? = null
+                    p = ResourcesTrackerPageView(this, serviceScope)
+                    p
+                }
                 "app_tracker" -> {
                     var p: AppTrackerPageView? = null
                     p = AppTrackerPageView(this, { closeSidebar() }, { _ -> })
@@ -699,6 +721,7 @@ class SidebarService : Service() {
             "pwa_loader" -> null
             "dictionary" -> null // Removed from sidebar
             "app_tracker" -> AppTrackerPageView(this, { standaloneSidebarView?.close() }, { _ -> })
+            "resources_tracker" -> ResourcesTrackerPageView(this, serviceScope)
             "media_player" -> MediaPlayerPageView(this, { standaloneSidebarView?.close() }) { newHeight ->
                 standaloneSidebarView?.updatePageStyles(config, newHeight)
             }
@@ -817,6 +840,19 @@ class SidebarService : Service() {
                     dictWindowManager = DictionaryWindowManager(this@SidebarService)
                 }
                 dictWindowManager?.show(false)
+            } else if (action == "hybrid_grid_floating" || action == "hybrid_grid_floating_exit_edit") {
+                if (hybridGridWindowManager == null) {
+                    hybridGridWindowManager = HybridGridWindowManager(this@SidebarService)
+                }
+                hybridGridWindowManager?.show(action == "hybrid_grid_floating_exit_edit")
+                hybridGridWindowManager?.reloadGrid()
+
+            } else if (action == "translation_floating") {
+                if (translationWindowManager == null) {
+                    translationWindowManager = TranslationWindowManager(this@SidebarService)
+                }
+                translationWindowManager?.show()
+
             } else if (action == "ebook_reader") {
                 val intent = Intent(this, FloatingReaderService::class.java)
                 intent.putExtra("UNFOLD", true)
@@ -877,6 +913,20 @@ class SidebarService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "READ_ALOUD") {
+            val text = intent.getStringExtra("TEXT") ?: ""
+            if (tts == null) {
+                tts = TextToSpeech(this) { status ->
+                    if (status == TextToSpeech.SUCCESS) {
+                        tts?.language = Locale.US
+                        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "read_aloud")
+                    }
+                }
+            } else {
+                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "read_aloud")
+            }
+            return START_NOT_STICKY
+        }
         if (intent?.action == "OPEN_DICTIONARY") {
             val query = intent.getStringExtra("QUERY")
             if (dictWindowManager == null) {
@@ -1042,6 +1092,8 @@ class SidebarService : Service() {
     }
 
     override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
         if (this::prefs.isInitialized) {
             prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         }

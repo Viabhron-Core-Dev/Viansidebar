@@ -165,7 +165,8 @@ val ALL_SCREEN_CAPTURE_ACTIONS = listOf(
     SidebarItem.SystemAction("screenshot", "Screenshot", android.R.drawable.ic_menu_camera),
     SidebarItem.SystemAction("long_screenshot", "Long Screenshot", android.R.drawable.ic_menu_crop),
     SidebarItem.SystemAction("screen_record", "Screen Record", android.R.drawable.ic_media_play),
-    SidebarItem.SystemAction("qr_scan", "Screen Crop / QR", android.R.drawable.ic_menu_search)
+    SidebarItem.SystemAction("qr_scan", "Screen Crop / QR", android.R.drawable.ic_menu_search),
+    SidebarItem.SystemAction("barcode_scanner", "Secure Scanner", android.R.drawable.ic_menu_camera),
 )
 
 val ALL_VOLUME_ACTIONS = listOf(
@@ -231,7 +232,9 @@ val ALL_UTILITIES_ACTIONS = listOf(
 val ALL_FLOATING_WINDOWS = listOf(
     SidebarItem.SystemAction("ebook_reader", "eBook Reader", com.example.R.drawable.ic_library_books),
     SidebarItem.SystemAction("dictionary_floating", "Dictionary (Floating)", android.R.drawable.ic_menu_sort_alphabetically),
-    SidebarItem.SystemAction("work_notes", "Work Notes", android.R.drawable.ic_menu_edit)
+    SidebarItem.SystemAction("translation_floating", "Translation (Floating)", android.R.drawable.ic_menu_sort_alphabetically),
+    SidebarItem.SystemAction("work_notes", "Work Notes", android.R.drawable.ic_menu_edit),
+    SidebarItem.SystemAction("hybrid_grid_floating", "Hybrid Grid (Floating)", android.R.drawable.ic_menu_gallery),
 )
 
 data class AppInfo(
@@ -301,15 +304,13 @@ class SidebarAppsManager(
     }
 
     private suspend fun loadAllAppsFromPackageManager() = withContext(Dispatchers.IO) {
-        val pm = context.packageManager
-        val intent = Intent(Intent.ACTION_MAIN, null).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
-        }
-        val apps = pm.queryIntentActivities(intent, 0)
+        val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+        val userHandle = android.os.Process.myUserHandle()
+        val apps = launcherApps.getActivityList(null, userHandle)
         val result = mutableListOf<AppInfo>()
-        for (resolveInfo in apps) {
-            val packageName = resolveInfo.activityInfo.packageName
-            val label = resolveInfo.loadLabel(pm).toString()
+        for (activityInfo in apps) {
+            val packageName = activityInfo.applicationInfo.packageName
+            val label = activityInfo.label.toString()
             result.add(AppInfo(packageName, label))
         }
         val distinctResult = result.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
@@ -612,9 +613,10 @@ class SidebarAppsManager(
             val title = when (pageType) {
                 "calculator" -> "Calculator"
                 "compass" -> "Compass"
-                "scheduler" -> "Scheduler"
+                "scheduler" -> "Short Reminders"
                 "notifications" -> "Notifications"
                 "app_tracker" -> "App Tracker"
+                "resources_tracker" -> "Resources Tracker"
                 else -> "Page Window"
             }
             return SidebarItem.PageWindow(pageType, "Window: $title", android.R.drawable.ic_menu_gallery)
@@ -793,9 +795,11 @@ class SidebarAppsManager(
                 val title = when (pageType) {
                     "calculator" -> "Calculator"
                     "compass" -> "Compass"
-                    "scheduler" -> "Scheduler"
+                    "scheduler" -> "Short Reminders"
                     "notifications" -> "Notifications"
                     "app_tracker" -> "App Tracker"
+                    "resources_tracker" -> "Resources Tracker"
+                "resources_tracker" -> "Resources Tracker"
                     else -> "Page Window"
                 }
                 result.add(SidebarItem.PageWindow(pageType, "Window: $title", android.R.drawable.ic_menu_gallery))

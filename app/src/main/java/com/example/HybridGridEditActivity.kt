@@ -115,6 +115,14 @@ class HybridGridEditActivity : ComponentActivity() {
                             if (json.has("rows")) defaultRows = json.getInt("rows")
                         }
                     } catch (e: Exception) {}
+        val isFloating = intent.getBooleanExtra("IS_FLOATING", false)
+        if (isFloating) {
+            val sIntent = Intent(this, com.example.service.SidebarService::class.java)
+            sIntent.action = "EXECUTE_ACTION"
+            sIntent.putExtra("ACTION_ID", "system:hybrid_grid_floating_exit_edit")
+            startService(sIntent)
+        }
+
                 }
                 
                 val totalCols = prefs.getInt("hybrid_grid_cols_$pageId", 4)
@@ -175,6 +183,14 @@ class HybridGridEditActivity : ComponentActivity() {
             sendBroadcast(updateIntent)
             unregisterReceiver(receiver)
         } catch (e: Exception) {}
+        val isFloating = intent.getBooleanExtra("IS_FLOATING", false)
+        if (isFloating) {
+            val sIntent = Intent(this, com.example.service.SidebarService::class.java)
+            sIntent.action = "EXECUTE_ACTION"
+            sIntent.putExtra("ACTION_ID", "system:hybrid_grid_floating_exit_edit")
+            startService(sIntent)
+        }
+
     }
 
     private val receiver = object : BroadcastReceiver() {

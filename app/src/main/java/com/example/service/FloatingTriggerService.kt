@@ -15,14 +15,24 @@ import kotlinx.coroutines.Dispatchers
 import android.util.DisplayMetrics
 
 class FloatingTriggerService : Service() {
+    companion object {
+        var instance: FloatingTriggerService? = null
+            private set
+    }
 
     private lateinit var windowManager: WindowManager
     private val activeTriggers = mutableMapOf<String, View>()
     private lateinit var appsManager: SidebarAppsManager
     private lateinit var prefs: android.content.SharedPreferences
 
+    fun setVisibility(visible: Boolean) {
+        val visibility = if (visible) View.VISIBLE else View.GONE
+        activeTriggers.values.forEach { it.visibility = visibility }
+    }
+
     override fun onCreate() {
         super.onCreate()
+        instance = this
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
         appsManager = SidebarAppsManager(this, prefs, CoroutineScope(Dispatchers.IO), "floating_trigger") {}
@@ -157,6 +167,7 @@ class FloatingTriggerService : Service() {
     
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
         for (view in activeTriggers.values) {
             try { windowManager.removeView(view) } catch(e: Exception) {}
         }

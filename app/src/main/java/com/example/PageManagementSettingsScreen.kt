@@ -153,7 +153,7 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         val types = listOf(
                             "apps" to "Apps Grid",
-                            "scheduler" to "Scheduler",
+                            "scheduler" to "Short Reminders",
                             "calculator" to "Calculator",
                             "media_player" to "Media Player",
                             "compass" to "Compass",
@@ -161,6 +161,7 @@ fun PageManagementSettingsScreen(onBack: () -> Unit) {
                             "widgets_grid" to "Widgets Grid",
                             "hybrid_grid" to "Hybrid Grid",
                             "app_tracker" to "App Tracker",
+                            "resources_tracker" to "Resources Tracker",
                             "pwa_loader" to "PWA Loader"
                         )
                         types.forEach { (type, title) ->

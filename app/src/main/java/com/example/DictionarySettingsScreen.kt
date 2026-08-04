@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +56,7 @@ fun DictionarySettingsScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dictionary Settings") },
+                title = { Text("Dictionary & Translations") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -135,5 +137,39 @@ fun DictionarySettingsScreen(onBack: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+fun TranslationSettingsSection(context: Context) {
+    val prefs = context.getSharedPreferences("TranslationPrefs", Context.MODE_PRIVATE)
+    var targetLanguage by remember { mutableStateOf(prefs.getString("default_target_lang", com.google.mlkit.nl.translate.TranslateLanguage.ENGLISH) ?: com.google.mlkit.nl.translate.TranslateLanguage.ENGLISH) }
+    
+    Column(modifier = Modifier.padding(top = 16.dp)) {
+        Text(
+            text = "Translations",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        
+        ListItem(
+            headlineContent = { Text("Default Target Language") },
+            supportingContent = { Text(java.util.Locale(targetLanguage).displayLanguage) },
+            modifier = Modifier.clickable {
+                // For simplicity, cycle through a few common languages or open manager.
+                // Or better, just open translation manager to pick.
+                context.startActivity(Intent(context, com.example.service.TranslationManagementActivity::class.java))
+            }
+        )
+        Divider()
+        ListItem(
+            headlineContent = { Text("Manage Language Models") },
+            supportingContent = { Text("Download offline ML Kit translation models") },
+            trailingContent = { Icon(Icons.Filled.Translate, "Translate") },
+            modifier = Modifier.clickable {
+                context.startActivity(Intent(context, com.example.service.TranslationManagementActivity::class.java))
+            }
+        )
     }
 }

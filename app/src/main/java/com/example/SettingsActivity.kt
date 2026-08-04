@@ -174,13 +174,13 @@ fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -
                 )
                 Divider()
                 ListItem(
-                    headlineContent = { Text("Screen Cap") },
+                    headlineContent = { Text("Record") },
                     supportingContent = { Text("Screenshot and screen recording location") },
                     modifier = Modifier.clickable { onNavigateToScreenCap() }
                 )
                 Divider()
                 ListItem(
-                    headlineContent = { Text("Dictionary Settings") },
+                    headlineContent = { Text("Dictionary & Translations") },
                     supportingContent = { Text("Import and manage offline dictionaries") },
                     modifier = Modifier.clickable { onNavigateToDict() }
                 )

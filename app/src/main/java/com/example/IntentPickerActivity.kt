@@ -1,9 +1,7 @@
 package com.example
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Bundle
@@ -24,96 +22,83 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
-import java.net.URLEncoder
-
-data class SavedIntentItem(val label: String, val uri: String)
 
 class IntentPickerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
-                IntentPickerScreen(
-                    onIntentSelected = { label, uri ->
-                        saveIntent(label, uri)
-                        val encodedLabel = URLEncoder.encode(label, "UTF-8")
-                        val encodedUri = URLEncoder.encode(uri, "UTF-8")
-                        val id = "intent:$encodedLabel:$encodedUri"
-                        
-                        val resultIntent = Intent().apply { putExtra("ELEMENT_ID", id) }
-                        setResult(Activity.RESULT_OK, resultIntent)
-                        finish()
-                    },
-                    onBack = { finish() }
-                )
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    IntentPickerScreen(
+                        onIntentSelected = { label, uri ->
+                            val resultIntent = Intent().apply {
+                                putExtra("LABEL", label)
+                                putExtra("URI", uri)
+                            }
+                            setResult(RESULT_OK, resultIntent)
+                            finish()
+                        },
+                        onCancel = {
+                            setResult(RESULT_CANCELED)
+                            finish()
+                        }
+                    )
+                }
             }
         }
     }
-
-    private fun saveIntent(label: String, uri: String) {
-        val prefs = getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-        val savedJson = prefs.getString("saved_intents", "[]") ?: "[]"
-        val arr = JSONArray(savedJson)
-        // check if exists
-        for (i in 0 until arr.length()) {
-            val obj = arr.getJSONObject(i)
-            if (obj.getString("uri") == uri) return
-        }
-        val newObj = JSONObject().apply {
-            put("label", label)
-            put("uri", uri)
-        }
-        arr.put(newObj)
-        prefs.edit().putString("saved_intents", arr.toString()).apply()
-    }
 }
+
+data class SavedIntent(val label: String, val uri: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IntentPickerScreen(onIntentSelected: (String, String) -> Unit, onBack: () -> Unit) {
+fun IntentPickerScreen(onIntentSelected: (String, String) -> Unit, onCancel: () -> Unit) {
     var showScanAll by remember { mutableStateOf(false) }
     var showAddCustom by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
+
+    val savedIntents = remember {
+        val list = mutableListOf<SavedIntent>()
+        val count = prefs.getInt("saved_intents_count", 0)
+        for (i in 0 until count) {
+            val label = prefs.getString("saved_intent_label_$i", "") ?: ""
+            val uri = prefs.getString("saved_intent_uri_$i", "") ?: ""
+            if (label.isNotEmpty() && uri.isNotEmpty()) {
+                list.add(SavedIntent(label, uri))
+            }
+        }
+        list
+    }
 
     if (showScanAll) {
-        ScanAllIntentsScreen(onIntentSelected = onIntentSelected, onBack = { showScanAll = false })
+        ScanAllIntentsScreen(onIntentSelected, onBack = { showScanAll = false })
         return
     }
 
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("FloatingReaderPrefs", Context.MODE_PRIVATE)
-    var savedIntents by remember { mutableStateOf(emptyList<SavedIntentItem>()) }
-
-    fun loadSaved() {
-        val savedJson = prefs.getString("saved_intents", "[]") ?: "[]"
-        val arr = JSONArray(savedJson)
-        val list = mutableListOf<SavedIntentItem>()
-        for (i in 0 until arr.length()) {
-            val obj = arr.getJSONObject(i)
-            list.add(SavedIntentItem(obj.getString("label"), obj.getString("uri")))
-        }
-        savedIntents = list
+    if (showAddCustom) {
+        AddCustomIntentScreen(
+            onSave = { label, uri ->
+                val newCount = savedIntents.size + 1
+                prefs.edit().apply {
+                    putInt("saved_intents_count", newCount)
+                    putString("saved_intent_label_${newCount - 1}", label)
+                    putString("saved_intent_uri_${newCount - 1}", uri)
+                }.apply()
+                onIntentSelected(label, uri)
+            },
+            onCancel = { showAddCustom = false }
+        )
+        return
     }
-
-    LaunchedEffect(Unit) {
-        loadSaved()
-    }
-
-    val commonIntents = listOf(
-        SavedIntentItem("Web Search", Intent(Intent.ACTION_WEB_SEARCH).toUri(0)),
-        SavedIntentItem("Settings", Intent(android.provider.Settings.ACTION_SETTINGS).toUri(0)),
-        SavedIntentItem("Camera", Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE).toUri(0)),
-        SavedIntentItem("Dialer", Intent(Intent.ACTION_DIAL).toUri(0)),
-        SavedIntentItem("Alarms", Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).toUri(0))
-    )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pick Intent") },
+                title = { Text("Select Action") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onCancel) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 }
@@ -149,54 +134,51 @@ fun IntentPickerScreen(onIntentSelected: (String, String) -> Unit, onBack: () ->
                 }
                 item { HorizontalDivider() }
             }
-
-            item {
-                Text("Common Intents", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(16.dp, 8.dp))
-            }
-            items(commonIntents) { item ->
-                ListItem(
-                    headlineContent = { Text(item.label) },
-                    supportingContent = { Text(item.uri, maxLines = 1) },
-                    modifier = Modifier.clickable { onIntentSelected(item.label, item.uri) }
-                )
-            }
         }
     }
+}
 
-    if (showAddCustom) {
-        var label by remember { mutableStateOf("") }
-        var uri by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showAddCustom = false },
-            title = { Text("Add Custom Intent") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = label,
-                        onValueChange = { label = it },
-                        label = { Text("Label") },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-                    )
-                    OutlinedTextField(
-                        value = uri,
-                        onValueChange = { uri = it },
-                        label = { Text("Intent URI") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (label.isNotBlank() && uri.isNotBlank()) {
-                        onIntentSelected(label, uri)
-                        showAddCustom = false
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddCustomIntentScreen(onSave: (String, String) -> Unit, onCancel: () -> Unit) {
+    var label by remember { mutableStateOf("") }
+    var uri by remember { mutableStateOf("") }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Add Custom Intent") },
+                navigationIcon = {
+                    IconButton(onClick = onCancel) {
+                        Icon(Icons.Default.ArrowBack, "Cancel")
                     }
-                }) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddCustom = false }) { Text("Cancel") }
-            }
-        )
+                },
+                actions = {
+                    TextButton(
+                        onClick = { onSave(label, uri) },
+                        enabled = label.isNotBlank() && uri.isNotBlank()
+                    ) {
+                        Text("Save")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+            OutlinedTextField(
+                value = label,
+                onValueChange = { label = it },
+                label = { Text("Label (e.g. Open Camera)") },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            )
+            OutlinedTextField(
+                value = uri,
+                onValueChange = { uri = it },
+                label = { Text("Intent URI") },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            )
+            Text("Hint: You can use an explicit app intent or a deep link like https://...", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color.Gray)
+        }
     }
 }
 
@@ -211,8 +193,19 @@ fun ScanAllIntentsScreen(onIntentSelected: (String, String) -> Unit, onBack: () 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val pm = context.packageManager
-            val intent = Intent(Intent.ACTION_MAIN, null)
-            val list = pm.queryIntentActivities(intent, 0)
+            val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+            val list = mutableListOf<ResolveInfo>()
+            try {
+                val apps = launcherApps.getActivityList(null, android.os.Process.myUserHandle())
+                for (app in apps) {
+                    val intent = Intent(Intent.ACTION_MAIN)
+                    intent.setClassName(app.applicationInfo.packageName, app.componentName.className)
+                    val resolveInfos = pm.queryIntentActivities(intent, 0)
+                    list.addAll(resolveInfos)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             withContext(Dispatchers.Main) {
                 activities = list
                 isLoading = false

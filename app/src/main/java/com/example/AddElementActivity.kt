@@ -207,7 +207,7 @@ class AddElementActivity : ComponentActivity() {
             startActivityForResult(intent, 500)
         }
         
-        addItem(android.R.drawable.ic_menu_camera, "Screen Capture") { openActionPicker("screen_capture", "Screen Capture") }
+        addItem(android.R.drawable.ic_menu_camera, "Record") { openActionPicker("screen_capture", "Record") }
         addItem(android.R.drawable.ic_menu_manage, "System Quick Tiles") { openActionPicker("quick_tiles", "Quick Tiles") }
         addItem(android.R.drawable.ic_menu_preferences, "Android Settings Shortcut") { openActionPicker("settings_shortcut", "Settings Shortcut") }
         addItem(android.R.drawable.ic_menu_info_details, "System") { openActionPicker("system", "System Actions") }
@@ -225,11 +225,18 @@ class AddElementActivity : ComponentActivity() {
                 startActivityForResult(intent, 700)
             }
         }
+        addItem(android.R.drawable.ic_menu_gallery, "Hybrid Grid") {
+            finishWithId("system:hybrid_grid_floating")
+        }
+
         addItem(com.example.R.drawable.ic_library_books, "eBook Reader") {
             finishWithId("system:ebook_reader")
         }
         addItem(android.R.drawable.ic_menu_sort_alphabetically, "Dictionary") {
             finishWithId("system:dictionary_floating")
+        }
+        addItem(android.R.drawable.ic_menu_compass, "Cursor Trackpad") {
+            finishWithId("system:cursor")
         }
         addItem(android.R.drawable.ic_menu_edit, "Work Notes") {
             finishWithId("system:work_notes")

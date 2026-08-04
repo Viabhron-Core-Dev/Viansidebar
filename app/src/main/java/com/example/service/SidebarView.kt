@@ -322,7 +322,7 @@ class SidebarView(
         
         val wrapContent = if (pageConfig?.useCustomSettings == true) pageConfig.wrapContentHeight else {
             when (pageConfig?.type) {
-                "calculator", "compass", "notifications", "scheduler", "reader", "app_tracker" -> false
+                "calculator", "compass", "notifications", "scheduler", "reader", "resources_tracker", "app_tracker", "resources_tracker" -> false
                 else -> globalWrap
             }
         }
@@ -330,13 +330,13 @@ class SidebarView(
             when (pageConfig?.type) {
                 "calculator" -> 450
                 "compass" -> 500
-                "notifications", "scheduler", "reader" -> 650
+                "notifications", "scheduler", "reader", "resources_tracker" -> 650
                 else -> globalHeight
             }
         }
         val prefWidth = if (pageConfig?.useCustomSettings == true) pageConfig.width else {
             when (pageConfig?.type) {
-                "calculator", "compass", "notifications", "scheduler", "reader" -> 360
+                "calculator", "compass", "notifications", "scheduler", "reader", "resources_tracker" -> 360
                 else -> globalWidth
             }
         }

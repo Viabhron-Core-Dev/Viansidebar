@@ -153,6 +153,7 @@ class FloatingReaderService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
+        com.example.utils.ActiveAppTracker.addApp("floating_reader", "eBook Reader", "Reader", 30)
         super.onCreate()
         instance = this
         
@@ -2094,6 +2095,7 @@ class FloatingReaderService : Service() {
     }
 
     override fun onDestroy() {
+        com.example.utils.ActiveAppTracker.removeApp("floating_reader")
         if (this::prefs.isInitialized) {
             prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         }

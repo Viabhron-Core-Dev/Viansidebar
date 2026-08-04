@@ -32,6 +32,29 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class DictionaryPopupActivity : ComponentActivity() {
+
+    private fun makeWordsClickable(htmlText: CharSequence, onWordClick: (String) -> Unit): CharSequence {
+        val spannable = android.text.SpannableString(htmlText)
+        val matcher = java.util.regex.Pattern.compile("[a-zA-Z]+").matcher(spannable)
+        while (matcher.find()) {
+            val word = matcher.group()
+            if (word.length > 3) {
+                val span = object : android.text.style.ClickableSpan() {
+                    override fun onClick(widget: android.view.View) {
+                        onWordClick(word)
+                    }
+                    override fun updateDrawState(ds: android.text.TextPaint) {
+                        super.updateDrawState(ds)
+                        ds.color = android.graphics.Color.parseColor("#4ea8de")
+                        ds.isUnderlineText = false
+                    }
+                }
+                spannable.setSpan(span, matcher.start(), matcher.end(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
+        return spannable
+    }
+
     private var tts: TextToSpeech? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,7 +123,7 @@ class DictionaryPopupActivity : ComponentActivity() {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         IconButton(
                                             onClick = {
-                                                tts?.speak(query, TextToSpeech.QUEUE_FLUSH, null, null)
+                                                tts?.speak(query, TextToSpeech.QUEUE_FLUSH, null, "dict")
                                             },
                                             modifier = Modifier.size(32.dp)
                                         ) {
@@ -140,10 +163,18 @@ class DictionaryPopupActivity : ComponentActivity() {
                                         }
                                     },
                                     update = { textView ->
-                                        textView.text = HtmlCompat.fromHtml(
+                                        val htmlContent = HtmlCompat.fromHtml(
                                             definition ?: "",
                                             HtmlCompat.FROM_HTML_MODE_COMPACT
                                         )
+                                        textView.movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                                        textView.text = makeWordsClickable(htmlContent) { word ->
+                                            val i = Intent(this@DictionaryPopupActivity, SidebarService::class.java)
+                                            i.action = "OPEN_DICTIONARY"
+                                            i.putExtra("QUERY", word)
+                                            startService(i)
+                                            finish()
+                                        }
                                     }
                                 )
                             }

@@ -51,20 +51,30 @@ class LongScreenshotManager(private val service: AccessibilityService) {
         screenWidth = displayMetrics.widthPixels
     }
     
+    private fun setFloatingUIVisibility(visible: Boolean) {
+        FloatingTriggerService.instance?.setVisibility(visible)
+        if (!visible) {
+            SidebarService.instance?.closeSidebar()
+        }
+        SidebarService.instance?.setTriggerVisibility(visible)
+    }
+
     fun start() {
         if (isRunning) return
+        setFloatingUIVisibility(false)
         isRunning = true
         isPlaying = true
         parts.clear()
         cacheDir.listFiles()?.forEach { it.delete() }
         showFloatingControls()
-        captureNextPart()
+        handler.postDelayed({ captureNextPart() }, 500)
     }
 
     private fun stop() {
         isRunning = false
         isPlaying = false
         removeFloatingControls()
+        setFloatingUIVisibility(true)
         stitchAndSave()
     }
     
@@ -89,9 +99,21 @@ class LongScreenshotManager(private val service: AccessibilityService) {
                             val colorSpace = screenshotResult.colorSpace
                             val bitmap = Bitmap.wrapHardwareBuffer(hwBuffer, colorSpace)
                             if (bitmap != null) {
+                                // Crop top and bottom 15% to remove headers/footers (status bar, bottom nav, sticky headers)
+                                val cropTop = (bitmap.height * 0.15).toInt()
+                                val cropBottom = (bitmap.height * 0.15).toInt()
+                                val croppedHeight = bitmap.height - cropTop - cropBottom
+                                
+                                val copyBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, false)
+                                val croppedBitmap = if (croppedHeight > 0 && copyBitmap != null) {
+                                    Bitmap.createBitmap(copyBitmap, 0, cropTop, copyBitmap.width, croppedHeight)
+                                } else {
+                                    copyBitmap ?: bitmap
+                                }
+                                
                                 val file = File(cacheDir, "part_${parts.size}.png")
                                 FileOutputStream(file).use { out ->
-                                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                                    croppedBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
                                 }
                                 parts.add(file)
                             }
@@ -119,13 +141,13 @@ class LongScreenshotManager(private val service: AccessibilityService) {
 
     private fun scrollAndContinue() {
         val swipePath = Path()
-        val startY = screenHeight * 0.7f
-        val endY = screenHeight * 0.2f
+        val startY = screenHeight * 0.5f
+        val endY = screenHeight * 0.15f
         val x = screenWidth / 2f
         swipePath.moveTo(x, startY)
         swipePath.lineTo(x, endY)
 
-        val duration = Math.max(300L, 3000L - (speed * 250L))
+        val duration = Math.max(500L, 5000L - (speed * 400L))
         val gestureBuilder = GestureDescription.Builder()
         val stroke = GestureDescription.StrokeDescription(swipePath, 0, duration)
         gestureBuilder.addStroke(stroke)
@@ -137,7 +159,7 @@ class LongScreenshotManager(private val service: AccessibilityService) {
                     if (isRunning && isPlaying) {
                         captureNextPart()
                     }
-                }, 500) // wait for UI to settle
+                }, 800) // Wait a bit longer (800ms) for UI to settle (e.g. scrollbars fading, animations)
             }
             override fun onCancelled(gestureDescription: GestureDescription?) {
                 super.onCancelled(gestureDescription)
@@ -203,15 +225,11 @@ class LongScreenshotManager(private val service: AccessibilityService) {
     private fun findOverlap(topImg: Bitmap, bottomImg: Bitmap): Int {
         // Fast row matching algorithm.
         // We look for a row in the bottom of topImg that matches a row in the top of bottomImg.
-        // We will skip top/bottom fixed headers/footers (e.g. status bar, nav bar)
-        val skipTop = (screenHeight * 0.1).toInt()
-        val skipBottom = (screenHeight * 0.1).toInt()
-        
-        val searchStart = Math.max(0, topImg.height - screenHeight + skipTop)
-        val searchEnd = topImg.height - skipBottom
+        // Since images are already cropped, we can just match from the top of bottomImg.
+        val searchStart = Math.max(0, topImg.height - bottomImg.height)
+        val searchEnd = topImg.height - 1
 
-        // take a sample row from bottomImg just below the skipped top
-        val sampleY = skipTop
+        val sampleY = 0 // take the first row of bottomImg
         if (sampleY >= bottomImg.height) return 0
         
         val sampleRow = IntArray(bottomImg.width)
@@ -231,7 +249,7 @@ class LongScreenshotManager(private val service: AccessibilityService) {
                 diff += Math.abs((c1 and 0xFF) - (c2 and 0xFF))
             }
             if (diff < 5000) { // arbitrary threshold for matching row
-                return topImg.height - y + sampleY
+                return topImg.height - y
             }
         }
         return 0 // no overlap found, just append
@@ -263,7 +281,7 @@ class LongScreenshotManager(private val service: AccessibilityService) {
         val btnSlower = floatingView?.findViewById<ImageButton>(R.id.btn_slower)
         val btnFaster = floatingView?.findViewById<ImageButton>(R.id.btn_faster)
         val btnSplit = floatingView?.findViewById<ImageButton>(R.id.btn_split)
-        val btnExit = floatingView?.findViewById<ImageButton>(R.id.btn_exit)
+        val btnExit = floatingView?.findViewById<android.view.View>(R.id.btn_exit)
 
         updatePlayIcon()
 

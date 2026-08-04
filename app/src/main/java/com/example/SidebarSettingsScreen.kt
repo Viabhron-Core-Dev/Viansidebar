@@ -45,13 +45,14 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
             if (index == -1) {
                 val title = when (type) {
                     "apps" -> "Apps Grid"
-                    "scheduler" -> "Scheduler"
+                    "scheduler" -> "Short Reminders"
                     "calculator" -> "Calculator"
                     "compass" -> "Compass"
                     "notifications" -> "Notifications"
                     "widgets_grid" -> "Widgets Grid"
                     "hybrid_grid" -> "Hybrid Grid"
                     "app_tracker" -> "App Tracker"
+                    "resources_tracker" -> "Resources Tracker"
                     else -> type.replaceFirstChar { it.uppercase() }
                 }
                 val newPage = com.example.utils.SidebarPage.createDefault(id = UUID.randomUUID().toString(), type = type, title = title)
@@ -337,13 +338,14 @@ fun SidebarSettingsScreen(handleId: String, initAction: String? = null, onBack: 
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         val types = listOf(
                             "apps" to "Apps Grid",
-                            "scheduler" to "Scheduler",
+                            "scheduler" to "Short Reminders",
                             "calculator" to "Calculator",
                             "compass" to "Compass",
                             "notifications" to "Notifications",
                             "widgets_grid" to "Widgets Grid",
                             "hybrid_grid" to "Hybrid Grid",
-                            "app_tracker" to "App Tracker"
+                            "app_tracker" to "App Tracker",
+                            "resources_tracker" to "Resources Tracker",
                         )
                         types.forEach { (type, title) ->
                             TextButton(onClick = {

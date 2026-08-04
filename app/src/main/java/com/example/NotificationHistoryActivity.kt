@@ -187,12 +187,12 @@ fun NotificationHistoryScreen(onBack: () -> Unit, onExport: (List<NotificationHi
                         
                         val pm = context.packageManager
                         val appsInHistory = remember {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN, null).apply {
-                                addCategory(android.content.Intent.CATEGORY_LAUNCHER)
-                            }
-                            pm.queryIntentActivities(intent, 0).map { 
-                                it.activityInfo.packageName to it.loadLabel(pm).toString()
+                            val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                            val apps = try { launcherApps.getActivityList(null, android.os.Process.myUserHandle()) } catch(e: Exception) { emptyList() }
+                            apps.map { 
+                                it.applicationInfo.packageName to it.label.toString()
                             }.distinctBy { it.first }.sortedBy { it.second }
+
                         }
                         
                         LazyColumn(modifier = Modifier.weight(1f)) {

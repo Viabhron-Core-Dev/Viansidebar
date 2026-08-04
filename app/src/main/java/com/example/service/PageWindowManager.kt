@@ -109,12 +109,24 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
         val title = when (pageType) {
             "calculator" -> "Calculator"
             "compass" -> "Compass"
-            "scheduler" -> "Scheduler"
+            "scheduler" -> "Short Reminders"
             "notifications" -> "Notifications"
             "app_tracker" -> "App Tracker"
+            "resources_tracker" -> "Resources Tracker"
             else -> "Page Window"
         }
         tvTitle.text = title
+
+        val estMb = when (pageType) {
+            "calculator" -> 8
+            "compass" -> 6
+            "scheduler" -> 10
+            "notifications" -> 12
+            "app_tracker" -> 15
+            "resources_tracker" -> 8
+            else -> 10
+        }
+        com.example.utils.ActiveAppTracker.addApp("page_$pageType", title, "Floating Window", estMb)
 
         // Map the correct custom view
         val pageView = when (pageType) {
@@ -123,6 +135,7 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
             "scheduler" -> SchedulerPageView(context, CoroutineScope(Dispatchers.Main + Job()))
             "notifications" -> NotificationPageView(context, { close() }) { }
             "app_tracker" -> AppTrackerPageView(context, { close() }) { }
+            "resources_tracker" -> ResourcesTrackerPageView(context, CoroutineScope(Dispatchers.Main + Job()))
             else -> FrameLayout(context)
         }
         contentContainer.addView(pageView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
@@ -297,6 +310,7 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
 
     fun close() {
         if (floatingView != null) {
+            com.example.utils.ActiveAppTracker.removeApp("page_$pageType")
             windowManager.removeView(floatingView)
             floatingView = null
             onCloseCallback?.invoke()

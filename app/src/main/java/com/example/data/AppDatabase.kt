@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [EpubBook::class, TrackerBook::class, QuickNote::class, LogEntry::class, SchedulerTask::class], version = 6, exportSchema = false)
+@Database(entities = [EpubBook::class, TrackerBook::class, QuickNote::class, LogEntry::class, SchedulerTask::class], version = 7, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun epubDao(): EpubDao
     abstract fun trackerDao(): TrackerDao
@@ -35,13 +35,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `scheduler_tasks` ADD COLUMN `tags` TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE `scheduler_tasks` ADD COLUMN `status` TEXT NOT NULL DEFAULT 'PENDING'")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "litereader_db"
-                ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).fallbackToDestructiveMigration().build()
+                ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }
