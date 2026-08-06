@@ -1,7 +1,1 @@
-- 2026-07-26T03:51:00-07:00
-- Fix missing "Hybrid Grid" (and other types) in settings dialogs
-- Modified app/src/main/java/com/example/SidebarSettingsScreen.kt, app/src/main/java/com/example/HandlesListSettingsScreen.kt, app/src/main/java/com/example/PageManagementSettingsScreen.kt
-- In SidebarSettingsScreen, the "Add Sidebar Page" dialog Column had no scroll modifier, causing items like "Hybrid Grid" to be cut off the screen. Added `modifier = Modifier.verticalScroll(rememberScrollState())` to fix it. In HandlesListSettingsScreen and PageManagementSettingsScreen, the actual page type definitions were missing "Hybrid Grid", "App Tracker", "Dictionary", and "PWA Loader", so added those to the list of `pageOptions` and `types`.
-- Verified by local build (gradle :app:compileDebugKotlin successful)
-- No deviation from requested.
-- None
+2026-08-05 20:31:00 - Executed Phase 6 of Appywork blueprint: Implemented PWA Testing & Native Bridge logic. Moving "Live Preview (PWA)" button outside unsynced files check, zipping files, injecting into NanoHTTPD PwaDao, and launching SidebarService.

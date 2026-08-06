@@ -37,7 +37,7 @@ class HybridGridWindowManager(private val context: Context) {
         val defaultH = WindowManager.LayoutParams.WRAP_CONTENT
         
         val width = prefs.getInt("hybrid_grid_width", defaultW)
-        val height = prefs.getInt("hybrid_grid_height", defaultH)
+        val height = WindowManager.LayoutParams.WRAP_CONTENT
         val x = prefs.getInt("hybrid_grid_x", 100)
         val y = prefs.getInt("hybrid_grid_y", 100)
         
@@ -74,7 +74,7 @@ class HybridGridWindowManager(private val context: Context) {
         // Insert at index 0 so bottom controls stay on top
         hybridGridContainer.addView(gridPageView, 0, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT, 
-            FrameLayout.LayoutParams.MATCH_PARENT
+            FrameLayout.LayoutParams.WRAP_CONTENT
         ))
         
         isFolded = prefs.getBoolean("hybrid_grid_folded", false)
@@ -185,9 +185,8 @@ class HybridGridWindowManager(private val context: Context) {
                     val dx = event.rawX - startResizeTouchX
                     val dy = event.rawY - startResizeTouchY
                     val newW = max(300, startResizeWidth + dx.toInt())
-                    val newH = max(300, startResizeHeight + dy.toInt())
                     layoutParams!!.width = newW
-                    layoutParams!!.height = newH
+                    layoutParams!!.height = WindowManager.LayoutParams.WRAP_CONTENT
                     windowManager.updateViewLayout(floatingView, layoutParams)
                     true
                 }

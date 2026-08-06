@@ -69,6 +69,7 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                     onNavigateToCallRecorder = { currentRoute = "call_recorder" },
                     onNavigateToScreenCap = { currentRoute = "screencap" },
                     onNavigateToPermissions = { currentRoute = "permissions" },
+                    onNavigateToBrowser = { currentRoute = "browser" },
                     onBack = onFinish
                 )
                 "reader" -> ReaderSettingsScreen(
@@ -106,6 +107,9 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
                     onContinue = { currentRoute = "main" },
                     isFirstLaunch = false
                 )
+                "browser" -> BrowserSettingsScreen(
+                    onBack = { currentRoute = "main" }
+                )
             }
             if (currentRoute.startsWith("pages_")) {
                 val remainder = currentRoute.removePrefix("pages_")
@@ -130,7 +134,8 @@ fun SettingsApp(startRoute: String, onFinish: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -> Unit, onNavigateToNetSpeed: () -> Unit, onNavigateToData: () -> Unit, onNavigateToPages: () -> Unit, onNavigateToHandles: () -> Unit, onNavigateToCallRecorder: () -> Unit, onNavigateToScreenCap: () -> Unit, onNavigateToDict: () -> Unit, onNavigateToPermissions: () -> Unit, onBack: () -> Unit) {
+fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -> Unit, onNavigateToNetSpeed: () -> Unit, onNavigateToData: () -> Unit, onNavigateToPages: () -> Unit, onNavigateToHandles: () -> Unit, onNavigateToCallRecorder: () -> Unit, onNavigateToScreenCap: () -> Unit, onNavigateToDict: () -> Unit, onNavigateToPermissions: () -> Unit,
+    onNavigateToBrowser: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -184,6 +189,13 @@ fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -
                     supportingContent = { Text("Import and manage offline dictionaries") },
                     modifier = Modifier.clickable { onNavigateToDict() }
                 )
+
+                Divider()
+                ListItem(
+                    headlineContent = { Text("Browser Settings") },
+                    supportingContent = { Text("Global settings for Floating Browser") },
+                    modifier = Modifier.clickable { onNavigateToBrowser() }
+                )
                 Divider()
                 ListItem(
                     headlineContent = { Text("Log Keeper") },
@@ -201,6 +213,17 @@ fun MainSettingsScreen(onNavigateToReader: () -> Unit, onNavigateToGeneral: () -
                     supportingContent = { Text("Import and manage PWAs") },
                     modifier = Modifier.clickable { 
                         val intent = Intent(context, com.example.PwaManagerActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+                Divider()
+                ListItem(
+                    headlineContent = { Text("Appywork Vibe Coding") },
+                    supportingContent = { Text("Manage AI coding projects and GitHub auth") },
+                    modifier = Modifier.clickable { 
+                        val intent = Intent(context, com.example.AppyworkSettingsActivity::class.java).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         context.startActivity(intent)

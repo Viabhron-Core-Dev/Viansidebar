@@ -857,10 +857,10 @@ class SidebarService : Service() {
                 hybridGridWindowManager?.reloadGrid()
 
             } else if (action == "translation_floating") {
-                if (translationWindowManager == null) {
-                    translationWindowManager = TranslationWindowManager(this@SidebarService)
+                if (dictWindowManager == null) {
+                    dictWindowManager = DictionaryWindowManager(this@SidebarService)
                 }
-                translationWindowManager?.show()
+                dictWindowManager?.show(false, true)
 
             } else if (action == "ebook_reader") {
                 val intent = Intent(this, FloatingReaderService::class.java)
@@ -870,6 +870,14 @@ class SidebarService : Service() {
                 val intent = Intent(this, WorkNotesService::class.java)
                 intent.action = "TOGGLE"
                 startService(intent)
+            } else if (action == "barcode_scanner") {
+                val intent = Intent(this, com.example.service.BarcodeScannerActivity::class.java)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+            } else if (action == "screen_record") {
+                val intent = Intent(this, com.example.service.ScreenRecordActivity::class.java)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
             } else if (action == "settings") {
                 val intent = Intent(this, com.example.SettingsActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -919,6 +927,8 @@ class SidebarService : Service() {
                 startActivity(launchIntent)
             } catch (e: Exception) {}
         }
+        sidebarView?.close()
+        hybridGridWindowManager?.show(false)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

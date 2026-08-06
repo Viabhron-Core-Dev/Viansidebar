@@ -68,7 +68,7 @@ class HybridGridPageView(
         appsManager.ensureLoaded()
         com.example.LogKeeper.writeLog("HybridGrid", "Opened widgets grid page")
         val scrollView = ScrollView(context).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
             addView(gridLayout)
         }
         addView(scrollView)

@@ -56,6 +56,7 @@ fun PwaManagerScreen(
     var pwas by remember { mutableStateOf(emptyList<PwaEntry>()) }
     var selectedPwa by remember { mutableStateOf<PwaEntry?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     var defaultUseVirtualHost by remember { mutableStateOf(prefs.getBoolean("defaultUseVirtualHost", true)) }
     var defaultIncognitoMode by remember { mutableStateOf(prefs.getBoolean("defaultIncognitoMode", false)) }
@@ -108,7 +109,13 @@ fun PwaManagerScreen(
                             .padding(horizontal = 16.dp, vertical = 4.dp)
                             .fillMaxWidth()
                             .combinedClickable(
-                                onClick = { showEditDialog = true; selectedPwa = pwa },
+                                onClick = {
+                                    val intent = Intent(context, com.example.service.SidebarService::class.java).apply {
+                                        action = "EXECUTE_ACTION"
+                                        putExtra("ACTION_ID", "pwa:${pwa.id}")
+                                    }
+                                    context.startService(intent)
+                                },
                                 onLongClick = { showEditDialog = true; selectedPwa = pwa }
                             )
                     ) {

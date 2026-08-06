@@ -1,10 +1,17 @@
-- 2026-07-26T13:15:00-07:00
-- Implemented Non-Root Background App Killer in App Tracker with Accessibility Service automation.
-- Modified app/src/main/java/com/example/service/AppTrackerPageView.kt
-- Modified app/src/main/java/com/example/service/VianSideAccessibilityService.kt
-- Modified app/src/main/java/com/example/AppTrackerOpenerActivity.kt
-- Modified app/src/main/java/com/example/AppTrackerSettingsActivity.kt
-- Replaced the AppTrackerPageView UI with a grid of apps, top button row (SELECT ALL, DESELECT ALL, SYSTEM/USER toggle, PREFERENCES), and a small execute FAB. Added autoForceStop state to the settings screen. Updated AppTrackerOpenerActivity to toggle the `isForceStopping` flag on the accessibility service, and updated the accessibility service to automate clicks on "Force stop" and "OK" followed by a global back action.
-- Verified by local build (gradle :app:compileDebugKotlin successful)
-- No deviation from requested.
-- None
+2026-08-05 21:10:00 - Implemented Simple File Explorer Floating Window
+- Files touched:
+  - `FileExplorerFloatingService.kt`
+  - `FileExplorerWindowManager.kt`
+  - `FileExplorerLauncherActivity.kt`
+  - `AndroidManifest.xml`
+- What was actually done:
+  - Created `FileExplorerFloatingService` and `FileExplorerWindowManager` using Jetpack Compose.
+  - Styled with a dark theme (Surface: #282B30, Background: #1E2124) as requested.
+  - Implemented top breadcrumb navigation for traversing directory hierarchies.
+  - Implemented file list with folder/file icons, modified date, and size using `LazyColumn`.
+  - Added multi-select support using `combinedClickable` (long press).
+  - Implemented core file operations: open (via `FileProvider` intent), copy, move(cut), rename, and delete for single and multiple selected files.
+  - Added bottom action bar that adapts to selection state (Search/Add/Refresh/Bookmarks when no selection; Delete/Copy/Cut/Rename/Info when files are selected).
+  - Added bookmarking capabilities allowing users to bookmark directories and access them via the Bookmarks dialog.
+  - Registered the service and launcher activity in `AndroidManifest.xml`.
+- How it was verified: local build only.

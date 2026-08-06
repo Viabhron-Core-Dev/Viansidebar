@@ -136,6 +136,8 @@ fun DictionarySettingsScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            TranslationSettingsSection(context)
         }
     }
 }

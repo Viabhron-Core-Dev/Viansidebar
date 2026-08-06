@@ -38,10 +38,11 @@
             android:paddingVertical="6dp">
 
             <TextView
+                android:id="@+id/tv_window_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Dictionary"
+                android:text="Dictionary &amp; Translate"
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"
                 android:textSize="14sp" />
@@ -57,6 +58,35 @@
                 android:contentDescription="Settings" />
         </LinearLayout>
 
+        <!-- Tab Bar -->
+        <LinearLayout
+            android:id="@+id/tab_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="#222233">
+            <TextView
+                android:id="@+id/tab_dictionary"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Dictionary"
+                android:textColor="#FFFFFF"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="#333344" />
+            <TextView
+                android:id="@+id/tab_translate"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Translate"
+                android:textColor="#888888"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="#222233" />
+        </LinearLayout>
+
         <!-- Content Area -->
         <FrameLayout
             android:layout_width="match_parent"
@@ -64,6 +94,7 @@
             android:background="#1E1E2C">
             
             <LinearLayout
+                android:id="@+id/dict_content_area"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical">
@@ -153,6 +184,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:padding="8dp">
+
                             <TextView
                                 android:id="@+id/tv_definition"
                                 android:layout_width="match_parent"
@@ -160,10 +192,99 @@
                                 android:textColor="#CCCCCC"
                                 android:textSize="16sp" />
                         </ScrollView>
-
-
                     </FrameLayout>
                 </LinearLayout>
+            </LinearLayout>
+
+            <!-- Translate Area -->
+            <LinearLayout
+                android:id="@+id/translate_content_area"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+                <!-- Source Section -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="4dp">
+                    
+                    <Spinner
+                        android:id="@+id/spinner_source"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:theme="@style/Theme.AppCompat" />
+                        
+                    <ImageView
+                        android:id="@+id/btn_read_source"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_media_play"
+                        android:tint="#FFFFFF"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Read Aloud" />
+                </LinearLayout>
+                
+                <EditText
+                    android:id="@+id/edit_source"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="80dp"
+                    android:gravity="top|start"
+                    android:hint="Enter text"
+                    android:background="#333344"
+                    android:padding="8dp"
+                    android:layout_margin="8dp"
+                    android:textColorHint="#888888"
+                    android:textColor="#FFFFFF" />
+                    
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#444455"
+                    android:layout_marginHorizontal="8dp"
+                    android:layout_marginBottom="8dp" />
+        
+                <!-- Target Section -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="4dp">
+                    
+                    <Spinner
+                        android:id="@+id/spinner_target"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:theme="@style/Theme.AppCompat" />
+                        
+                    <ImageView
+                        android:id="@+id/btn_read_target"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_media_play"
+                        android:tint="#FFFFFF"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Read Aloud" />
+                </LinearLayout>
+                
+                <TextView
+                    android:id="@+id/text_target"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="80dp"
+                    android:gravity="top|start"
+                    android:background="#2A2A3C"
+                    android:padding="8dp"
+                    android:layout_margin="8dp"
+                    android:textColor="#FFFFFF"
+                    android:textIsSelectable="true" />
+                    
             </LinearLayout>
 
             <!-- Bottom Window Controls -->

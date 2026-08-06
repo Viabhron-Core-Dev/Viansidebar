@@ -113,6 +113,9 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
             "notifications" -> "Notifications"
             "app_tracker" -> "App Tracker"
             "resources_tracker" -> "Resources Tracker"
+            "file_explorer" -> "File Explorer"
+            "local_terminal" -> "Local Terminal"
+            "termux" -> "Termux (PRoot)"
             else -> "Page Window"
         }
         tvTitle.text = title
@@ -124,6 +127,9 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
             "notifications" -> 12
             "app_tracker" -> 15
             "resources_tracker" -> 8
+            "file_explorer" -> 10
+            "local_terminal" -> 5
+            "termux" -> 25
             else -> 10
         }
         com.example.utils.ActiveAppTracker.addApp("page_$pageType", title, "Floating Window", estMb)
@@ -136,6 +142,9 @@ class PageWindowManager(private val context: Context, private val pageType: Stri
             "notifications" -> NotificationPageView(context, { close() }) { }
             "app_tracker" -> AppTrackerPageView(context, { close() }) { }
             "resources_tracker" -> ResourcesTrackerPageView(context, CoroutineScope(Dispatchers.Main + Job()))
+            "file_explorer" -> FileExplorerPageView(context)
+            "local_terminal" -> LocalTerminalPageView(context)
+            "termux" -> TermuxPageView(context)
             else -> FrameLayout(context)
         }
         contentContainer.addView(pageView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
